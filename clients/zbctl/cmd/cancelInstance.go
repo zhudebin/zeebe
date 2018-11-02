@@ -24,7 +24,6 @@ var cancelInstanceCmd = &cobra.Command{
 	Use:     "instance <key>",
 	Short:   "Cancel workflow instance by key",
 	Args:    keyArg(&cancelInstanceKey),
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		zbCmd := client.
 			NewCancelInstanceCommand().

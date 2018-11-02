@@ -29,7 +29,6 @@ var failJobCmd = &cobra.Command{
 	Use:     "job <key>",
 	Short:   "Fail a job",
 	Args:    keyArg(&failJobRetriesKey),
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		_, err := client.NewFailJobCommand().JobKey(failJobRetriesKey).Retries(failJobRetriesFlag).Send()
 		if err == nil {

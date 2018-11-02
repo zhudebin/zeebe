@@ -28,7 +28,6 @@ var updatePayloadCmd = &cobra.Command{
 	Use:     "payload <key>",
 	Short:   "Update the payload of a workflow instance",
 	Args:    keyArg(&updatePayloadKey),
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		request, err := client.NewUpdatePayloadCommand().ElementInstanceKey(updatePayloadKey).PayloadFromString(updatePayloadFlag)
 		if err != nil {

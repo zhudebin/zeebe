@@ -31,7 +31,6 @@ var getWorkflowCmd = &cobra.Command{
 	Use:   "workflow",
 	Short: "Get a workflow resource",
 	Args: cobra.NoArgs,
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if getWorkflowKeyFlag < 1 && len(getWorkflowBpmnProcessIdFlag) == 0 {
 			return fmt.Errorf("either workflow key or BPMN process id has to be specified")

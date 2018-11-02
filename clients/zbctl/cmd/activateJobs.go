@@ -35,7 +35,6 @@ var activateJobsCmd = &cobra.Command{
 	Use:     "jobs <type>",
 	Short:   "Activate jobs for type",
 	Args:    cobra.ExactArgs(1),
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jobType := args[0]
 		jobs, err := client.NewActivateJobsCommand().JobType(jobType).Amount(activateJobsAmountFlag).WorkerName(activateJobsWorkerFlag).Timeout(activateJobsTimeoutFlag).Send()

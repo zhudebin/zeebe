@@ -28,7 +28,6 @@ var createInstanceCmd = &cobra.Command{
 	Use:     "instance <processId>",
 	Short:   "Creates new workflow instance defined by the process ID",
 	Args:    cobra.ExactArgs(1),
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		zbCmd, err := client.
 			NewCreateInstanceCommand().

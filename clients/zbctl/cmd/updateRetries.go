@@ -29,7 +29,6 @@ var updateRetriesCmd = &cobra.Command{
 	Use:     "retries <key>",
 	Short:   "Update retries of a job",
 	Args:    keyArg(&updateRetriesKey),
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		_, err := client.NewUpdateJobRetriesCommand().JobKey(updateRetriesKey).Retries(updateRetriesFlag).Send()
 		if err == nil {

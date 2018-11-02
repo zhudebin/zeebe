@@ -44,6 +44,7 @@ It is designed for regular maintenance jobs such as:
 	* activating, completing or failing jobs
 	* update payload and retries
 	* view cluster status`,
+	PersistentPreRunE: initClient,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

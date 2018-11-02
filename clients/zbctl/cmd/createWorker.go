@@ -50,7 +50,6 @@ If the handler finishes successful the job will be completed with the payload pr
 If the handler exits with an none zero exit code the job will be failed, the handler can provide a failure message on stderr.
 `,
 	Args:    cobra.ExactArgs(1),
-	PreRunE: initClient,
 	Run: func(cmd *cobra.Command, args []string) {
 		createWorkerHandlerArgs = strings.Split(createWorkerHandlerFlag, " ")
 

@@ -28,7 +28,6 @@ var completeJobCmd = &cobra.Command{
 	Use:     "job <key>",
 	Short:   "Complete a job",
 	Args:    keyArg(&completeJobKey),
-	PreRunE: initClient,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		request, err := client.NewCompleteJobCommand().JobKey(completeJobKey).PayloadFromString(completeJobPayloadFlag)
 		if err != nil {
