@@ -45,6 +45,7 @@ import io.zeebe.logstreams.state.FileSnapshotConsumer;
 import io.zeebe.logstreams.state.SnapshotConsumer;
 import io.zeebe.logstreams.state.StateStorage;
 import io.zeebe.servicecontainer.ServiceContainer;
+import io.zeebe.util.Loggers;
 import io.zeebe.util.ZbLogger;
 import java.io.File;
 import java.lang.reflect.Field;
@@ -208,6 +209,7 @@ public class DefaultDistributedLogstreamService
 
     final ByteBuffer buffer = ByteBuffer.wrap(blockBuffer);
     final long appendResult = logStorage.append(buffer);
+    Loggers.DEBUG_LOGGER.info("Appended til position {}", commitPosition);
     if (appendResult > 0) {
       updateCommitPosition(commitPosition);
     } else {

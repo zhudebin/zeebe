@@ -23,4 +23,6 @@ public class Loggers {
   public static final Logger ACTOR_LOGGER = new ZbLogger("io.zeebe.util.actor");
   public static final Logger IO_LOGGER = new ZbLogger("io.zeebe.util.buffer");
   public static final Logger FILE_LOGGER = new ZbLogger("io.zeebe.util.fs");
+
+  public static final Logger DEBUG_LOGGER = new ZbLogger("io.zeebe.debug");
 }

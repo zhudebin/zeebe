@@ -78,7 +78,7 @@ public class ZeebeClientImpl implements ZeebeClient {
     this.config = config;
     this.objectMapper = new ZeebeObjectMapper();
     this.channel = channel;
-    this.asyncStub = GatewayGrpc.newStub(channel).withDeadlineAfter(20, TimeUnit.SECONDS);
+    this.asyncStub = GatewayGrpc.newStub(channel);
     this.executorService = executorService;
     this.jobClient = newJobClient();
   }

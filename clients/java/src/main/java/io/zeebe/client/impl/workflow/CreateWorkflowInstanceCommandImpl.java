@@ -29,6 +29,7 @@ import io.zeebe.gateway.protocol.GatewayOuterClass.CreateWorkflowInstanceRequest
 import io.zeebe.gateway.protocol.GatewayOuterClass.CreateWorkflowInstanceRequest.Builder;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class CreateWorkflowInstanceCommandImpl
     implements CreateWorkflowInstanceCommandStep1,
@@ -100,7 +101,7 @@ public class CreateWorkflowInstanceCommandImpl
             WorkflowInstanceEvent, GatewayOuterClass.CreateWorkflowInstanceResponse>
         future = new ZeebeClientFutureImpl<>(CreateWorkflowInstanceResponseImpl::new);
 
-    asyncStub.createWorkflowInstance(request, future);
+    asyncStub.withDeadlineAfter(20, TimeUnit.SECONDS).createWorkflowInstance(request, future);
     return future;
   }
 

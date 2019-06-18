@@ -41,6 +41,7 @@ import io.zeebe.transport.RemoteAddress;
 import io.zeebe.transport.ServerMessageHandler;
 import io.zeebe.transport.ServerOutput;
 import io.zeebe.transport.ServerRequestHandler;
+import io.zeebe.util.buffer.BufferUtil;
 import java.util.EnumMap;
 import java.util.function.Consumer;
 import org.agrona.DirectBuffer;
@@ -151,6 +152,13 @@ public class CommandApiMessageHandler implements ServerMessageHandler, ServerReq
             .metadataWriter(eventMetadata)
             .value(buffer, eventOffset, eventLength)
             .tryWrite();
+
+    if (eventMetadata.getValueType() == ValueType.WORKFLOW_INSTANCE_CREATION) {
+      io.zeebe.util.Loggers.DEBUG_LOGGER.info(
+          "Written event {} at position {}",
+          BufferUtil.bufferAsString(((WorkflowInstanceCreationRecord) event).getVariablesBuffer()),
+          eventPosition);
+    }
 
     return eventPosition >= 0;
   }
