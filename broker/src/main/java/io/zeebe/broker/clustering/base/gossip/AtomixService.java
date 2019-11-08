@@ -16,6 +16,10 @@ import io.atomix.core.AtomixBuilder;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup.Builder;
 import io.atomix.utils.net.Address;
+import io.jaegertracing.Configuration;
+import io.jaegertracing.Configuration.ReporterConfiguration;
+import io.jaegertracing.Configuration.SamplerConfiguration;
+import io.opentracing.util.GlobalTracer;
 import io.zeebe.broker.Loggers;
 import io.zeebe.broker.clustering.base.partitions.Partition;
 import io.zeebe.broker.logstreams.restore.BrokerRestoreFactory;
@@ -112,6 +116,12 @@ public class AtomixService implements Service<Atomix> {
             localMemberId);
 
     LogstreamConfig.putRestoreFactory(localMemberId, restoreFactory);
+
+    final Configuration config =
+        new Configuration("zeebe-atomix")
+            .withReporter(ReporterConfiguration.fromEnv())
+            .withSampler(SamplerConfiguration.fromEnv());
+    GlobalTracer.register(config.getTracer());
   }
 
   @Override

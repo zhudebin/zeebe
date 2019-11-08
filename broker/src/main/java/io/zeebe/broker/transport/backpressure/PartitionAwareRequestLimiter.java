@@ -12,10 +12,12 @@ import com.netflix.concurrency.limits.limit.Gradient2Limit;
 import com.netflix.concurrency.limits.limit.GradientLimit;
 import com.netflix.concurrency.limits.limit.VegasLimit;
 import com.netflix.concurrency.limits.limit.WindowedLimit;
+import io.zeebe.broker.system.configuration.BackpressureCfg;
 import io.zeebe.broker.system.configuration.BackpressureCfg.LimitAlgorithm;
 import io.zeebe.protocol.record.intent.Intent;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -39,18 +41,31 @@ public class PartitionAwareRequestLimiter {
   }
 
   public static PartitionAwareRequestLimiter newLimiter(
-      LimitAlgorithm algorithm, boolean useWindowed) {
+      LimitAlgorithm algorithm, boolean useWindowed, BackpressureCfg backpressure) {
     final Supplier<Limit> limit;
     if (algorithm == LimitAlgorithm.GRADIENT) {
       limit = GradientLimit::newDefault;
     } else if (algorithm == LimitAlgorithm.GRADIENT2) {
       limit = Gradient2Limit::newDefault;
     } else {
-      limit = VegasLimit::newDefault;
+      limit =
+          () ->
+              VegasLimit.newBuilder()
+                  /*.alpha(i -> Math.max(3, (int) (i * 0.2)))
+                  .beta(i -> Math.max(6, (int) (i * 0.4)))
+                  .threshold(i -> 3)
+                  .increase(i -> i + 3)*/
+                  .build();
     }
 
     if (useWindowed) {
-      return new PartitionAwareRequestLimiter(() -> WindowedLimit.newBuilder().build(limit.get()));
+      return new PartitionAwareRequestLimiter(
+          () ->
+              WindowedLimit.newBuilder()
+                  .maxWindowTime(backpressure.getMinWindowTime(), TimeUnit.MILLISECONDS)
+                  .maxWindowTime(backpressure.getMaxWindowTime(), TimeUnit.MILLISECONDS)
+                  .minRttThreshold(backpressure.getMinRttThreshold(), TimeUnit.MILLISECONDS)
+                  .build(limit.get()));
     } else {
       return new PartitionAwareRequestLimiter(limit);
     }

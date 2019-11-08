@@ -35,7 +35,7 @@ public class TransportComponent implements Component {
     final BackpressureCfg backpressure = context.getBrokerConfiguration().getBackpressure();
     if (backpressure.isEnabled()) {
       return PartitionAwareRequestLimiter.newLimiter(
-          backpressure.getAlgorithm(), backpressure.useWindowed());
+          backpressure.getAlgorithm(), backpressure.useWindowed(), backpressure);
     }
     return PartitionAwareRequestLimiter.newNoopLimiter();
   }

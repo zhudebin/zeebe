@@ -12,6 +12,36 @@ public class BackpressureCfg implements ConfigurationEntry {
   private boolean enabled = true;
   private boolean useWindowed = true;
   private String algorithm = "vegas";
+  private long minWindowTime = 500; // milli seconds
+  private long maxWindowTime = 2000; // milli seconds
+  private long minRttThreshold = 100; // milli seconds
+
+  public long getMinRttThreshold() {
+    return minRttThreshold;
+  }
+
+  public BackpressureCfg setMinRttThreshold(long minRttThreshold) {
+    this.minRttThreshold = minRttThreshold;
+    return this;
+  }
+
+  public long getMinWindowTime() {
+    return minWindowTime;
+  }
+
+  public BackpressureCfg setMinWindowTime(long minWindowTime) {
+    this.minWindowTime = minWindowTime;
+    return this;
+  }
+
+  public long getMaxWindowTime() {
+    return maxWindowTime;
+  }
+
+  public BackpressureCfg setMaxWindowTime(long maxWindowTime) {
+    this.maxWindowTime = maxWindowTime;
+    return this;
+  }
 
   public boolean isEnabled() {
     return enabled;
