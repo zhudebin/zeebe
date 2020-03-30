@@ -23,7 +23,6 @@ import io.zeebe.dispatcher.impl.log.DataFrameDescriptor;
 import io.zeebe.logstreams.log.LogStreamRecordWriter;
 import io.zeebe.util.buffer.BufferWriter;
 import io.zeebe.util.buffer.DirectBufferWriter;
-import io.zeebe.util.sched.clock.ActorClock;
 import org.agrona.DirectBuffer;
 import org.agrona.LangUtil;
 import org.agrona.MutableDirectBuffer;
@@ -133,7 +132,7 @@ public final class LogStreamWriterImpl implements LogStreamRecordWriter {
         setPosition(writeBuffer, bufferOffset, claimedPosition);
         setSourceEventPosition(writeBuffer, bufferOffset, sourceRecordPosition);
         setKey(writeBuffer, bufferOffset, key);
-        setTimestamp(writeBuffer, bufferOffset, ActorClock.currentTimeMillis());
+        setTimestamp(writeBuffer, bufferOffset, System.nanoTime());
         setMetadataLength(writeBuffer, bufferOffset, (short) metadataLength);
 
         if (metadataLength > 0) {

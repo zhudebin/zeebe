@@ -29,7 +29,6 @@ import io.zeebe.logstreams.log.LogStreamBatchWriter.LogEntryBuilder;
 import io.zeebe.protocol.Protocol;
 import io.zeebe.util.buffer.BufferWriter;
 import io.zeebe.util.buffer.DirectBufferWriter;
-import io.zeebe.util.sched.clock.ActorClock;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.LangUtil;
@@ -262,7 +261,7 @@ public final class LogStreamBatchWriterImpl implements LogStreamBatchWriter, Log
       }
 
       setKey(writeBuffer, bufferOffset, key);
-      setTimestamp(writeBuffer, bufferOffset, ActorClock.currentTimeMillis());
+      setTimestamp(writeBuffer, bufferOffset, System.nanoTime());
       setMetadataLength(writeBuffer, bufferOffset, (short) metadataLength);
 
       if (metadataLength > 0) {
