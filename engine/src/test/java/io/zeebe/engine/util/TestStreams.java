@@ -16,7 +16,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-import io.atomix.protocols.raft.zeebe.ZeebeEntry;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.db.ZeebeDbFactory;
 import io.zeebe.engine.processor.AsyncSnapshotDirector;
@@ -29,8 +28,6 @@ import io.zeebe.logstreams.log.LogStreamBatchWriter;
 import io.zeebe.logstreams.log.LogStreamReader;
 import io.zeebe.logstreams.log.LogStreamRecordWriter;
 import io.zeebe.logstreams.log.LoggedEvent;
-import io.zeebe.logstreams.spi.LogStorage;
-import io.zeebe.logstreams.spi.LogStorageReader;
 import io.zeebe.logstreams.state.SnapshotStorage;
 import io.zeebe.logstreams.state.StateSnapshotController;
 import io.zeebe.logstreams.util.AtomixLogStorageRule;
@@ -50,20 +47,15 @@ import io.zeebe.util.sched.ActorScheduler;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.ByteBuffer;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import java.util.function.LongConsumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.agrona.DirectBuffer;
 import org.junit.rules.TemporaryFolder;
 
 public final class TestStreams {
@@ -142,114 +134,6 @@ public final class TestStreams {
                 .withMaxEntrySize(128 * 1024)
                 .withMaxSegmentSize(256 * 1024));
     return createLogStream(name, partitionId, logStorageRule);
-  }
-
-  private class ListLogStrage implements LogStorage {
-
-    private final List<ZeebeEntry> entries;
-    private LongConsumer positionListener;
-
-    public ListLogStrage() {
-      entries = new CopyOnWriteArrayList<>();
-    }
-
-    public void setPositionListener(final LongConsumer positionListener) {
-      this.positionListener = positionListener;
-    }
-
-    @Override
-    public LogStorageReader newReader() {
-      return new LogStorageReader() {
-        @Override
-        public boolean isEmpty() {
-          return entries.isEmpty();
-        }
-
-        @Override
-        public long read(final DirectBuffer readBuffer, final long address) {
-          final var index = (int) (address - 1);
-
-          if (index < 0 || index >= entries.size()) {
-            return OP_RESULT_NO_DATA;
-          }
-
-          final var zeebeEntry = entries.get(index);
-          final var data = zeebeEntry.data();
-          readBuffer.wrap(data, data.position(), data.remaining());
-
-          return address + 1;
-        }
-
-        @Override
-        public long readLastBlock(final DirectBuffer readBuffer) {
-          return read(readBuffer, entries.size());
-        }
-
-        @Override
-        public long lookUpApproximateAddress(final long position) {
-
-          if (position == Long.MIN_VALUE) {
-            return entries.isEmpty() ? OP_RESULT_INVALID_ADDR : 1;
-          }
-
-          for (int idx = 0; idx < entries.size(); idx++) {
-            final var zeebeEntry = entries.get(idx);
-            if (zeebeEntry.lowestPosition() <= position
-                && position <= zeebeEntry.highestPosition()) {
-              return idx;
-            }
-          }
-
-          return 1;
-        }
-
-        @Override
-        public void close() {}
-      };
-    }
-
-    @Override
-    public void append(
-        final long lowestPosition,
-        final long highestPosition,
-        final ByteBuffer blockBuffer,
-        final AppendListener listener) {
-      try {
-        final var zeebeEntry =
-            new ZeebeEntry(
-                0, System.currentTimeMillis(), lowestPosition, highestPosition, blockBuffer);
-        entries.add(zeebeEntry);
-        listener.onWrite(entries.size());
-
-        if (positionListener != null) {
-          positionListener.accept(zeebeEntry.highestPosition());
-        }
-        listener.onCommit(entries.size());
-      } catch (final Exception e) {
-        listener.onWriteError(e);
-      }
-    }
-
-    @Override
-    public void open() throws IOException {}
-
-    @Override
-    public void close() {
-      entries.clear();
-    }
-
-    @Override
-    public boolean isOpen() {
-      return true;
-    }
-
-    @Override
-    public boolean isClosed() {
-      return false;
-    }
-
-    @Override
-    public void flush() throws Exception {}
   }
 
   public SyncLogStream createLogStream(
