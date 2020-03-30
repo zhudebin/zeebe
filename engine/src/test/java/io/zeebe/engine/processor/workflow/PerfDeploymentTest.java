@@ -51,7 +51,7 @@ public final class PerfDeploymentTest {
     var min = Long.MAX_VALUE;
     var max = Long.MIN_VALUE;
     var sum = 0L;
-    var avg = 0;
+    var avg = 0.0f;
     Long previousExecutionTime = null;
     var sumSquareSuccessiveDifference = 0.0;
     var rMSSD = 0.0;
@@ -98,22 +98,27 @@ public final class PerfDeploymentTest {
       previousExecutionTime = executionTime;
 
       if (i % 50 == 0) {
-        rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * i));
-        avg = (int) (sum / ITER_COUNT);
+        rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * i)); // here i = n - 1
+        avg = ((float) sum / (float) i + 1);
         Loggers.STREAM_PROCESSING.warn(
-            "I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}", i, min, max, avg, rMSSD);
+            "I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}",
+            i,
+            min,
+            max,
+            String.format("%.3f", avg),
+            String.format("%.3f", rMSSD));
       }
     }
 
     rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * ITER_COUNT));
-    avg = (int) (sum / ITER_COUNT);
+    avg = ((float) sum / (float) ITER_COUNT);
     Loggers.STREAM_PROCESSING.warn(
         "I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}",
         ITER_COUNT,
         min,
         max,
-        avg,
-        rMSSD);
+        String.format("%.2f", avg),
+        String.format("%.3f", rMSSD));
   }
 
   private long calculateMs(final long nanoTime) {
