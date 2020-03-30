@@ -88,9 +88,11 @@ public final class PerfDeploymentTest {
       sum += executionTime;
 
       // approximate standard deviation by root mean square successive differences (rMSSD)
-      // see: https://support.minitab.com/en-us/minitab/18/help-and-how-to/quality-and-process-improvement/control-charts/supporting-topics/estimating-variation/individuals-data/#mssd
+      // see:
+      // https://support.minitab.com/en-us/minitab/18/help-and-how-to/quality-and-process-improvement/control-charts/supporting-topics/estimating-variation/individuals-data/#mssd
       if (previousExecutionTime != null) {
-        final double squareSuccessiveDifference = Math.pow(executionTime - previousExecutionTime, 2);
+        final double squareSuccessiveDifference =
+            Math.pow(executionTime - previousExecutionTime, 2);
         sumSquareSuccessiveDifference += squareSuccessiveDifference;
       }
       previousExecutionTime = executionTime;
@@ -98,13 +100,20 @@ public final class PerfDeploymentTest {
       if (i % 50 == 0) {
         rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * i));
         avg = (int) (sum / ITER_COUNT);
-        Loggers.STREAM_PROCESSING.warn("I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}", i, min, max, avg, rMSSD);
+        Loggers.STREAM_PROCESSING.warn(
+            "I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}", i, min, max, avg, rMSSD);
       }
     }
 
     rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * ITER_COUNT));
     avg = (int) (sum / ITER_COUNT);
-    Loggers.STREAM_PROCESSING.warn("I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}", ITER_COUNT, min, max, avg, rMSSD);
+    Loggers.STREAM_PROCESSING.warn(
+        "I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}",
+        ITER_COUNT,
+        min,
+        max,
+        avg,
+        rMSSD);
   }
 
   private long calculateMs(final long nanoTime) {
