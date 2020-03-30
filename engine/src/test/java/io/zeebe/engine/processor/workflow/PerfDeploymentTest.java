@@ -55,12 +55,6 @@ public final class PerfDeploymentTest {
 
     for (int i = 0; i < ITER_COUNT; i++) {
       final var process = ENGINE.workflowInstance().ofBpmnProcessId("process").create();
-      //
-      //      final var collect =
-      //          RecordingExporter.workflowInstanceRecords()
-      //              .withWorkflowInstanceKey(process)
-      //              .limitToWorkflowInstanceCompleted()
-      //              .collect(Collectors.toList());
 
       final var startEventActivating =
           RecordingExporter.workflowInstanceRecords()
