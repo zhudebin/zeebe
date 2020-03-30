@@ -23,13 +23,14 @@ import org.junit.Test;
 
 public final class PerfDeploymentTest {
   @ClassRule public static final EngineRule ENGINE = EngineRule.singlePartition();
+
+  public static final int WARM_UP_ITERATION = 1_000;
+  public static final int ITER_COUNT = 1_000;
+
   private static final String PROCESS_ID = "process";
   private static final String PROCESS_ID_2 = "process2";
   private static final BpmnModelInstance WORKFLOW =
       Bpmn.createExecutableProcess(PROCESS_ID).startEvent("startEvent").endEvent().done();
-
-  public static final int WARM_UP_ITERATION = 1_000;
-  public static final int ITER_COUNT = 1_000;
 
   @Rule
   public final RecordingExporterTestWatcher recordingExporterTestWatcher =
