@@ -65,11 +65,14 @@ import org.agrona.DirectBuffer;
 import org.agrona.collections.Int2ObjectHashMap;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.rules.ExternalResource;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
 public final class EngineRule extends ExternalResource {
 
+  public static final int MAX_ENTRY_SIZE = 4 * 1024 * 1024;
+  public static final int MAX_SEGMENT_SIZE = 128 * 1024 * 1024;
   private static final int PARTITION_ID = Protocol.DEPLOYMENT_PARTITION;
   private static final RecordingExporter RECORDING_EXPORTER = new RecordingExporter();
   private StreamProcessorRule environmentRule;
@@ -84,19 +87,32 @@ public final class EngineRule extends ExternalResource {
   private final ExecutorService subscriptionHandlerExecutor = Executors.newSingleThreadExecutor();
 
   private EngineRule(final int partitionCount) {
-    this(partitionCount, false);
+    this(partitionCount, false, MAX_ENTRY_SIZE, MAX_SEGMENT_SIZE);
   }
 
-  private EngineRule(final int partitionCount, final boolean explicitStart) {
+  private EngineRule(
+      final int partitionCount,
+      final boolean explicitStart,
+      final int maxEntrySize,
+      final int maxSegmentSize) {
     this.partitionCount = partitionCount;
     this.explicitStart = explicitStart;
     environmentRule =
         new StreamProcessorRule(
-            PARTITION_ID, partitionCount, DefaultZeebeDbFactory.DEFAULT_DB_FACTORY);
+            PARTITION_ID,
+            partitionCount,
+            DefaultZeebeDbFactory.DEFAULT_DB_FACTORY,
+            new TemporaryFolder(),
+            maxEntrySize,
+            maxSegmentSize);
   }
 
   public static EngineRule singlePartition() {
     return new EngineRule(1);
+  }
+
+  public static EngineRule singlePartition(final int maxEntrySize, final int maxSegmentSize) {
+    return new EngineRule(1, false, maxEntrySize, maxSegmentSize);
   }
 
   public static EngineRule multiplePartition(final int partitionCount) {
@@ -104,7 +120,7 @@ public final class EngineRule extends ExternalResource {
   }
 
   public static EngineRule explicitStart() {
-    return new EngineRule(1, true);
+    return new EngineRule(1, true, MAX_ENTRY_SIZE, MAX_SEGMENT_SIZE);
   }
 
   @Override
@@ -115,14 +131,14 @@ public final class EngineRule extends ExternalResource {
   }
 
   @Override
-  protected void before() {
+  public void before() {
     if (!explicitStart) {
       startProcessors();
     }
   }
 
   @Override
-  protected void after() {
+  public void after() {
     subscriptionHandlerExecutor.shutdown();
     environmentRule = null;
   }

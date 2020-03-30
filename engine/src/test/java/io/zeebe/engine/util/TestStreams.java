@@ -76,11 +76,24 @@ public final class TestStreams {
   private final Map<String, LogContext> logContextMap = new HashMap<>();
   private final Map<String, ProcessorContext> streamContextMap = new HashMap<>();
   private StreamProcessor streamProcessor;
+  private final int maxEntrySize;
+  private final int maxSegmentSize;
 
   public TestStreams(
       final TemporaryFolder dataDirectory,
       final AutoCloseableRule closeables,
       final ActorScheduler actorScheduler) {
+    this(dataDirectory, closeables, actorScheduler, 4 * 1024 * 1024, 128 * 1024 * 1024);
+  }
+
+  public TestStreams(
+      final TemporaryFolder dataDirectory,
+      final AutoCloseableRule closeables,
+      final ActorScheduler actorScheduler,
+      final int maxEntrySize,
+      final int maxSegmentSize) {
+    this.maxEntrySize = maxEntrySize;
+    this.maxSegmentSize = maxSegmentSize;
     this.dataDirectory = dataDirectory;
     this.closeables = closeables;
     this.actorScheduler = actorScheduler;
@@ -124,15 +137,20 @@ public final class TestStreams {
 
   public SyncLogStream createLogStream(
       final String name, final int partitionId, final File segmentsDir) {
+    LOG.warn(
+        "Create log stream with maxEntrySize {} maxSegmentSize {}", maxEntrySize, maxSegmentSize);
     final AtomixLogStorageRule logStorageRule =
         new AtomixLogStorageRule(dataDirectory, partitionId);
     logStorageRule.open(
         b ->
             b.withDirectory(segmentsDir)
-                //                .withMaxEntrySize(4 * 1024 * 1024)
-                //                .withMaxSegmentSize(128 * 1024 * 1024));
-                .withMaxEntrySize(128 * 1024)
-                .withMaxSegmentSize(256 * 1024));
+                // seems to not have any effect
+                //                .withJournalIndexFactory(() -> new SparseJournalIndex(1))
+                .withMaxEntrySize(maxEntrySize)
+                .withMaxSegmentSize(maxSegmentSize));
+    // looks much better with these values
+    //                .withMaxEntrySize(128 * 1024)
+    //                .withMaxSegmentSize(256 * 1024));
     return createLogStream(name, partitionId, logStorageRule);
   }
 

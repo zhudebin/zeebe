@@ -13,37 +13,45 @@ import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.test.util.record.RecordingExporter;
-import io.zeebe.test.util.record.RecordingExporterTestWatcher;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public final class PerfDeploymentTest {
 
-  public static final int WARM_UP_ITERATION = 1_000;
-  public static final int ITER_COUNT = 1_000;
+  public static final int WARM_UP_ITERATION = 1;
+  public static final int ITER_COUNT = 1;
 
   private static final String PROCESS_ID = "process";
   private static final BpmnModelInstance WORKFLOW =
       Bpmn.createExecutableProcess(PROCESS_ID).startEvent("startEvent").endEvent().done();
 
-  @Rule public final EngineRule engineRule = EngineRule.singlePartition();
+  @Parameter(0)
+  public String testName;
 
   @Rule
-  public final RecordingExporterTestWatcher recordingExporterTestWatcher =
-      new RecordingExporterTestWatcher();
+  @Parameter(1)
+  public EngineRule engineRule;
+
+  @Parameters(name = "{0}")
+  public static Object[][] parameters() {
+    return new Object[][] {
+      {"Default CFG", EngineRule.singlePartition(4 * 1024 * 1024, 128 * 1024 * 1024)},
+      {"Default CFG - reduced by factor 1024", EngineRule.singlePartition(4 * 1024, 128 * 1024)},
+    };
+  }
 
   @Before
   public void setup() {
+    Loggers.WORKFLOW_PROCESSOR_LOGGER.warn("Running test {}", testName);
     engineRule.deployment().withXmlResource(WORKFLOW).deploy();
 
-    Loggers.STREAM_PROCESSING.warn("Warm up: ");
-    final var start = System.nanoTime();
-    for (int i = 0; i < WARM_UP_ITERATION; i++) {
-      engineRule.workflowInstance().ofBpmnProcessId("process").create();
-    }
-    final var end = System.nanoTime();
-    Loggers.STREAM_PROCESSING.warn("Warm up done, took {}", end - start);
+    warmup();
   }
 
   @Test
@@ -104,6 +112,16 @@ public final class PerfDeploymentTest {
         max,
         String.format("%.2f", avg),
         String.format("%.3f", rMSSD));
+  }
+
+  private void warmup() {
+    Loggers.STREAM_PROCESSING.warn("Warm up: ");
+    final var start = System.nanoTime();
+    for (int i = 0; i < WARM_UP_ITERATION; i++) {
+      engineRule.workflowInstance().ofBpmnProcessId("process").create();
+    }
+    final var end = System.nanoTime();
+    Loggers.STREAM_PROCESSING.warn("Warm up done, took {}", end - start);
   }
 
   private long getStartTime(final long process) {

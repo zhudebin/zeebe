@@ -61,6 +61,9 @@ public final class StreamProcessorRule implements TestRule {
   private TestStreams streams;
   private StreamProcessingComposite streamProcessingComposite;
 
+  private final int maxEntrySize;
+  private final int maxSegmentSize;
+
   public StreamProcessorRule() {
     this(new TemporaryFolder());
   }
@@ -87,6 +90,22 @@ public final class StreamProcessorRule implements TestRule {
       final int partitionCount,
       final ZeebeDbFactory dbFactory,
       final TemporaryFolder temporaryFolder) {
+    this(
+        startPartitionId,
+        partitionCount,
+        dbFactory,
+        temporaryFolder,
+        4 * 1024 * 1024,
+        128 * 1024 * 1024);
+  }
+
+  public StreamProcessorRule(
+      final int startPartitionId,
+      final int partitionCount,
+      final ZeebeDbFactory dbFactory,
+      final TemporaryFolder temporaryFolder,
+      final int maxEntrySize,
+      final int maxSegmentSize) {
     this.startPartitionId = startPartitionId;
     this.partitionCount = partitionCount;
 
@@ -101,6 +120,9 @@ public final class StreamProcessorRule implements TestRule {
             .around(closeables)
             .around(rule)
             .around(new FailedTestRecordPrinter());
+
+    this.maxEntrySize = maxEntrySize;
+    this.maxSegmentSize = maxSegmentSize;
   }
 
   @Override
@@ -234,7 +256,9 @@ public final class StreamProcessorRule implements TestRule {
 
     @Override
     protected void before() {
-      streams = new TestStreams(tempFolder, closeables, actorSchedulerRule.get());
+      streams =
+          new TestStreams(
+              tempFolder, closeables, actorSchedulerRule.get(), maxEntrySize, maxSegmentSize);
 
       int partitionId = startPartitionId;
       for (int i = 0; i < partitionCount; i++) {
