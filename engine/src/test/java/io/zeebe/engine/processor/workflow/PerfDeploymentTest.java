@@ -14,8 +14,6 @@ import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.test.util.record.RecordingExporter;
 import io.zeebe.test.util.record.RecordingExporterTestWatcher;
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -28,7 +26,6 @@ public final class PerfDeploymentTest {
   public static final int ITER_COUNT = 1_000;
 
   private static final String PROCESS_ID = "process";
-  private static final String PROCESS_ID_2 = "process2";
   private static final BpmnModelInstance WORKFLOW =
       Bpmn.createExecutableProcess(PROCESS_ID).startEvent("startEvent").endEvent().done();
 
@@ -40,12 +37,10 @@ public final class PerfDeploymentTest {
   public void setup() {
     ENGINE.deployment().withXmlResource(WORKFLOW).deploy();
 
-    final List<Long> keys = new ArrayList<>();
     Loggers.STREAM_PROCESSING.warn("Warm up: ");
     final var start = System.nanoTime();
     for (int i = 0; i < WARM_UP_ITERATION; i++) {
-      final var process = ENGINE.workflowInstance().ofBpmnProcessId("process").create();
-      keys.add(process);
+      ENGINE.workflowInstance().ofBpmnProcessId("process").create();
     }
     final var end = System.nanoTime();
     Loggers.STREAM_PROCESSING.warn("Warm up done, took {}", end - start);
