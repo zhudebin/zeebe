@@ -110,7 +110,7 @@ public final class PerfDeploymentTest {
 
     rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * ITER_COUNT));
     avg = (int) (sum / ITER_COUNT);
-    Loggers.STREAM_PROCESSING.warn("Execution time min: {}, max: {}, avg: {}", min, max, avg);
+    Loggers.STREAM_PROCESSING.warn("I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}", ITER_COUNT, min, max, avg, rMSSD);
   }
 
   private long calculateMs(final long nanoTime) {
