@@ -257,11 +257,12 @@ public final class TestStreams {
     final var logStream =
         SyncLogStream.builder()
             .withLogName(name)
-            .withLogStorage(listLogStrage)
+            .withLogStorage(logStorageRule.getStorage())
             .withPartitionId(partitionId)
             .withActorScheduler(actorScheduler)
             .build();
     listLogStrage.setPositionListener(logStream::setCommitPosition);
+    logStorageRule.setPositionListener(logStream::setCommitPosition);
 
     final LogContext logContext = LogContext.createLogContext(logStream, logStorageRule);
     logContextMap.put(name, logContext);
