@@ -137,8 +137,10 @@ public final class TestStreams {
     logStorageRule.open(
         b ->
             b.withDirectory(segmentsDir)
-                .withMaxEntrySize(4 * 1024 * 1024)
-                .withMaxSegmentSize(128 * 1024 * 1024));
+                //                .withMaxEntrySize(4 * 1024 * 1024)
+                //                .withMaxSegmentSize(128 * 1024 * 1024));
+                .withMaxEntrySize(128 * 1024)
+                .withMaxSegmentSize(256 * 1024));
     return createLogStream(name, partitionId, logStorageRule);
   }
 
@@ -258,6 +260,7 @@ public final class TestStreams {
         SyncLogStream.builder()
             .withLogName(name)
             .withLogStorage(logStorageRule.getStorage())
+            //            .withLogStorage(listLogStrage)
             .withPartitionId(partitionId)
             .withActorScheduler(actorScheduler)
             .build();
