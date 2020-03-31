@@ -85,6 +85,7 @@ public final class PerfDeploymentTest {
       if ((i + 1) % 50 == 0) {
         Loggers.STREAM_PROCESSING.warn(timeAggregation.toString());
       }
+      RecordingExporter.reset();
     }
 
     Loggers.STREAM_PROCESSING.warn(timeAggregation.toString());
