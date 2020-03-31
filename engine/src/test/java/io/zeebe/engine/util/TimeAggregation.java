@@ -7,6 +7,10 @@
  */
 package io.zeebe.engine.util;
 
+import java.util.NavigableSet;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
 /**
  * Aggregates time measurements between two events and computes average,
  * minimum, maximum, count, and rMSSD (approximate of standard deviation)
@@ -23,6 +27,7 @@ public class TimeAggregation {
   private double max = Double.MIN_VALUE;
   private double sumSquareSuccessiveDifference = 0.0;
   private double previousTime;
+  private TreeMap<Double, Long> histogram = new TreeMap<Double, Long>();
 
   public TimeAggregation(final String startEventName, final String endEventName, final double time) {
     this.startEventName = startEventName;
@@ -32,11 +37,29 @@ public class TimeAggregation {
     this.max = time;
     this.previousTime = time;
     this.count = 1;
+    initHistogram();
   }
 
   public TimeAggregation(final String startEventName, final String endEventName) {
     this.startEventName = startEventName;
     this.endEventName = endEventName;
+    initHistogram();
+  }
+
+  private void initHistogram() {
+    histogram.put(0.25, 0L);
+    histogram.put(0.5, 0L);
+    histogram.put(0.75, 0L);
+    histogram.put(1.0, 0L);
+    histogram.put(2.5, 0L);
+    histogram.put(5.0, 0L);
+    histogram.put(7.0, 0L);
+    histogram.put(10.0, 0L);
+    histogram.put(25.0, 0L);
+    histogram.put(50.0, 0L);
+    histogram.put(75.0, 0L);
+    histogram.put(100.0, 0L);
+    histogram.put(Double.MAX_VALUE, 0L);
   }
 
   public void addNanoTime(final long startTime, final long endTime) {
@@ -60,7 +83,18 @@ public class TimeAggregation {
       final double squareSuccessiveDifference = Math.pow(time - previousTime, 2);
       sumSquareSuccessiveDifference += squareSuccessiveDifference;
     }
+    addToHistogram(time);
     previousTime = time;
+  }
+
+  private void addToHistogram(double time) {
+    final NavigableSet<Double> bins = histogram.navigableKeySet();
+    for (Double bin : bins) {
+      if (time <= bin) {
+        histogram.put(bin, (histogram.get(bin) + 1));
+        break;
+      }
+    }
   }
 
   public double getMin() {
@@ -102,13 +136,13 @@ public class TimeAggregation {
 
   public String asCSV() {
     return startEventName + ";" + endEventName + ";" + getAVG() + ";" + getRMSSD() + ";" + min + ";" + max + ";"
-        + count;
+        + count + ";" + histogram.values().stream().map(String::valueOf).collect(Collectors.joining(";"));
   }
 
   @Override
   public String toString() {
     return "{from:\"" + startEventName + "\", to:\"" + endEventName + "\", avg:" + String.format("%.1f", getAVG()) + ", rmssd:" + String.format("%.1f", getRMSSD()) + ", min:"
-        + String.format("%.1f", min) + ", max:" + String.format("%.1f", max) + ", count:" + count + "}";
+        + String.format("%.1f", min) + ", max:" + String.format("%.1f", max) + ", count:" + count + "}, histogram: " + histogram.toString();
   }
 
 }
