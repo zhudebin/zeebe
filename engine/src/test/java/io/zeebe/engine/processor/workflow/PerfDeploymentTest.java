@@ -25,8 +25,8 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public final class PerfDeploymentTest {
 
-  public static final int WARM_UP_ITERATION = 1;
-  public static final int ITER_COUNT = 2;
+  public static final int WARM_UP_ITERATION = 1_000;
+  public static final int ITER_COUNT = 1000;
 
   private static final String PROCESS_ID = "process";
   private static final BpmnModelInstance WORKFLOW =
@@ -37,19 +37,36 @@ public final class PerfDeploymentTest {
 
   @Rule
   @Parameter(1)
+  public EngineRule warmUpRule;
+
+  @Rule
+  @Parameter(2)
   public EngineRule engineRule;
 
   @Parameters(name = "{0}")
   public static Object[][] parameters() {
     return new Object[][] {
-      {"Default CFG", EngineRule.singlePartition(4 * 1024 * 1024, 128 * 1024 * 1024)},
-      {"Default CFG - reduced by factor 1024", EngineRule.singlePartition(4 * 1024, 128 * 1024)},
+      {
+        "Default CFG",
+        // warm up
+        EngineRule.singlePartition(4 * 1024 * 1024, 128 * 1024 * 1024),
+        // run
+        EngineRule.singlePartition(4 * 1024 * 1024, 128 * 1024 * 1024)
+      },
+      {
+        "Default CFG - reduced by factor 1024",
+        // warm up
+        EngineRule.singlePartition(4 * 1024, 128 * 1024),
+        // run
+        EngineRule.singlePartition(4 * 1024, 128 * 1024)
+      },
     };
   }
 
   @Before
   public void setup() {
     Loggers.WORKFLOW_PROCESSOR_LOGGER.warn("Running test {}", testName);
+    warmUpRule.deployment().withXmlResource(WORKFLOW).deploy();
     engineRule.deployment().withXmlResource(WORKFLOW).deploy();
 
     warmup();
@@ -74,10 +91,10 @@ public final class PerfDeploymentTest {
   }
 
   private void warmup() {
-    Loggers.STREAM_PROCESSING.warn("Warm up: ");
+    Loggers.STREAM_PROCESSING.warn("Will do warm up with {} iterations", WARM_UP_ITERATION);
     final var start = System.nanoTime();
     for (int i = 0; i < WARM_UP_ITERATION; i++) {
-      engineRule.workflowInstance().ofBpmnProcessId("process").create();
+      warmUpRule.workflowInstance().ofBpmnProcessId("process").create();
     }
     final var end = System.nanoTime();
     Loggers.STREAM_PROCESSING.warn("Warm up done, took {}", end - start);
@@ -102,5 +119,4 @@ public final class PerfDeploymentTest {
         .orElseThrow()
         .getTimestamp();
   }
-
 }
