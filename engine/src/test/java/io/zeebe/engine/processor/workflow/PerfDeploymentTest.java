@@ -9,6 +9,7 @@ package io.zeebe.engine.processor.workflow;
 
 import io.zeebe.engine.Loggers;
 import io.zeebe.engine.util.EngineRule;
+import io.zeebe.engine.util.TimeAggregation;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
@@ -25,7 +26,7 @@ import org.junit.runners.Parameterized.Parameters;
 public final class PerfDeploymentTest {
 
   public static final int WARM_UP_ITERATION = 1;
-  public static final int ITER_COUNT = 1;
+  public static final int ITER_COUNT = 2;
 
   private static final String PROCESS_ID = "process";
   private static final BpmnModelInstance WORKFLOW =
@@ -56,62 +57,20 @@ public final class PerfDeploymentTest {
 
   @Test
   public void shouldCreateDeploymentWithBpmnXml() {
-    var min = Long.MAX_VALUE;
-    var max = Long.MIN_VALUE;
-    var sum = 0L;
-    var avg = 0.0f;
-    Long previousExecutionTime = null;
-    var sumSquareSuccessiveDifference = 0.0;
-    var rMSSD = 0.0;
-
+    final TimeAggregation timeAggregation =
+        new TimeAggregation("START_EVENT:ELEMENT_ACTIVATING", "START_EVENT:ELEMENT_ACTIVATED");
     for (int i = 0; i < ITER_COUNT; i++) {
       final var process = engineRule.workflowInstance().ofBpmnProcessId("process").create();
 
-      final long startTime = getStartTime(process);
-      final long endtime = getEndtime(process);
-      final var executionTime = calculateMs(endtime - startTime);
+      timeAggregation.addNanoTime(getStartTime(process), getEndtime(process));
+      // TODO timeAggregation.add(getStartTime(process), getEndtime(process));
 
-      if (executionTime < min) {
-        min = executionTime;
-      }
-      if (executionTime > max) {
-        max = executionTime;
-      }
-
-      sum += executionTime;
-
-      // approximate standard deviation by root mean square successive differences (rMSSD)
-      // see:
-      // https://support.minitab.com/en-us/minitab/18/help-and-how-to/quality-and-process-improvement/control-charts/supporting-topics/estimating-variation/individuals-data/#mssd
-      if (previousExecutionTime != null) {
-        final double squareSuccessiveDifference =
-            Math.pow(executionTime - previousExecutionTime, 2);
-        sumSquareSuccessiveDifference += squareSuccessiveDifference;
-      }
-      previousExecutionTime = executionTime;
-
-      if (i % 50 == 0) {
-        rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * i)); // here i = n - 1
-        avg = ((float) sum / (float) i + 1);
-        Loggers.STREAM_PROCESSING.warn(
-            "I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}",
-            i,
-            min,
-            max,
-            String.format("%.3f", avg),
-            String.format("%.3f", rMSSD));
+      if ((i + 1) % 50 == 0) {
+        Loggers.STREAM_PROCESSING.warn(timeAggregation.toString());
       }
     }
 
-    rMSSD = Math.sqrt(sumSquareSuccessiveDifference / (2 * ITER_COUNT));
-    avg = ((float) sum / (float) ITER_COUNT);
-    Loggers.STREAM_PROCESSING.warn(
-        "I: {} Execution time min: {}, max: {}, avg: {}, rMSSD: {}",
-        ITER_COUNT,
-        min,
-        max,
-        String.format("%.2f", avg),
-        String.format("%.3f", rMSSD));
+    Loggers.STREAM_PROCESSING.warn(timeAggregation.toString());
   }
 
   private void warmup() {
@@ -144,7 +103,4 @@ public final class PerfDeploymentTest {
         .getTimestamp();
   }
 
-  private long calculateMs(final long nanoTime) {
-    return nanoTime / 1_000_000;
-  }
 }
