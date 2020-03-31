@@ -12,8 +12,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
- * Aggregates time measurements between two events and computes average,
- * minimum, maximum, count, and rMSSD (approximate of standard deviation)
+ * Aggregates time measurements between two events and computes average, minimum, maximum, count,
+ * and rMSSD (approximate of standard deviation)
  *
  * @author Falko Menge (Camunda)
  */
@@ -29,7 +29,8 @@ public class TimeAggregation {
   private double previousTime;
   private TreeMap<Double, Long> histogram = new TreeMap<Double, Long>();
 
-  public TimeAggregation(final String startEventName, final String endEventName, final double time) {
+  public TimeAggregation(
+      final String startEventName, final String endEventName, final double time) {
     this.startEventName = startEventName;
     this.endEventName = endEventName;
     this.sum = time;
@@ -111,6 +112,7 @@ public class TimeAggregation {
 
   /**
    * Compute arithmetic mean.
+   *
    * @return average
    */
   public double getAVG() {
@@ -118,10 +120,9 @@ public class TimeAggregation {
   }
 
   /**
-   * Approximate standard deviation by computing the root mean square successive
-   * differences (rMSSD)
+   * Approximate standard deviation by computing the root mean square successive differences (rMSSD)
    *
-   * see also:
+   * <p>see also:
    * https://support.minitab.com/en-us/minitab/18/help-and-how-to/quality-and-process-improvement/control-charts/supporting-topics/estimating-variation/individuals-data/#mssd
    *
    * @return root mean square successive differences (rMSSD)
@@ -135,14 +136,40 @@ public class TimeAggregation {
   }
 
   public String asCSV() {
-    return startEventName + ";" + endEventName + ";" + getAVG() + ";" + getRMSSD() + ";" + min + ";" + max + ";"
-        + count + ";" + histogram.values().stream().map(String::valueOf).collect(Collectors.joining(";"));
+    return startEventName
+        + ";"
+        + endEventName
+        + ";"
+        + getAVG()
+        + ";"
+        + getRMSSD()
+        + ";"
+        + min
+        + ";"
+        + max
+        + ";"
+        + count
+        + ";"
+        + histogram.values().stream().map(String::valueOf).collect(Collectors.joining(";"));
   }
 
   @Override
   public String toString() {
-    return "{from:\"" + startEventName + "\", to:\"" + endEventName + "\", avg:" + String.format("%.1f", getAVG()) + ", rmssd:" + String.format("%.1f", getRMSSD()) + ", min:"
-        + String.format("%.1f", min) + ", max:" + String.format("%.1f", max) + ", count:" + count + "}, histogram: " + histogram.toString();
+    return "{from:\""
+        + startEventName
+        + "\", to:\""
+        + endEventName
+        + "\", avg:"
+        + String.format("%.1f", getAVG())
+        + ", rmssd:"
+        + String.format("%.1f", getRMSSD())
+        + ", min:"
+        + String.format("%.1f", min)
+        + ", max:"
+        + String.format("%.1f", max)
+        + ", count:"
+        + count
+        + "}, histogram: "
+        + histogram.toString();
   }
-
 }
