@@ -1,18 +1,9 @@
 /*
- * Copyright © 2020  camunda services GmbH (info@camunda.com)
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *        http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
+ * Copyright Camunda Services GmbH and/or licensed to Camunda Services GmbH under
+ * one or more contributor license agreements. See the NOTICE file distributed
+ * with this work for additional information regarding copyright ownership.
+ * Licensed under the Zeebe Community License 1.0. You may not use this file
+ * except in compliance with the Zeebe Community License 1.0.
  */
 package io.zeebe.engine.processor.workflow.perf;
 
@@ -51,7 +42,7 @@ public final class PerfDeploymentTest {
   public static RuleChain ruleChain = RuleChain.outerRule(schedulerRule).around(warmUpRule);
 
   public static final int WARM_UP_ITERATION = 1_000;
-  public static final int ITER_COUNT = 1_000;
+  public static final int ITER_COUNT = 10_000;
   public static final List<TimeAggregation> TIME_AGGREGATIONS = new ArrayList<>();
 
   private static final String PROCESS_ID = "process";
@@ -120,8 +111,7 @@ public final class PerfDeploymentTest {
   public static void printResults() {
     final var testCount = TIME_AGGREGATIONS.size();
     final var parameters = parameters();
-    Loggers.WORKFLOW_PROCESSOR_LOGGER.info(
-        "Run {} tests. Print results...", testCount);
+    Loggers.WORKFLOW_PROCESSOR_LOGGER.info("Run {} tests. Print results...", testCount);
 
     final var stringBuilder = new StringBuilder();
     for (int i = 0; i < testCount; i++) {

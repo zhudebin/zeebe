@@ -43,7 +43,6 @@ import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.protocol.record.value.JobRecordValue;
 import io.zeebe.test.util.TestUtil;
 import io.zeebe.test.util.record.RecordingExporter;
-import io.zeebe.test.util.record.RecordingExporterTestWatcher;
 import io.zeebe.util.FileUtil;
 import io.zeebe.util.buffer.BufferWriter;
 import io.zeebe.util.sched.ActorCondition;
@@ -74,8 +73,6 @@ final class EngineRule extends ExternalResource {
   private static final int PARTITION_ID = Protocol.DEPLOYMENT_PARTITION;
   private static final RecordingExporter RECORDING_EXPORTER = new RecordingExporter();
   private StreamProcessorRule environmentRule;
-  private final RecordingExporterTestWatcher recordingExporterTestWatcher =
-      new RecordingExporterTestWatcher();
   private final int partitionCount;
   private final boolean explicitStart;
   private Consumer<String> jobsAvailableCallback = type -> {};
@@ -113,8 +110,7 @@ final class EngineRule extends ExternalResource {
 
   @Override
   public Statement apply(final Statement base, final Description description) {
-    Statement statement = recordingExporterTestWatcher.apply(base, description);
-    statement = super.apply(statement, description);
+    final var statement = super.apply(base, description);
     return environmentRule.apply(statement, description);
   }
 
