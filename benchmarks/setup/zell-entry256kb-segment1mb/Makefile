@@ -3,7 +3,7 @@ all: zeebe starter worker
 
 .PHONY: zeebe
 zeebe:
-	-helm install zell-entry4kb-segment128kb zeebe/zeebe-cluster -f zeebe-values.yaml --skip-crds
+	-helm install zell-entry256kb-segment1mb zeebe/zeebe-cluster -f zeebe-values.yaml --skip-crds
 	-kubectl apply -f curator-cronjob.yaml
 	-kubectl apply -f curator-configmap.yaml
 
@@ -21,10 +21,10 @@ clean: clean-starter clean-worker clean-zeebe
 
 .PHONY: clean-zeebe
 clean-zeebe:
-	-helm uninstall zell-entry4kb-segment128kb
+	-helm uninstall zell-entry256kb-segment1mb
 	-kubectl delete -f curator-cronjob.yaml
 	-kubectl delete -f curator-configmap.yaml
-	-kubectl delete pvc -l app=zell-entry4kb-segment128kb-zeebe
+	-kubectl delete pvc -l app=zell-entry256kb-segment1mb-zeebe
 	-kubectl delete pvc -l app=elasticsearch-master
 
 .PHONY: clean-starter

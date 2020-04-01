@@ -32,9 +32,11 @@ JavaOpts: |
 
 env:
   - name: ZEEBE_BROKER_NETWORK_MAXMESSAGESIZE
-    value: "4KB"
+    value: "256KB"
   - name: ZEEBE_BROKER_DATA_LOGSEGMENTSIZE
-    value: "512MB"
+    value: "1MB"
+  - name: ZEEBE_BROKER_GATEWAY_ENABLE
+    value: "false"
 
 # RESOURCES
 resources:

@@ -20,7 +20,7 @@ spec:
         imagePullPolicy: Always
         env:
           - name: JAVA_OPTIONS
-            value: "-Dapp.brokerUrl=zell-entry-size-4kb-zeebe:26500 -Dapp.starter.rate=300 -Dzeebe.client.requestTimeout=62000 -XX:+HeapDumpOnOutOfMemoryError"
+            value: "-Dapp.brokerUrl=zell-entry256kb-segment1mb-zeebe:26500 -Dapp.starter.rate=300 -Dzeebe.client.requestTimeout=62000 -XX:+HeapDumpOnOutOfMemoryError"
           - name: LOG_LEVEL
             value: "warn"
         resources:
@@ -36,7 +36,7 @@ kind: Service
 metadata:
   labels:
     app: zeebe
-    app.kubernetes.io/instance: zell-entry-size-4kb
+    app.kubernetes.io/instance: zell-entry256kb-segment1mb
     app.kubernetes.io/name: zeebe-cluster
   name: starter
 spec:
