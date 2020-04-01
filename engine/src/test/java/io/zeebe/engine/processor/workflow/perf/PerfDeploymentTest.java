@@ -118,12 +118,19 @@ public final class PerfDeploymentTest {
 
   @AfterClass
   public static void printResults() {
+    final var testCount = TIME_AGGREGATIONS.size();
+    final var parameters = parameters();
     Loggers.WORKFLOW_PROCESSOR_LOGGER.info(
-        "Run {} tests. Print results...", TIME_AGGREGATIONS.size());
-    for (int i = 0; i < TIME_AGGREGATIONS.size(); i++) {
+        "Run {} tests. Print results...", testCount);
+
+    final var stringBuilder = new StringBuilder();
+    for (int i = 0; i < testCount; i++) {
+      final var testName = parameters[i][0];
       final var timeAggregation = TIME_AGGREGATIONS.get(i);
-      Loggers.WORKFLOW_PROCESSOR_LOGGER.info("Test: {} result: {}", i, timeAggregation.asCSV());
+      stringBuilder.append(String.format("%s;%s", testName, timeAggregation.asCSV()));
     }
+
+    Loggers.WORKFLOW_PROCESSOR_LOGGER.info("{}", stringBuilder.toString());
   }
 
   @Before
