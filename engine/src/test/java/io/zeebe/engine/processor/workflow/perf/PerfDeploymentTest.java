@@ -24,14 +24,16 @@ import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.test.util.record.RecordingExporter;
 import io.zeebe.util.sched.clock.DefaultActorClock;
 import io.zeebe.util.sched.testing.ActorSchedulerRule;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.RuleChain;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -40,13 +42,17 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public final class PerfDeploymentTest {
 
-  @ClassRule
   public static ActorSchedulerRule schedulerRule =
       new ActorSchedulerRule(1, 1, new DefaultActorClock());
+  public static EngineRule warmUpRule =
+      EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 256 * 1024);
+
+  @ClassRule
+  public static RuleChain ruleChain = RuleChain.outerRule(schedulerRule).around(warmUpRule);
 
   public static final int WARM_UP_ITERATION = 1_000;
   public static final int ITER_COUNT = 1_000;
-  public static final List<TimeAggregation> TIME_AGGREGATIONS = new CopyOnWriteArrayList<>();
+  public static final List<TimeAggregation> TIME_AGGREGATIONS = new ArrayList<>();
 
   private static final String PROCESS_ID = "process";
   private static final BpmnModelInstance WORKFLOW =
@@ -57,303 +63,57 @@ public final class PerfDeploymentTest {
 
   @Rule
   @Parameter(1)
-  public EngineRule warmUpRule;
-
-  @Rule
-  @Parameter(2)
   public EngineRule engineRule;
 
   private TimeAggregation timeAggregation;
 
   @Parameters(name = "{0}")
   public static Object[][] parameters() {
-    return new Object[][] {
-      {
-        "Default CFG",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 128 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 128 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "Entry size 64 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 128 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 128 * 1024 * 1024)
-      },
-      {
-        "Entry size 128 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 128 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 128 * 1024 * 1024)
-      },
-      {
-        "Entry size 256 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 128 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 128 * 1024 * 1024)
-      },
-      {
-        "Entry size 512 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 128 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 128 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 512 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 512 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 512 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      {
-        "LogSegment size 512 KB - Entry size 64 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 512 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 512 * 1024)
-      },
-      {
-        "LogSegment size 512 KB - Entry size 128 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 512 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 512 * 1024)
-      },
-      {
-        "LogSegment size 512 KB - Entry size 256 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 512 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 512 * 1024)
-      },
-      {
-        "LogSegment size 512 KB - Entry size 512 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 512 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 512 * 1024)
-      },
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 1 MB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 1 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 1 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 1 MB - Entry size 64 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 1 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 1 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 1 MB - Entry size 128 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 1 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 1 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 1 MB - Entry size 256 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 1 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 1 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 1 MB - Entry size 512 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 1 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 1 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 16 MB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 16 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 16 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 16 MB - Entry size 64 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 16 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 16 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 16 MB - Entry size 128 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 16 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 16 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 16 MB - Entry size 256 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 16 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 16 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 16 MB - Entry size 512 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 16 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 16 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 64 MB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 64 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 64 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 64 MB - Entry size 64 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 64 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 64 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 64 MB - Entry size 128 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 64 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 64 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 64 MB - Entry size 256 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 64 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 64 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 64 MB - Entry size 512 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 64 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 64 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 512 MB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 512 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 512 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      {
-        "LogSegment size 512 MB - Entry size 64 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 512 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 64 * 1024, 512 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 512 MB - Entry size 128 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 512 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 128 * 1024, 512 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 512 MB - Entry size 256 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 512 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 256 * 1024, 512 * 1024 * 1024)
-      },
-      {
-        "LogSegment size 512 MB - Entry size 512 KB",
-        // warm up
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 512 * 1024 * 1024),
-        // run
-        EngineRule.singlePartition(() -> schedulerRule.get(), 512 * 1024, 512 * 1024 * 1024)
-      },
-
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+    // cfgs
+    final int[] entrySizeCfgs = {
+      64 * 1024, 128 * 1024, 256 * 1024, 512 * 1024, 1 * 1024 * 1024, 4 * 1024 * 1024
     };
+
+    final int[] segmentSizeCfgs = {
+      512 * 1024,
+      1 * 1024 * 1024,
+      16 * 1024 * 1024,
+      64 * 1024 * 1024,
+      128 * 1024 * 1024,
+      256 * 1024 * 1024,
+      512 * 1024 * 1024
+    };
+
+    final var tests = new Object[segmentSizeCfgs.length * entrySizeCfgs.length][];
+    var testIdx = 0;
+    for (int segmentCfgIdx = 0; segmentCfgIdx < segmentSizeCfgs.length; segmentCfgIdx++) {
+      final var segmentSize = segmentSizeCfgs[segmentCfgIdx];
+      for (int entryCfgIdx = 0; entryCfgIdx < entrySizeCfgs.length; entryCfgIdx++) {
+        final var entrySize = entrySizeCfgs[entryCfgIdx];
+        final var testName =
+            String.format(
+                "entrySize %.1f KB - log segment size %.1f MB",
+                (entrySize / 1024f), (segmentSize / (1024f * 1024f)));
+        tests[testIdx++] =
+            new Object[] {
+              testName,
+              EngineRule.singlePartition(() -> schedulerRule.get(), entrySize, segmentSize)
+            };
+      }
+    }
+    return tests;
   }
 
-  @Before
-  public void setup() {
-    Loggers.WORKFLOW_PROCESSOR_LOGGER.warn("Running test {}", testName);
+  @BeforeClass
+  public static void warmup() {
     warmUpRule.deployment().withXmlResource(WORKFLOW).deploy();
-    engineRule.deployment().withXmlResource(WORKFLOW).deploy();
-
-    warmup();
-
-    timeAggregation =
-        new TimeAggregation("START_EVENT:ELEMENT_ACTIVATING", "START_EVENT:ELEMENT_ACTIVATED");
-  }
-
-  @After
-  public void tearDown() {
-    TIME_AGGREGATIONS.add(timeAggregation);
+    Loggers.STREAM_PROCESSING.warn("Will do warm up with {} iterations", WARM_UP_ITERATION);
+    final var start = System.nanoTime();
+    for (int i = 0; i < WARM_UP_ITERATION; i++) {
+      warmUpRule.workflowInstance().ofBpmnProcessId("process").create();
+    }
+    final var end = System.nanoTime();
+    Loggers.STREAM_PROCESSING.warn("Warm up done, took {}", end - start);
   }
 
   @AfterClass
@@ -364,6 +124,19 @@ public final class PerfDeploymentTest {
       final var timeAggregation = TIME_AGGREGATIONS.get(i);
       Loggers.WORKFLOW_PROCESSOR_LOGGER.info("Test: {} result: {}", i, timeAggregation.asCSV());
     }
+  }
+
+  @Before
+  public void setup() {
+    Loggers.WORKFLOW_PROCESSOR_LOGGER.warn("Running test {}", testName);
+    engineRule.deployment().withXmlResource(WORKFLOW).deploy();
+    timeAggregation =
+        new TimeAggregation("START_EVENT:ELEMENT_ACTIVATING", "START_EVENT:ELEMENT_ACTIVATED");
+  }
+
+  @After
+  public void tearDown() {
+    TIME_AGGREGATIONS.add(timeAggregation);
   }
 
   @Test
@@ -383,16 +156,6 @@ public final class PerfDeploymentTest {
     }
 
     Loggers.STREAM_PROCESSING.warn(timeAggregation.toString());
-  }
-
-  private void warmup() {
-    Loggers.STREAM_PROCESSING.warn("Will do warm up with {} iterations", WARM_UP_ITERATION);
-    final var start = System.nanoTime();
-    for (int i = 0; i < WARM_UP_ITERATION; i++) {
-      warmUpRule.workflowInstance().ofBpmnProcessId("process").create();
-    }
-    final var end = System.nanoTime();
-    Loggers.STREAM_PROCESSING.warn("Warm up done, took {}", end - start);
   }
 
   private long getStartTime(final long process) {
