@@ -37,6 +37,8 @@ env:
     value: "1MB"
   - name: ZEEBE_BROKER_GATEWAY_ENABLE
     value: "true"
+  - name: ZEEBE_BROKER_DATA_SNAPSHOTPERIOD
+    value: "1m"
 
 # RESOURCES
 resources:
