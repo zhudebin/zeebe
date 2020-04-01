@@ -362,7 +362,7 @@ public final class PerfDeploymentTest {
         "Run {} tests. Print results...", TIME_AGGREGATIONS.size());
     for (int i = 0; i < TIME_AGGREGATIONS.size(); i++) {
       final var timeAggregation = TIME_AGGREGATIONS.get(i);
-      Loggers.WORKFLOW_PROCESSOR_LOGGER.info("Test: {} result: {}", i, timeAggregation.toString());
+      Loggers.WORKFLOW_PROCESSOR_LOGGER.info("Test: {} result: {}", i, timeAggregation.asCSV());
     }
   }
 
