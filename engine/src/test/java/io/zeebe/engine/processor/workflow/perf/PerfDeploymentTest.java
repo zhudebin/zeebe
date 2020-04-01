@@ -41,7 +41,7 @@ public final class PerfDeploymentTest {
       new ActorSchedulerRule(1, 1, new DefaultActorClock());
 
   public static final int WARM_UP_ITERATION = 1_000;
-  public static final int ITER_COUNT = 100;
+  public static final int ITER_COUNT = 1_000;
 
   private static final String PROCESS_ID = "process";
   private static final BpmnModelInstance WORKFLOW =
@@ -67,7 +67,6 @@ public final class PerfDeploymentTest {
         EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 128 * 1024 * 1024),
         // run
         EngineRule.singlePartition(() -> schedulerRule.get(), 4 * 1024 * 1024, 128 * 1024 * 1024)
-        //        EngineRule.singlePartition(4 * 1024 * 1024, 128 * 1024 * 1024)
       },
       {
         "Default CFG - reduced by factor 1024",
@@ -101,6 +100,8 @@ public final class PerfDeploymentTest {
       if ((i + 1) % 50 == 0) {
         Loggers.STREAM_PROCESSING.warn(timeAggregation.toString());
       }
+
+      // to not collect all records we wrote
       RecordingExporter.reset();
     }
 
