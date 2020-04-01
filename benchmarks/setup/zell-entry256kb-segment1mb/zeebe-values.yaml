@@ -10,7 +10,7 @@ replicationFactor: 3
 cpuThreadCount: 4
 ioThreadCount: 4
 gatewayMetrics: true
-
+gateway.replicas: 0
 zeebeCfg: |
   # custom TOML configuration
 
@@ -36,7 +36,7 @@ env:
   - name: ZEEBE_BROKER_DATA_LOGSEGMENTSIZE
     value: "1MB"
   - name: ZEEBE_BROKER_GATEWAY_ENABLE
-    value: "false"
+    value: "true"
 
 # RESOURCES
 resources:
