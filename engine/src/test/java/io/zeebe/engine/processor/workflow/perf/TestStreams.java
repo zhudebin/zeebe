@@ -16,6 +16,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import io.atomix.storage.StorageLevel;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.db.ZeebeDbFactory;
 import io.zeebe.engine.processor.AsyncSnapshotDirector;
@@ -144,7 +145,7 @@ final class TestStreams {
                 //                .withJournalIndexFactory(() -> new SparseJournalIndex(1))
                 .withMaxEntrySize(maxEntrySize)
                 .withMaxSegmentSize(maxSegmentSize)
-//                .withStorageLevel(StorageLevel.MAPPED)
+                .withStorageLevel(StorageLevel.MAPPED)
     );
     // looks much better with these values
     //                .withMaxEntrySize(128 * 1024)
