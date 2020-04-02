@@ -32,6 +32,7 @@ import io.zeebe.util.allocation.DirectBufferAllocator;
 import io.zeebe.util.sched.ActorScheduler;
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.junit.rules.ExternalResource;
@@ -50,7 +51,7 @@ public final class StreamProcessorRule implements TestRule {
   private static final int PARTITION_ID = 0;
 
   // environment
-  private final TemporaryFolder tempFolder;
+  private final TemporaryFolder temporaryFolder;
   private final AutoCloseableRule closeables = new AutoCloseableRule();
   private final ZeebeDbFactory zeebeDbFactory;
   private final SetupRule rule;
@@ -63,6 +64,7 @@ public final class StreamProcessorRule implements TestRule {
 
   private final int maxEntrySize;
   private final int maxSegmentSize;
+  private final File dir;
 
   public StreamProcessorRule(
       final Supplier<ActorScheduler> actorSchedulerSupplier,
@@ -77,11 +79,12 @@ public final class StreamProcessorRule implements TestRule {
     this.actorSchedulerSupplier = actorSchedulerSupplier;
     rule = new SetupRule(startPartitionId, partitionCount);
 
-    tempFolder = temporaryFolder;
+    dir = new File(FileChannelTest.class.getResource(".").getPath(), "log-" + ThreadLocalRandom.current().nextInt());
+    dir.mkdirs();
     zeebeDbFactory = dbFactory;
+    this.temporaryFolder = temporaryFolder;
     chain =
-        RuleChain.outerRule(tempFolder)
-            .around(new CleanUpRule(tempFolder::getRoot))
+        RuleChain.outerRule(temporaryFolder).around(new CleanUpRule(() -> dir))
             .around(closeables)
             .around(rule)
             .around(new FailedTestRecordPrinter());
@@ -219,7 +222,7 @@ public final class StreamProcessorRule implements TestRule {
     protected void before() {
       streams =
           new TestStreams(
-              tempFolder, closeables, actorSchedulerSupplier.get(), maxEntrySize, maxSegmentSize);
+              dir, temporaryFolder, closeables, actorSchedulerSupplier.get(), maxEntrySize, maxSegmentSize);
 
       int partitionId = startPartitionId;
       for (int i = 0; i < partitionCount; i++) {

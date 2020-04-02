@@ -16,7 +16,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-import io.atomix.storage.StorageLevel;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.db.ZeebeDbFactory;
 import io.zeebe.engine.processor.AsyncSnapshotDirector;
@@ -32,7 +31,6 @@ import io.zeebe.logstreams.log.LogStreamRecordWriter;
 import io.zeebe.logstreams.log.LoggedEvent;
 import io.zeebe.logstreams.state.SnapshotStorage;
 import io.zeebe.logstreams.state.StateSnapshotController;
-import io.zeebe.logstreams.util.AtomixLogStorageRule;
 import io.zeebe.logstreams.util.SyncLogStream;
 import io.zeebe.logstreams.util.SynchronousLogStream;
 import io.zeebe.logstreams.util.TestSnapshotStorage;
@@ -56,6 +54,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.junit.rules.TemporaryFolder;
@@ -79,8 +78,10 @@ final class TestStreams {
   private final Map<String, ProcessorContext> streamContextMap = new HashMap<>();
   private final int maxEntrySize;
   private final int maxSegmentSize;
+  private final File dir;
 
   public TestStreams(
+      final File dir,
       final TemporaryFolder dataDirectory,
       final AutoCloseableRule closeables,
       final ActorScheduler actorScheduler,
@@ -91,6 +92,7 @@ final class TestStreams {
     this.dataDirectory = dataDirectory;
     this.closeables = closeables;
     this.actorScheduler = actorScheduler;
+    this.dir = dir;
 
     mockCommandResponseWriter = mock(CommandResponseWriter.class);
     when(mockCommandResponseWriter.intent(any())).thenReturn(mockCommandResponseWriter);
@@ -120,11 +122,11 @@ final class TestStreams {
 
   public SynchronousLogStream createLogStream(final String name, final int partitionId) {
     final File segments;
-    try {
-      segments = dataDirectory.newFolder(name, "segments");
-    } catch (final IOException e) {
-      throw new UncheckedIOException(e);
-    }
+//    try {
+      segments = dir;
+//    } catch (final IOException e) {
+//      throw new UncheckedIOException(e);
+//    }
 
     return createLogStream(name, partitionId, segments);
   }
@@ -134,7 +136,7 @@ final class TestStreams {
     LOG.warn(
         "Create log stream with maxEntrySize {} maxSegmentSize {}", maxEntrySize, maxSegmentSize);
     final AtomixLogStorageRule logStorageRule =
-        new AtomixLogStorageRule(dataDirectory, partitionId);
+        new AtomixLogStorageRule(dir, partitionId, UnaryOperator.identity());
     logStorageRule.open(
         b ->
             b.withDirectory(segmentsDir)
@@ -142,8 +144,8 @@ final class TestStreams {
                 //                .withJournalIndexFactory(() -> new SparseJournalIndex(1))
                 .withMaxEntrySize(maxEntrySize)
                 .withMaxSegmentSize(maxSegmentSize)
-                .withStorageLevel(StorageLevel.MAPPED));
-
+//                .withStorageLevel(StorageLevel.MAPPED)
+    );
     // looks much better with these values
     //                .withMaxEntrySize(128 * 1024)
     //                .withMaxSegmentSize(256 * 1024));
@@ -204,8 +206,7 @@ final class TestStreams {
   }
 
   public SnapshotStorage createSnapshotStorage(final SynchronousLogStream stream) {
-    final Path rootDirectory =
-        dataDirectory.getRoot().toPath().resolve(stream.getLogName()).resolve("state");
+    final Path rootDirectory = dir.toPath().resolve(stream.getLogName()).resolve("state");
 
     try {
       Files.createDirectories(rootDirectory);
