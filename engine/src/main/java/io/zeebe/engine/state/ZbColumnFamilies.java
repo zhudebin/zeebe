@@ -42,6 +42,7 @@ public enum ZbColumnFamilies {
 
   // jobs
   JOBS,
+  JOBS_CREATION,
   JOB_STATES,
   JOB_DEADLINES,
   JOB_ACTIVATABLE,

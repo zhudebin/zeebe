@@ -66,7 +66,7 @@ public final class JobState {
         zeebeDb.createColumnFamily(ZbColumnFamilies.JOBS, dbContext, jobKey, jobRecordToRead);
     creationTime = new DbLong();
     jobsCreationTimeFamily =
-        zeebeDb.createColumnFamily(ZbColumnFamilies.JOBS, dbContext, jobKey, creationTime);
+        zeebeDb.createColumnFamily(ZbColumnFamilies.JOBS_CREATION, dbContext, jobKey, creationTime);
 
     statesJobColumnFamily =
         zeebeDb.createColumnFamily(ZbColumnFamilies.JOB_STATES, dbContext, jobKey, jobState);
