@@ -18,6 +18,7 @@ import io.atomix.core.AtomixBuilder;
 import io.atomix.core.AtomixConfig;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup.Builder;
+import io.atomix.storage.StorageLevel;
 import io.atomix.utils.net.Address;
 import io.zeebe.broker.Loggers;
 import io.zeebe.broker.clustering.atomix.storage.snapshot.DbSnapshotStoreFactory;
@@ -82,6 +83,7 @@ public final class AtomixFactory {
             .withMembers(getRaftGroupMembers(clusterCfg))
             .withDataDirectory(systemDirectory)
             .withFlushOnCommit()
+            .withStorageLevel(StorageLevel.MAPPED)
             .build();
 
     final RaftPartitionGroup partitionGroup =
@@ -109,6 +111,7 @@ public final class AtomixFactory {
             .withPartitionSize(clusterCfg.getReplicationFactor())
             .withMembers(getRaftGroupMembers(clusterCfg))
             .withDataDirectory(raftDirectory)
+            .withStorageLevel(StorageLevel.MAPPED)
             .withStateMachineFactory(
                 (raftContext, threadContext, threadContextFactory) ->
                     new ZeebeRaftStateMachine(raftContext, threadContext))
