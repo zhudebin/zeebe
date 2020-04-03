@@ -123,11 +123,11 @@ final class TestStreams {
 
   public SynchronousLogStream createLogStream(final String name, final int partitionId) {
     final File segments;
-//    try {
-      segments = dir;
-//    } catch (final IOException e) {
-//      throw new UncheckedIOException(e);
-//    }
+    //    try {
+    segments = dir;
+    //    } catch (final IOException e) {
+    //      throw new UncheckedIOException(e);
+    //    }
 
     return createLogStream(name, partitionId, segments);
   }
@@ -145,8 +145,7 @@ final class TestStreams {
                 //                .withJournalIndexFactory(() -> new SparseJournalIndex(1))
                 .withMaxEntrySize(maxEntrySize)
                 .withMaxSegmentSize(maxSegmentSize)
-                .withStorageLevel(StorageLevel.MAPPED)
-    );
+                .withStorageLevel(StorageLevel.MAPPED));
     // looks much better with these values
     //                .withMaxEntrySize(128 * 1024)
     //                .withMaxSegmentSize(256 * 1024));

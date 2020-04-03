@@ -57,7 +57,7 @@ public class ZeebeState {
       final int partitionId, final ZeebeDb<ZbColumnFamilies> zeebeDb, final DbContext dbContext) {
     this.partitionId = partitionId;
     keyState = new KeyState(partitionId, zeebeDb, dbContext);
-    workflowState = new WorkflowState(zeebeDb, dbContext, keyState);
+    workflowState = new WorkflowState(partitionId, zeebeDb, dbContext, keyState);
     deploymentState = new DeploymentsState(zeebeDb, dbContext);
     jobState = new JobState(zeebeDb, dbContext, partitionId);
     messageState = new MessageState(zeebeDb, dbContext);

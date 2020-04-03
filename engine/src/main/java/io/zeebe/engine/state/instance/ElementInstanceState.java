@@ -14,6 +14,7 @@ import io.zeebe.db.impl.DbByte;
 import io.zeebe.db.impl.DbCompositeKey;
 import io.zeebe.db.impl.DbLong;
 import io.zeebe.db.impl.DbNil;
+import io.zeebe.engine.metrics.ExecutionMetrics;
 import io.zeebe.engine.processor.KeyGenerator;
 import io.zeebe.engine.state.ZbColumnFamilies;
 import io.zeebe.engine.state.instance.StoredRecord.Purpose;
@@ -49,12 +50,14 @@ public final class ElementInstanceState {
       awaitWorkflowInstanceResultMetadataColumnFamily;
 
   private final VariablesState variablesState;
+  private final ExecutionMetrics executionMetrics;
 
   public ElementInstanceState(
+      final int partitionId,
       final ZeebeDb<ZbColumnFamilies> zeebeDb,
       final DbContext dbContext,
       final KeyGenerator keyGenerator) {
-
+    executionMetrics = new ExecutionMetrics(partitionId);
     elementInstanceKey = new DbLong();
     parentKey = new DbLong();
     parentChildKey = new DbCompositeKey<>(parentKey, elementInstanceKey);
@@ -166,6 +169,8 @@ public final class ElementInstanceState {
         }
         parentInstance.decrementChildCount();
         updateInstance(parentInstance);
+      } else {
+        executionMetrics.observeWorkflowInstanceExecutionTime(instance.getCreationTime());
       }
     }
   }

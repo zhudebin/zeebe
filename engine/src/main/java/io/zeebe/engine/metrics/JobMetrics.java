@@ -9,6 +9,8 @@ package io.zeebe.engine.metrics;
 
 import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
+import io.prometheus.client.Histogram;
+import io.zeebe.util.sched.clock.ActorClock;
 
 public final class JobMetrics {
 
@@ -26,6 +28,22 @@ public final class JobMetrics {
           .name("pending_jobs_total")
           .help("Number of pending jobs")
           .labelNames("partition", "type")
+          .register();
+
+  private static final Histogram JOB_LIFE_TIME =
+      Histogram.build()
+          .namespace("zeebe")
+          .name("job_life_time")
+          .help("The life time of an job")
+          .labelNames("partition")
+          .register();
+
+  private static final Histogram JOB_ACTIVATION_TIME =
+      Histogram.build()
+          .namespace("zeebe")
+          .name("job_activation_time")
+          .help("The time until an job was activated")
+          .labelNames("partition")
           .register();
 
   private final String partitionIdLabel;
@@ -72,5 +90,17 @@ public final class JobMetrics {
   public void jobErrorThrown(final String type) {
     jobEvent("error thrown", type);
     jobFinished(type);
+  }
+
+  public void observeJobLifeTime(final long creationTime) {
+    JOB_LIFE_TIME
+        .labels(partitionIdLabel)
+        .observe((ActorClock.currentTimeMillis() - creationTime) / 1000f);
+  }
+
+  public void observeJobActivationTime(final long creationTime) {
+    JOB_ACTIVATION_TIME
+        .labels(partitionIdLabel)
+        .observe((ActorClock.currentTimeMillis() - creationTime) / 1000f);
   }
 }

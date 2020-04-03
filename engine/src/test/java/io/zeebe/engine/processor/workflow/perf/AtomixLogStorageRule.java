@@ -51,9 +51,7 @@ public final class AtomixLogStorageRule extends ExternalResource
   private final File dir;
 
   public AtomixLogStorageRule(
-      final File dir,
-      final int partitionId,
-      final UnaryOperator<RaftStorage.Builder> builder) {
+      final File dir, final int partitionId, final UnaryOperator<RaftStorage.Builder> builder) {
     this.dir = dir;
     this.partitionId = partitionId;
     this.builder = builder;
@@ -130,8 +128,8 @@ public final class AtomixLogStorageRule extends ExternalResource
     final File directory;
     close();
 
-      directory = new File(dir, String.format("atomix-%d", partitionId));
-      directory.mkdirs();
+    directory = new File(dir, String.format("atomix-%d", partitionId));
+    directory.mkdirs();
 
     final var zeebeIndexAdapter = ZeebeIndexAdapter.ofDensity(1);
     raftStorage =

@@ -31,13 +31,14 @@ public final class WorkflowState {
   private final EventScopeInstanceState eventScopeInstanceState;
 
   public WorkflowState(
+      final int partitionId,
       final ZeebeDb<ZbColumnFamilies> zeebeDb,
       final DbContext dbContext,
       final KeyGenerator keyGenerator) {
     versionManager = new NextValueManager(zeebeDb, dbContext, ZbColumnFamilies.WORKFLOW_VERSION);
     workflowPersistenceCache = new WorkflowPersistenceCache(zeebeDb, dbContext);
     timerInstanceState = new TimerInstanceState(zeebeDb, dbContext);
-    elementInstanceState = new ElementInstanceState(zeebeDb, dbContext, keyGenerator);
+    elementInstanceState = new ElementInstanceState(partitionId, zeebeDb, dbContext, keyGenerator);
     eventScopeInstanceState = new EventScopeInstanceState(zeebeDb, dbContext);
   }
 

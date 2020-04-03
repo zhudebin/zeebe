@@ -79,12 +79,16 @@ public final class StreamProcessorRule implements TestRule {
     this.actorSchedulerSupplier = actorSchedulerSupplier;
     rule = new SetupRule(startPartitionId, partitionCount);
 
-    dir = new File(FileChannelTest.class.getResource(".").getPath(), "log-" + ThreadLocalRandom.current().nextInt());
+    dir =
+        new File(
+            FileChannelTest.class.getResource(".").getPath(),
+            "log-" + ThreadLocalRandom.current().nextInt());
     dir.mkdirs();
     zeebeDbFactory = dbFactory;
     this.temporaryFolder = temporaryFolder;
     chain =
-        RuleChain.outerRule(temporaryFolder).around(new CleanUpRule(() -> dir))
+        RuleChain.outerRule(temporaryFolder)
+            .around(new CleanUpRule(() -> dir))
             .around(closeables)
             .around(rule)
             .around(new FailedTestRecordPrinter());
@@ -222,7 +226,12 @@ public final class StreamProcessorRule implements TestRule {
     protected void before() {
       streams =
           new TestStreams(
-              dir, temporaryFolder, closeables, actorSchedulerSupplier.get(), maxEntrySize, maxSegmentSize);
+              dir,
+              temporaryFolder,
+              closeables,
+              actorSchedulerSupplier.get(),
+              maxEntrySize,
+              maxSegmentSize);
 
       int partitionId = startPartitionId;
       for (int i = 0; i < partitionCount; i++) {

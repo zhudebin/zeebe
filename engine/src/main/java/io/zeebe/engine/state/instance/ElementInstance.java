@@ -15,10 +15,13 @@ import io.zeebe.msgpack.property.LongProperty;
 import io.zeebe.msgpack.property.ObjectProperty;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.util.sched.clock.ActorClock;
 
 public final class ElementInstance extends UnpackedObject implements DbValue {
 
   private final LongProperty parentKeyProp = new LongProperty("parentKey", -1L);
+  private final LongProperty creationTimeProp =
+      new LongProperty("creationTime", ActorClock.currentTimeMillis());
   private final IntegerProperty childCountProp = new IntegerProperty("childCount", 0);
   private final LongProperty jobKeyProp = new LongProperty("jobKey", 0L);
   private final IntegerProperty activeTokensProp = new IntegerProperty("activeTokens", 0);
@@ -33,6 +36,7 @@ public final class ElementInstance extends UnpackedObject implements DbValue {
 
   ElementInstance() {
     declareProperty(parentKeyProp)
+        .declareProperty(creationTimeProp)
         .declareProperty(childCountProp)
         .declareProperty(jobKeyProp)
         .declareProperty(activeTokensProp)
@@ -175,5 +179,9 @@ public final class ElementInstance extends UnpackedObject implements DbValue {
 
   public long getParentKey() {
     return parentKeyProp.getValue();
+  }
+
+  public long getCreationTime() {
+    return creationTimeProp.getValue();
   }
 }

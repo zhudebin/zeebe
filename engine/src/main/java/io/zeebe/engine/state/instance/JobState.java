@@ -20,6 +20,7 @@ import io.zeebe.engine.state.ZbColumnFamilies;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.util.EnsureUtil;
 import io.zeebe.util.buffer.BufferUtil;
+import io.zeebe.util.sched.clock.ActorClock;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import org.agrona.DirectBuffer;
@@ -37,6 +38,8 @@ public final class JobState {
 
   private final DbLong jobKey;
   private final ColumnFamily<DbLong, JobRecordValue> jobsColumnFamily;
+  private final DbLong creationTime;
+  private final ColumnFamily<DbLong, DbLong> jobsCreationTimeFamily;
 
   // key => job state
   private final JobStateValue jobState = new JobStateValue();
@@ -61,6 +64,9 @@ public final class JobState {
     jobKey = new DbLong();
     jobsColumnFamily =
         zeebeDb.createColumnFamily(ZbColumnFamilies.JOBS, dbContext, jobKey, jobRecordToRead);
+    creationTime = new DbLong();
+    jobsCreationTimeFamily =
+        zeebeDb.createColumnFamily(ZbColumnFamilies.JOBS, dbContext, jobKey, creationTime);
 
     statesJobColumnFamily =
         zeebeDb.createColumnFamily(ZbColumnFamilies.JOB_STATES, dbContext, jobKey, jobState);
@@ -90,6 +96,8 @@ public final class JobState {
     resetVariablesAndUpdateJobRecord(key, record);
     updateJobState(State.ACTIVATABLE);
     makeJobActivatable(type, key);
+    creationTime.wrapLong(ActorClock.currentTimeMillis());
+    jobsCreationTimeFamily.put(jobKey, creationTime);
   }
 
   /**
@@ -107,6 +115,8 @@ public final class JobState {
 
     resetVariablesAndUpdateJobRecord(key, record);
 
+    final var creationTime = jobsCreationTimeFamily.get(jobKey);
+    metrics.observeJobActivationTime(creationTime.getValue());
     updateJobState(State.ACTIVATED);
 
     makeJobNotActivatable(type);
@@ -153,6 +163,10 @@ public final class JobState {
 
     jobKey.wrapLong(key);
     jobsColumnFamily.delete(jobKey);
+
+    final var creationTime = jobsCreationTimeFamily.get(jobKey);
+    metrics.observeJobLifeTime(creationTime.getValue());
+    jobsCreationTimeFamily.delete(jobKey);
 
     statesJobColumnFamily.delete(jobKey);
 
