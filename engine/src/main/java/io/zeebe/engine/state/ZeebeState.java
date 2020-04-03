@@ -10,7 +10,6 @@ package io.zeebe.engine.state;
 import io.zeebe.db.DbContext;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.engine.Loggers;
-import io.zeebe.engine.metrics.BlacklistMetrics;
 import io.zeebe.engine.processor.KeyGenerator;
 import io.zeebe.engine.processor.TypedRecord;
 import io.zeebe.engine.state.deployment.DeploymentsState;
@@ -46,7 +45,6 @@ public class ZeebeState {
   private final WorkflowInstanceSubscriptionState workflowInstanceSubscriptionState;
   private final IncidentState incidentState;
   private final BlackList blackList;
-  private final BlacklistMetrics blacklistMetrics;
   private final LastProcessedPositionState lastProcessedPositionState;
 
   private final int partitionId;
@@ -68,7 +66,6 @@ public class ZeebeState {
     workflowInstanceSubscriptionState = new WorkflowInstanceSubscriptionState(zeebeDb, dbContext);
     incidentState = new IncidentState(zeebeDb, dbContext, partitionId);
     blackList = new BlackList(zeebeDb, dbContext);
-    blacklistMetrics = new BlacklistMetrics(partitionId);
     lastProcessedPositionState = new LastProcessedPositionState(zeebeDb, dbContext);
   }
 
@@ -109,18 +106,14 @@ public class ZeebeState {
   }
 
   public boolean isOnBlacklist(final TypedRecord record) {
-    return blacklistMetrics.observeBlacklistCheck(
-        () -> {
-          final UnpackedObject value = record.getValue();
-          if (value instanceof WorkflowInstanceRelated) {
-            final long workflowInstanceKey =
-                ((WorkflowInstanceRelated) value).getWorkflowInstanceKey();
-            if (workflowInstanceKey >= 0) {
-              return blackList.isOnBlacklist(workflowInstanceKey);
-            }
-          }
-          return false;
-        });
+    final UnpackedObject value = record.getValue();
+    if (value instanceof WorkflowInstanceRelated) {
+      final long workflowInstanceKey = ((WorkflowInstanceRelated) value).getWorkflowInstanceKey();
+      if (workflowInstanceKey >= 0) {
+        return blackList.isOnBlacklist(workflowInstanceKey);
+      }
+    }
+    return false;
   }
 
   public boolean tryToBlacklist(
@@ -129,7 +122,6 @@ public class ZeebeState {
     if (shouldBeBlacklisted(intent)) {
       final UnpackedObject value = typedRecord.getValue();
       if (value instanceof WorkflowInstanceRelated) {
-        blacklistMetrics.countBlacklisting();
         final long workflowInstanceKey = ((WorkflowInstanceRelated) value).getWorkflowInstanceKey();
         blacklist(workflowInstanceKey);
         onBlacklistingInstance.accept(workflowInstanceKey);
