@@ -19,6 +19,7 @@ package io.atomix.primitive.partition;
 import io.atomix.primitive.protocol.PrimitiveProtocol;
 import io.atomix.primitive.protocol.ProxyProtocol;
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 
 /** Partition service. */
 public interface PartitionService {
@@ -86,4 +87,8 @@ public interface PartitionService {
    * @return a collection of all partition groups
    */
   Collection<PartitionGroup> getPartitionGroups();
+
+  CompletableFuture<Void> joinNewPartition(int partitionId, String groupname);
+
+  CompletableFuture<Void> leavePartition(int partitionId, String groupname);
 }

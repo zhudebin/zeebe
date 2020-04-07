@@ -7,6 +7,8 @@
  */
 package io.zeebe.broker;
 
+import static io.zeebe.broker.clustering.atomix.AtomixFactory.GROUP_NAME;
+
 import io.atomix.cluster.MemberId;
 import io.atomix.cluster.messaging.MessagingConfig;
 import io.atomix.cluster.messaging.impl.NettyMessagingService;
@@ -117,6 +119,14 @@ public final class Broker implements AutoCloseable {
     return startFuture;
   }
 
+  public CompletableFuture<Void> leavePartition(final int partitionId) {
+    return atomix.getPartitionService().leavePartition(partitionId, GROUP_NAME);
+  }
+
+  public CompletableFuture<Void> joinPartition(final int partitionId) {
+    return atomix.getPartitionService().joinNewPartition(partitionId, GROUP_NAME);
+  }
+
   private void logBrokerStart() {
     if (LOG.isInfoEnabled()) {
       final BrokerCfg brokerCfg = getConfig();
@@ -196,8 +206,7 @@ public final class Broker implements AutoCloseable {
     atomix = AtomixFactory.fromConfiguration(brokerCfg);
 
     final var partitionGroup =
-        (RaftPartitionGroup)
-            atomix.getPartitionService().getPartitionGroup(AtomixFactory.GROUP_NAME);
+        (RaftPartitionGroup) atomix.getPartitionService().getPartitionGroup(GROUP_NAME);
 
     partitionIndexes = new HashMap<>();
     final var logIndexDensity = brokerCfg.getData().getLogIndexDensity();
@@ -304,8 +313,7 @@ public final class Broker implements AutoCloseable {
       final BrokerCfg brokerCfg, final ClusterCfg clusterCfg, final BrokerInfo localBroker)
       throws Exception {
     final RaftPartitionGroup partitionGroup =
-        (RaftPartitionGroup)
-            atomix.getPartitionService().getPartitionGroup(AtomixFactory.GROUP_NAME);
+        (RaftPartitionGroup) atomix.getPartitionService().getPartitionGroup(GROUP_NAME);
 
     final MemberId nodeId = atomix.getMembershipService().getLocalMember().id();
     final List<RaftPartition> owningPartitions =

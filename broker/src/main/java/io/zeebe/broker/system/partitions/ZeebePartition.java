@@ -702,7 +702,7 @@ public final class ZeebePartition extends Actor
                 .onComplete(
                     (v, t) -> {
                       atomixRaftPartition.removeRoleChangeListener(this);
-                      atomixRaftPartition.getServer().removeCommitListener(this);
+                      atomixRaftPartition.removeCommitListener(this);
 
                       if (t == null) {
                         closeFuture.complete(null);

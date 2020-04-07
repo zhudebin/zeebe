@@ -29,11 +29,13 @@ import io.atomix.primitive.partition.PartitionGroupMembership;
 import io.atomix.primitive.partition.PartitionGroupMembershipEvent;
 import io.atomix.primitive.partition.PartitionGroupMembershipEventListener;
 import io.atomix.primitive.partition.PartitionGroupTypeRegistry;
+import io.atomix.primitive.partition.PartitionId;
 import io.atomix.primitive.partition.PartitionManagementService;
 import io.atomix.primitive.partition.PartitionService;
 import io.atomix.primitive.session.ManagedSessionIdService;
 import io.atomix.primitive.session.impl.DefaultSessionIdService;
 import io.atomix.primitive.session.impl.ReplicatedSessionIdService;
+import io.atomix.raft.partition.RaftPartitionGroup;
 import io.atomix.utils.concurrent.Futures;
 import io.atomix.utils.config.ConfigurationException;
 import java.util.Collection;
@@ -105,6 +107,20 @@ public class DefaultPartitionService implements ManagedPartitionService {
   @SuppressWarnings("unchecked")
   public Collection<PartitionGroup> getPartitionGroups() {
     return (Collection) groups.values();
+  }
+
+  @Override
+  public CompletableFuture<Void> joinNewPartition(final int partitionId, final String groupname) {
+    final RaftPartitionGroup partitionGroup = (RaftPartitionGroup) getPartitionGroup(groupname);
+    return partitionGroup.joinNewPartition(
+        PartitionId.from(groupname, partitionId), partitionManagementService);
+  }
+
+  @Override
+  public CompletableFuture<Void> leavePartition(final int partitionId, final String groupname) {
+    final RaftPartitionGroup partitionGroup = (RaftPartitionGroup) getPartitionGroup(groupname);
+    return partitionGroup.leavePartition(
+        PartitionId.from(groupname, partitionId), partitionManagementService);
   }
 
   @SuppressWarnings("unchecked")

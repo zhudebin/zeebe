@@ -264,6 +264,15 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
             });
   }
 
+  public CompletableFuture<Void> joinNewPartition(
+      final PartitionId partitionId, final PartitionManagementService managementService) {
+    final PartitionMetadata partitionMetadata =
+        metadata.stream().filter(metadata -> metadata.id().equals(partitionId)).findFirst().get();
+    partitionMetadata.members().add(managementService.getMembershipService().getLocalMember().id());
+    final RaftPartition raftPartition = partitions.get(partitionId);
+    return raftPartition.update(partitionMetadata, managementService);
+  }
+
   private Collection<PartitionMetadata> buildPartitions() {
     final List<MemberId> sorted =
         new ArrayList<>(
@@ -288,6 +297,18 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
       metadata.add(new PartitionMetadata(partitionId, membersForPartition));
     }
     return metadata;
+  }
+
+  public CompletableFuture<Void> leavePartition(
+      final PartitionId partitionId, final PartitionManagementService managementService) {
+    final PartitionMetadata partitionMetadata =
+        metadata.stream().filter(metadata -> metadata.id().equals(partitionId)).findFirst().get();
+    partitionMetadata
+        .members()
+        .remove(managementService.getMembershipService().getLocalMember().id());
+    final RaftPartition raftPartition = partitions.get(partitionId);
+    return raftPartition.update(partitionMetadata, managementService);
+    // .whenComplete((r, e) -> raftPartition.open(partitionMetadata, managementService));
   }
 
   /** Raft partition group type. */

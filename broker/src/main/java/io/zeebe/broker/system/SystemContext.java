@@ -67,7 +67,7 @@ public final class SystemContext {
     final int clusterSize = cluster.getClusterSize();
     final int nodeId = cluster.getNodeId();
     if (nodeId < 0 || nodeId >= clusterSize) {
-      throw new IllegalArgumentException(String.format(NODE_ID_ERROR_MSG, nodeId, clusterSize));
+      // throw new IllegalArgumentException(String.format(NODE_ID_ERROR_MSG, nodeId, clusterSize));
     }
 
     final int replicationFactor = cluster.getReplicationFactor();

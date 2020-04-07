@@ -23,6 +23,7 @@ import io.atomix.primitive.partition.Partition;
 import io.atomix.primitive.partition.PartitionId;
 import io.atomix.primitive.partition.PartitionManagementService;
 import io.atomix.primitive.partition.PartitionMetadata;
+import io.atomix.raft.RaftCommitListener;
 import io.atomix.raft.RaftFailureListener;
 import io.atomix.raft.RaftRoleChangeListener;
 import io.atomix.raft.RaftServer.Role;
@@ -84,7 +85,9 @@ public class RaftPartition implements Partition {
 
   public void removeRoleChangeListener(final RaftRoleChangeListener listener) {
     deferredRoleChangeListeners.remove(listener);
-    server.removeRoleChangeListener(listener);
+    if (server != null) {
+      server.removeRoleChangeListener(listener);
+    }
   }
 
   public void addFailureListener(final RaftFailureListener failureListener) {
@@ -127,7 +130,7 @@ public class RaftPartition implements Partition {
   }
 
   /** Opens the partition. */
-  CompletableFuture<Partition> open(
+  public CompletableFuture<Partition> open(
       final PartitionMetadata metadata, final PartitionManagementService managementService) {
     this.partitionMetadata = metadata;
     this.client = createClient(managementService);
@@ -204,7 +207,7 @@ public class RaftPartition implements Partition {
   }
 
   /** Closes the partition. */
-  CompletableFuture<Void> close() {
+  public CompletableFuture<Void> close() {
     return closeClient()
         .exceptionally(v -> null)
         .thenCompose(v -> closeServer())
@@ -299,5 +302,11 @@ public class RaftPartition implements Partition {
                 .map(RaftFailureListener::onRaftFailed)
                 .toArray(CompletableFuture[]::new))
         .join();
+  }
+
+  public void removeCommitListener(final RaftCommitListener listener) {
+    if (server != null) {
+      server.removeCommitListener(listener);
+    }
   }
 }

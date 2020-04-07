@@ -230,7 +230,7 @@ public final class ClusteringRule extends ExternalResource {
     leaderListener.awaitLeaders();
   }
 
-  private Broker createBroker(final int nodeId) {
+  Broker createBroker(final int nodeId) {
     final File brokerBase = getBrokerBase(nodeId);
     final BrokerCfg brokerCfg = getBrokerCfg(nodeId);
     final Broker broker = new Broker(brokerCfg, brokerBase.getAbsolutePath(), controlledClock);
