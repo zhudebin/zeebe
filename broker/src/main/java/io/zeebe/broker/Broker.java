@@ -13,6 +13,7 @@ import io.atomix.cluster.MemberId;
 import io.atomix.cluster.messaging.MessagingConfig;
 import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.core.Atomix;
+import io.atomix.primitive.partition.PartitionId;
 import io.atomix.raft.partition.RaftPartition;
 import io.atomix.raft.partition.RaftPartitionGroup;
 import io.atomix.utils.net.Address;
@@ -95,6 +96,8 @@ public final class Broker implements AutoCloseable {
   private ServerTransport serverTransport;
   private BrokerHealthCheckService healthCheckService;
   private Map<Integer, ZeebeIndexAdapter> partitionIndexes;
+  private BrokerInfo localBroker;
+  private BrokerCfg brokerCfg;
 
   public Broker(final SystemContext systemContext) {
     this.brokerContext = systemContext;
@@ -124,7 +127,22 @@ public final class Broker implements AutoCloseable {
   }
 
   public CompletableFuture<Void> joinPartition(final int partitionId) {
-    return atomix.getPartitionService().joinNewPartition(partitionId, GROUP_NAME);
+    final BrokerCfg brokerCfg = getConfig();
+    return atomix
+        .getPartitionService()
+        .joinNewPartition(partitionId, GROUP_NAME)
+        .whenComplete(
+            (r, e) ->
+                startZeebePartition(
+                    brokerCfg,
+                    brokerCfg.getCluster(),
+                    localBroker,
+                    (RaftPartition)
+                        atomix
+                            .getPartitionService()
+                            .getPartitionGroup(GROUP_NAME)
+                            .getPartition(PartitionId.from(GROUP_NAME, partitionId)),
+                    partitionId));
   }
 
   private void logBrokerStart() {
@@ -157,11 +175,11 @@ public final class Broker implements AutoCloseable {
   }
 
   private StartProcess initStart() {
-    final BrokerCfg brokerCfg = getConfig();
+    brokerCfg = getConfig();
     final NetworkCfg networkCfg = brokerCfg.getNetwork();
 
     final ClusterCfg clusterCfg = brokerCfg.getCluster();
-    final BrokerInfo localBroker =
+    localBroker =
         new BrokerInfo(
             clusterCfg.getNodeId(),
             SocketUtil.toHostAndPortString(networkCfg.getCommandApi().getAdvertisedAddress()));
@@ -328,30 +346,38 @@ public final class Broker implements AutoCloseable {
       final var partitionId = owningPartition.id().id();
       partitionStartProcess.addStep(
           "partition " + partitionId,
-          () -> {
-            final var messagingService =
-                new AtomixPartitionMessagingService(
-                    atomix.getCommunicationService(),
-                    atomix.getMembershipService(),
-                    owningPartition.members());
-            final ZeebePartition zeebePartition =
-                new ZeebePartition(
-                    localBroker,
-                    owningPartition,
-                    partitionListeners,
-                    messagingService,
-                    scheduler,
-                    brokerCfg,
-                    commandHandler,
-                    partitionIndexes.get(partitionId),
-                    createFactory(topologyManager, clusterCfg, atomix, managementRequestHandler));
-            scheduleActor(zeebePartition);
-            healthCheckService.registerMonitoredPartition(
-                owningPartition.id().id(), zeebePartition);
-            return zeebePartition;
-          });
+          () ->
+              startZeebePartition(
+                  brokerCfg, clusterCfg, localBroker, owningPartition, partitionId));
     }
     return partitionStartProcess.start();
+  }
+
+  private AutoCloseable startZeebePartition(
+      final BrokerCfg brokerCfg,
+      final ClusterCfg clusterCfg,
+      final BrokerInfo localBroker,
+      final RaftPartition owningPartition,
+      final Integer partitionId) {
+    final var messagingService =
+        new AtomixPartitionMessagingService(
+            atomix.getCommunicationService(),
+            atomix.getMembershipService(),
+            owningPartition.members());
+    final ZeebePartition zeebePartition =
+        new ZeebePartition(
+            localBroker,
+            owningPartition,
+            partitionListeners,
+            messagingService,
+            scheduler,
+            brokerCfg,
+            commandHandler,
+            partitionIndexes.get(partitionId),
+            createFactory(topologyManager, clusterCfg, atomix, managementRequestHandler));
+    scheduleActor(zeebePartition);
+    healthCheckService.registerMonitoredPartition(owningPartition.id().id(), zeebePartition);
+    return zeebePartition;
   }
 
   private TypedRecordProcessorsFactory createFactory(

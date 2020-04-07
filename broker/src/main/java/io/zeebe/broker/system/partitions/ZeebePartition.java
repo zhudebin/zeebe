@@ -252,6 +252,9 @@ public final class ZeebePartition extends Actor
                 return;
               }
               transitionComplete.complete(null);
+              partitionListeners.stream()
+                  .map(l -> l.onBecomingFollower(partitionId, term, logStream))
+                  .collect(Collectors.toList());
             });
   }
 
