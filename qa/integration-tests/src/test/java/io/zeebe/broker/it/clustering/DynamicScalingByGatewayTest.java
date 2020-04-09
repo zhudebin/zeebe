@@ -71,7 +71,7 @@ public final class DynamicScalingByGatewayTest {
     return GatewayGrpc.newStub(channel);
   }
 
-  private class TestStreamObserver implements StreamObserver<ClusterJoinResponse> {
+  private final class TestStreamObserver implements StreamObserver<ClusterJoinResponse> {
 
     final CompletableFuture<Void> future;
 
