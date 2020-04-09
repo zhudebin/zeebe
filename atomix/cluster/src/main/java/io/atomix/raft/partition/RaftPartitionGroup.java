@@ -264,6 +264,29 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
             });
   }
 
+  public CompletableFuture<Void> addNewMembers(
+      final Set<String> members, final PartitionManagementService managementService) {
+    config.getMembers().addAll(members);
+
+    this.metadata = buildPartitions();
+    this.communicationService = managementService.getMessagingService();
+    communicationService.<Void, Void>subscribe(snapshotSubject, m -> handleSnapshot());
+    final var futures =
+        metadata.stream()
+            .map(
+                metadata -> {
+                  final RaftPartition partition = partitions.get(metadata.id());
+                  return partition.update(metadata, managementService);
+                })
+            .collect(Collectors.toList());
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
+        .thenApply(
+            v -> {
+              LOGGER.info("Started");
+              return null;
+            });
+  }
+
   public CompletableFuture<Void> joinNewPartition(
       final PartitionId partitionId, final PartitionManagementService managementService) {
     final PartitionMetadata partitionMetadata =

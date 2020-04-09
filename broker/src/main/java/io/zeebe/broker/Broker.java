@@ -65,7 +65,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -98,6 +100,7 @@ public final class Broker implements AutoCloseable {
   private Map<Integer, ZeebeIndexAdapter> partitionIndexes;
   private BrokerInfo localBroker;
   private BrokerCfg brokerCfg;
+  private final Map<Integer, ZeebePartition> installedPartition = new ConcurrentHashMap<>();
 
   public Broker(final SystemContext systemContext) {
     this.brokerContext = systemContext;
@@ -143,6 +146,26 @@ public final class Broker implements AutoCloseable {
                             .getPartitionGroup(GROUP_NAME)
                             .getPartition(PartitionId.from(GROUP_NAME, partitionId)),
                     partitionId));
+  }
+
+  /**
+   * This doesn't fully work now because first we have to join existing replicas and then leave *
+   */
+  public CompletableFuture<Void> addNewMembers(final Set<String> members) {
+    return atomix
+        .getPartitionService()
+        .addNewMembers(members, GROUP_NAME)
+        .thenApply(
+            r -> {
+              try {
+                partitionsStep(brokerCfg, brokerCfg.getCluster(), localBroker);
+                return null;
+              } catch (final Exception e) {
+                e.printStackTrace();
+                return null;
+              }
+            });
+    // .whenComplete(r -> partitionsStep(brokerCfg, brokerCfg.getCluster(), localBroker));
   }
 
   private void logBrokerStart() {
@@ -350,6 +373,7 @@ public final class Broker implements AutoCloseable {
               startZeebePartition(
                   brokerCfg, clusterCfg, localBroker, owningPartition, partitionId));
     }
+
     return partitionStartProcess.start();
   }
 
@@ -359,25 +383,32 @@ public final class Broker implements AutoCloseable {
       final BrokerInfo localBroker,
       final RaftPartition owningPartition,
       final Integer partitionId) {
-    final var messagingService =
-        new AtomixPartitionMessagingService(
-            atomix.getCommunicationService(),
-            atomix.getMembershipService(),
-            owningPartition.members());
-    final ZeebePartition zeebePartition =
-        new ZeebePartition(
-            localBroker,
-            owningPartition,
-            partitionListeners,
-            messagingService,
-            scheduler,
-            brokerCfg,
-            commandHandler,
-            partitionIndexes.get(partitionId),
-            createFactory(topologyManager, clusterCfg, atomix, managementRequestHandler));
-    scheduleActor(zeebePartition);
-    healthCheckService.registerMonitoredPartition(owningPartition.id().id(), zeebePartition);
-    return zeebePartition;
+    if (installedPartition.get(partitionId) == null) {
+      final var messagingService =
+          new AtomixPartitionMessagingService(
+              atomix.getCommunicationService(),
+              atomix.getMembershipService(),
+              owningPartition.members());
+      final ZeebePartition zeebePartition =
+          new ZeebePartition(
+              localBroker,
+              owningPartition,
+              partitionListeners,
+              messagingService,
+              scheduler,
+              brokerCfg,
+              commandHandler,
+              partitionIndexes.get(partitionId),
+              createFactory(topologyManager, clusterCfg, atomix, managementRequestHandler));
+      scheduleActor(zeebePartition);
+      healthCheckService.registerMonitoredPartition(owningPartition.id().id(), zeebePartition);
+      installedPartition.put(partitionId, zeebePartition);
+      LOG.info("New partition {} installed", partitionId);
+      return zeebePartition;
+    } else {
+      LOG.info("Partition {} already installed", partitionId);
+      return installedPartition.get(partitionId);
+    }
   }
 
   private TypedRecordProcessorsFactory createFactory(

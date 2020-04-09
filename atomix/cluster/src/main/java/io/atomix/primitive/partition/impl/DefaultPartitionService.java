@@ -41,6 +41,7 @@ import io.atomix.utils.config.ConfigurationException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -114,6 +115,12 @@ public class DefaultPartitionService implements ManagedPartitionService {
     final RaftPartitionGroup partitionGroup = (RaftPartitionGroup) getPartitionGroup(groupname);
     return partitionGroup.joinNewPartition(
         PartitionId.from(groupname, partitionId), partitionManagementService);
+  }
+
+  @Override
+  public CompletableFuture<Void> addNewMembers(final Set<String> members, final String groupname) {
+    final RaftPartitionGroup partitionGroup = (RaftPartitionGroup) getPartitionGroup(groupname);
+    return partitionGroup.addNewMembers(members, partitionManagementService);
   }
 
   @Override

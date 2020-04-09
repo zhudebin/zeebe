@@ -18,6 +18,7 @@ import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.Protocol;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -79,6 +80,19 @@ public final class DynamicScalingTest {
     jobCompleter.waitForJobCompletion();
 
     jobCompleter.close();
+  }
+
+  @Test
+  public void shouldReConfigurePartitionByUpdate() throws InterruptedException {
+    // given
+    final Broker broker = clusteringRule.createBroker(2);
+    Thread.sleep(5000);
+    broker.addNewMembers(Set.of("2")).join();
+    clusteringRule.getBroker(0).addNewMembers(Set.of("2")).join();
+    clusteringRule.getBroker(1).addNewMembers(Set.of("2")).join();
+
+    waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() != 0);
+    waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() == 2);
   }
 
   class JobCompleter {
