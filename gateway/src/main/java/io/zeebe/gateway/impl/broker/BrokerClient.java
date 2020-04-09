@@ -7,11 +7,14 @@
  */
 package io.zeebe.gateway.impl.broker;
 
+import io.atomix.cluster.MemberId;
 import io.zeebe.gateway.impl.broker.cluster.BrokerTopologyManager;
 import io.zeebe.gateway.impl.broker.request.BrokerRequest;
 import io.zeebe.gateway.impl.broker.response.BrokerResponse;
 import io.zeebe.util.sched.future.ActorFuture;
 import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public interface BrokerClient extends AutoCloseable {
@@ -36,4 +39,6 @@ public interface BrokerClient extends AutoCloseable {
   BrokerTopologyManager getTopologyManager();
 
   void subscribeJobAvailableNotification(String topic, Consumer<String> handler);
+
+  CompletableFuture<Object> sendClusterRequest(String s, Set<String> newMembers, MemberId to);
 }

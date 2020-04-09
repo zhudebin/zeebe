@@ -9,6 +9,7 @@ package io.zeebe.gateway.api.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.atomix.cluster.MemberId;
 import io.zeebe.gateway.cmd.BrokerErrorException;
 import io.zeebe.gateway.cmd.BrokerRejectionException;
 import io.zeebe.gateway.cmd.BrokerResponseException;
@@ -24,6 +25,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public final class StubbedBrokerClient implements BrokerClient {
@@ -93,6 +96,12 @@ public final class StubbedBrokerClient implements BrokerClient {
   public void subscribeJobAvailableNotification(
       final String topic, final Consumer<String> handler) {
     this.jobsAvailableHandler = handler;
+  }
+
+  @Override
+  public CompletableFuture<Object> sendClusterRequest(
+      final String s, final Set<String> newMembers, final MemberId to) {
+    return null;
   }
 
   public <RequestT extends BrokerRequest<?>, ResponseT extends BrokerResponse<?>>

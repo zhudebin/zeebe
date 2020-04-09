@@ -11,6 +11,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.zeebe.gateway.ClusterManager;
 import io.zeebe.gateway.EndpointManager;
 import io.zeebe.gateway.impl.job.LongPollingActivateJobsHandler;
 import io.zeebe.gateway.protocol.GatewayGrpc;
@@ -39,7 +40,8 @@ public final class StubbedGateway {
 
   public void start() throws IOException {
     actorScheduler.submitActor(longPollingHandler);
-    final EndpointManager endpointManager = new EndpointManager(brokerClient, longPollingHandler);
+    final EndpointManager endpointManager =
+        new EndpointManager(brokerClient, longPollingHandler, new ClusterManager(brokerClient));
     final InProcessServerBuilder serverBuilder =
         InProcessServerBuilder.forName(SERVER_NAME).addService(endpointManager);
     server = serverBuilder.build();

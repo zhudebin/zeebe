@@ -32,6 +32,8 @@ import io.zeebe.gateway.protocol.GatewayOuterClass.BrokerInfo;
 import io.zeebe.gateway.protocol.GatewayOuterClass.BrokerInfo.Builder;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CancelWorkflowInstanceRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CancelWorkflowInstanceResponse;
+import io.zeebe.gateway.protocol.GatewayOuterClass.ClusterJoinRequest;
+import io.zeebe.gateway.protocol.GatewayOuterClass.ClusterJoinResponse;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CompleteJobRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CompleteJobResponse;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CreateWorkflowInstanceRequest;
@@ -70,12 +72,16 @@ public final class EndpointManager extends GatewayGrpc.GatewayImplBase {
   private final BrokerClient brokerClient;
   private final BrokerTopologyManager topologyManager;
   private final LongPollingActivateJobsHandler activateJobsHandler;
+  private final ClusterManager cluster;
 
   public EndpointManager(
-      final BrokerClient brokerClient, final LongPollingActivateJobsHandler longPollingHandler) {
+      final BrokerClient brokerClient,
+      final LongPollingActivateJobsHandler longPollingHandler,
+      final ClusterManager cluster) {
     this.brokerClient = brokerClient;
     topologyManager = brokerClient.getTopologyManager();
     activateJobsHandler = longPollingHandler;
+    this.cluster = cluster;
   }
 
   private void addBrokerInfo(
@@ -290,6 +296,13 @@ public final class EndpointManager extends GatewayGrpc.GatewayImplBase {
         RequestMapper::toUpdateJobRetriesRequest,
         ResponseMapper::toUpdateJobRetriesResponse,
         responseObserver);
+  }
+
+  @Override
+  public void updateClusterSize(
+      final ClusterJoinRequest request,
+      final StreamObserver<ClusterJoinResponse> responseObserver) {
+    cluster.updateClusterSize(request.getNewClusterSize(), responseObserver);
   }
 
   private <GrpcRequestT, BrokerResponseT, GrpcResponseT> void sendRequest(

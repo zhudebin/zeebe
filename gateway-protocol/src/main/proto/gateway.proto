@@ -311,6 +311,13 @@ message SetVariablesResponse {
   int64 key = 1;
 }
 
+message ClusterJoinRequest {
+  int32 newClusterSize = 1;
+}
+
+message ClusterJoinResponse {
+}
+
 service Gateway {
   /*
     Iterates through all known partitions round-robin and activates up to the requested
@@ -481,5 +488,8 @@ service Gateway {
         - retries is not greater than 0
    */
   rpc UpdateJobRetries (UpdateJobRetriesRequest) returns (UpdateJobRetriesResponse) {
+  }
+
+  rpc UpdateClusterSize (ClusterJoinRequest) returns (ClusterJoinResponse) {
   }
 }

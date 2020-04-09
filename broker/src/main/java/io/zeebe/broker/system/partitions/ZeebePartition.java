@@ -679,6 +679,7 @@ public final class ZeebePartition extends Actor
     atomixLogStorage = AtomixLogStorage.ofPartition(zeebeIndexMapping, atomixRaftPartition);
     atomixRaftPartition.getServer().addCommitListener(this);
     atomixRaftPartition.addRoleChangeListener(this);
+    LOG.info("ZeebePartition {} started", partitionId);
     onRoleChange(atomixRaftPartition.getRole(), atomixRaftPartition.term());
     onRecoveredInternal();
   }

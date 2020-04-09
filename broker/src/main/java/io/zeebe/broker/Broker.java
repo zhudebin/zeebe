@@ -158,12 +158,13 @@ public final class Broker implements AutoCloseable {
         .thenApply(
             r -> {
               try {
+                LOG.info("Reconfigured {}", localBroker.getNodeId());
                 partitionsStep(brokerCfg, brokerCfg.getCluster(), localBroker);
-                return null;
+                LOG.info("Reconfigured ++ {}", localBroker.getNodeId());
               } catch (final Exception e) {
                 e.printStackTrace();
-                return null;
               }
+              return null;
             });
     // .whenComplete(r -> partitionsStep(brokerCfg, brokerCfg.getCluster(), localBroker));
   }
@@ -257,7 +258,6 @@ public final class Broker implements AutoCloseable {
 
   private ScaleManager scaleManagerStep() {
     final ScaleManager scaleManager = new ScaleManager(atomix, this);
-    scheduleActor(scaleManager);
     return scaleManager;
   }
 

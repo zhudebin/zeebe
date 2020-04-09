@@ -10,6 +10,7 @@ package io.zeebe.gateway.impl.broker;
 import io.atomix.cluster.AtomixCluster;
 import io.atomix.cluster.ClusterMembershipEvent;
 import io.atomix.cluster.ClusterMembershipEvent.Type;
+import io.atomix.cluster.MemberId;
 import io.atomix.cluster.messaging.Subscription;
 import io.zeebe.gateway.Loggers;
 import io.zeebe.gateway.impl.broker.cluster.BrokerTopologyManager;
@@ -24,6 +25,7 @@ import io.zeebe.util.sched.ActorScheduler;
 import io.zeebe.util.sched.clock.ActorClock;
 import io.zeebe.util.sched.future.ActorFuture;
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -179,6 +181,12 @@ public final class BrokerClientImpl implements BrokerClient {
                   return CompletableFuture.completedFuture(null);
                 })
             .join();
+  }
+
+  @Override
+  public CompletableFuture<Object> sendClusterRequest(
+      final String s, final Set<String> newMembers, final MemberId to) {
+    return atomixCluster.getCommunicationService().send(s, newMembers, to, Duration.ofSeconds(60));
   }
 
   private void doAndLogException(final Runnable r) {

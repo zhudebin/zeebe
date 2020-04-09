@@ -270,10 +270,9 @@ public class RaftPartitionServer implements Managed<RaftPartitionServer> {
         .whenComplete(
             (r, e) -> {
               if (e == null) {
-                log.debug(
-                    "Successfully joined partition {} ({})", partition.id(), partition.name());
+                log.info("Successfully joined partition {} ({})", partition.id(), partition.name());
               } else {
-                log.warn("Failed to join partition {} ({})", partition.id(), partition.name(), e);
+                log.info("Failed to join partition {} ({})", partition.id(), partition.name(), e);
               }
             })
         .thenApply(v -> null);
