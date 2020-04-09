@@ -118,9 +118,17 @@ public class DefaultPartitionService implements ManagedPartitionService {
   }
 
   @Override
-  public CompletableFuture<Void> addNewMembers(final Set<String> members, final String groupname) {
+  public CompletableFuture<Void> reconfigureOnlyJoin(
+      final Set<String> members, final String groupname) {
     final RaftPartitionGroup partitionGroup = (RaftPartitionGroup) getPartitionGroup(groupname);
-    return partitionGroup.addNewMembers(members, partitionManagementService);
+    return partitionGroup.reconfigureOnlyJoin(members, partitionManagementService);
+  }
+
+  @Override
+  public CompletableFuture<Void> reconfigureUpdateAll(
+      final Set<String> members, final String groupname) {
+    final RaftPartitionGroup partitionGroup = (RaftPartitionGroup) getPartitionGroup(groupname);
+    return partitionGroup.reconfigureUpdateAll(members, partitionManagementService);
   }
 
   @Override

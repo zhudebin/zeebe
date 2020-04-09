@@ -56,7 +56,7 @@ public class RaftPartition implements Partition {
   private final Set<RaftFailureListener> raftFailureListeners = new CopyOnWriteArraySet<>();
   private PartitionMetadata partitionMetadata;
   private RaftPartitionClient client;
-  private RaftPartitionServer server;
+  private volatile RaftPartitionServer server;
   private Supplier<JournalIndex> journalIndexFactory;
 
   public RaftPartition(
@@ -191,6 +191,7 @@ public class RaftPartition implements Partition {
   /** Updates the partition with the given metadata. */
   CompletableFuture<Void> update(
       final PartitionMetadata metadata, final PartitionManagementService managementService) {
+    this.partitionMetadata = metadata;
     if (server == null
         && metadata
             .members()

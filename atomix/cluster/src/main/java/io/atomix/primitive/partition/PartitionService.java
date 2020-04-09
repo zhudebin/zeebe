@@ -91,7 +91,9 @@ public interface PartitionService {
 
   CompletableFuture<Void> joinNewPartition(int partitionId, String groupname);
 
-  CompletableFuture<Void> addNewMembers(Set<String> members, String groupname);
+  CompletableFuture<Void> reconfigureOnlyJoin(Set<String> members, String groupname);
+
+  CompletableFuture<Void> reconfigureUpdateAll(Set<String> members, String groupname);
 
   CompletableFuture<Void> leavePartition(int partitionId, String groupname);
 }

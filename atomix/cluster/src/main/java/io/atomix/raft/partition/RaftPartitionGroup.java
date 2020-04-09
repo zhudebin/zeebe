@@ -77,7 +77,7 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
   private final Map<PartitionId, RaftPartition> partitions = Maps.newConcurrentMap();
   private final List<PartitionId> sortedPartitionIds = Lists.newCopyOnWriteArrayList();
   private final String snapshotSubject;
-  private Collection<PartitionMetadata> metadata;
+  private Map<PartitionId, PartitionMetadata> metadata;
   private ClusterCommunicationService communicationService;
 
   public RaftPartitionGroup(final RaftPartitionGroupConfig config) {
@@ -227,7 +227,7 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
     this.communicationService = managementService.getMessagingService();
     communicationService.<Void, Void>subscribe(snapshotSubject, m -> handleSnapshot());
     final List<CompletableFuture<Partition>> futures =
-        metadata.stream()
+        metadata.values().stream()
             .map(
                 metadata -> {
                   final RaftPartition partition = partitions.get(metadata.id());
@@ -264,7 +264,32 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
             });
   }
 
-  public CompletableFuture<Void> addNewMembers(
+  public CompletableFuture<Void> reconfigureOnlyJoin(
+      final Set<String> members, final PartitionManagementService managementService) {
+    config.getMembers().addAll(members);
+
+    final var newMetadata = buildPartitions();
+    newMetadata.forEach((pid, data) -> data.members().addAll(this.metadata.get(pid).members()));
+    this.metadata = newMetadata;
+    this.communicationService = managementService.getMessagingService();
+    communicationService.<Void, Void>subscribe(snapshotSubject, m -> handleSnapshot());
+    final var futures =
+        newMetadata.values().stream()
+            .map(
+                metadata -> {
+                  final RaftPartition partition = partitions.get(metadata.id());
+                  return partition.update(metadata, managementService);
+                })
+            .collect(Collectors.toList());
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
+        .thenApply(
+            v -> {
+              LOGGER.info("Started");
+              return null;
+            });
+  }
+
+  public CompletableFuture<Void> reconfigureUpdateAll(
       final Set<String> members, final PartitionManagementService managementService) {
     config.getMembers().addAll(members);
 
@@ -272,7 +297,7 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
     this.communicationService = managementService.getMessagingService();
     communicationService.<Void, Void>subscribe(snapshotSubject, m -> handleSnapshot());
     final var futures =
-        metadata.stream()
+        metadata.values().stream()
             .map(
                 metadata -> {
                   final RaftPartition partition = partitions.get(metadata.id());
@@ -290,13 +315,16 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
   public CompletableFuture<Void> joinNewPartition(
       final PartitionId partitionId, final PartitionManagementService managementService) {
     final PartitionMetadata partitionMetadata =
-        metadata.stream().filter(metadata -> metadata.id().equals(partitionId)).findFirst().get();
+        metadata.values().stream()
+            .filter(metadata -> metadata.id().equals(partitionId))
+            .findFirst()
+            .get();
     partitionMetadata.members().add(managementService.getMembershipService().getLocalMember().id());
     final RaftPartition raftPartition = partitions.get(partitionId);
     return raftPartition.update(partitionMetadata, managementService);
   }
 
-  private Collection<PartitionMetadata> buildPartitions() {
+  private Map<PartitionId, PartitionMetadata> buildPartitions() {
     final List<MemberId> sorted =
         new ArrayList<>(
             config.getMembers().stream().map(MemberId::from).collect(Collectors.toSet()));
@@ -310,14 +338,14 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
     final int length = sorted.size();
     final int count = Math.min(partitionSize, length);
 
-    final Set<PartitionMetadata> metadata = Sets.newHashSet();
+    final Map<PartitionId, PartitionMetadata> metadata = Maps.newHashMap();
     for (int i = 0; i < partitions.size(); i++) {
       final PartitionId partitionId = sortedPartitionIds.get(i);
       final List<MemberId> membersForPartition = new ArrayList<>(count);
       for (int j = 0; j < count; j++) {
         membersForPartition.add(sorted.get((i + j) % length));
       }
-      metadata.add(new PartitionMetadata(partitionId, membersForPartition));
+      metadata.put(partitionId, new PartitionMetadata(partitionId, membersForPartition));
     }
     return metadata;
   }
@@ -325,7 +353,10 @@ public class RaftPartitionGroup implements ManagedPartitionGroup {
   public CompletableFuture<Void> leavePartition(
       final PartitionId partitionId, final PartitionManagementService managementService) {
     final PartitionMetadata partitionMetadata =
-        metadata.stream().filter(metadata -> metadata.id().equals(partitionId)).findFirst().get();
+        metadata.values().stream()
+            .filter(metadata -> metadata.id().equals(partitionId))
+            .findFirst()
+            .get();
     partitionMetadata
         .members()
         .remove(managementService.getMembershipService().getLocalMember().id());

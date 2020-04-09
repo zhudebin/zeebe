@@ -151,10 +151,27 @@ public final class Broker implements AutoCloseable {
   /**
    * This doesn't fully work now because first we have to join existing replicas and then leave *
    */
-  public CompletableFuture<Void> addNewMembers(final Set<String> members) {
+  public CompletableFuture<Void> reconfigureOnlyJoin(final Set<String> members) {
     return atomix
         .getPartitionService()
-        .addNewMembers(members, GROUP_NAME)
+        .reconfigureOnlyJoin(members, GROUP_NAME)
+        .thenApply(
+            r -> {
+              try {
+                partitionsStep(brokerCfg, brokerCfg.getCluster(), localBroker);
+                return null;
+              } catch (final Exception e) {
+                e.printStackTrace();
+                return null;
+              }
+            });
+    // .whenComplete(r -> partitionsStep(brokerCfg, brokerCfg.getCluster(), localBroker));
+  }
+
+  public CompletableFuture<Void> reconfigureUpdateAll(final Set<String> members) {
+    return atomix
+        .getPartitionService()
+        .reconfigureUpdateAll(members, GROUP_NAME)
         .thenApply(
             r -> {
               try {
@@ -233,7 +250,15 @@ public final class Broker implements AutoCloseable {
     startContext.addStep(
         "zeebe partitions", () -> partitionsStep(brokerCfg, clusterCfg, localBroker));
 
+    startContext.addStep("scale manager", () -> scaleManagerStep());
+
     return startContext;
+  }
+
+  private ScaleManager scaleManagerStep() {
+    final ScaleManager scaleManager = new ScaleManager(atomix, this);
+    scheduleActor(scaleManager);
+    return scaleManager;
   }
 
   private AutoCloseable actorSchedulerStep() {

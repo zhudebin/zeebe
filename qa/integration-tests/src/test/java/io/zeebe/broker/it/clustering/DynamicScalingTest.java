@@ -35,7 +35,7 @@ public final class DynamicScalingTest {
   private static final BpmnModelInstance WORKFLOW =
       Bpmn.createExecutableProcess("process").startEvent().endEvent().done();
 
-  public final Timeout testTimeout = Timeout.seconds(120);
+  public final Timeout testTimeout = Timeout.seconds(180);
   public final ClusteringRule clusteringRule = new ClusteringRule(3, 1, 2);
   public final GrpcClientRule clientRule = new GrpcClientRule(clusteringRule);
 
@@ -87,12 +87,18 @@ public final class DynamicScalingTest {
     // given
     final Broker broker = clusteringRule.createBroker(2);
     Thread.sleep(5000);
-    broker.addNewMembers(Set.of("2")).join();
-    clusteringRule.getBroker(0).addNewMembers(Set.of("2")).join();
-    clusteringRule.getBroker(1).addNewMembers(Set.of("2")).join();
+    final var newMembers = Set.of("2");
 
-    waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() != 0);
+    broker.reconfigureOnlyJoin(newMembers).join();
+    clusteringRule.getBroker(0).reconfigureOnlyJoin(newMembers).join();
+    clusteringRule.getBroker(1).reconfigureOnlyJoin(newMembers).join();
+
+    broker.reconfigureUpdateAll(newMembers).join();
+    clusteringRule.getBroker(0).reconfigureUpdateAll(newMembers).join();
+    clusteringRule.getBroker(1).reconfigureUpdateAll(newMembers).join();
+
     waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() == 2);
+    waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() != 0);
   }
 
   class JobCompleter {
