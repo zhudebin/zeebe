@@ -8,6 +8,7 @@
 package io.zeebe.broker.it.clustering;
 
 import static io.zeebe.test.util.TestUtil.waitUntil;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.grpc.ManagedChannel;
 import io.grpc.netty.NettyChannelBuilder;
@@ -27,7 +28,6 @@ import org.junit.Test;
 import org.junit.rules.RuleChain;
 import org.junit.rules.Timeout;
 
-// FIXME: rewrite tests now that leader election is not controllable
 public final class DynamicScalingByGatewayTest {
   public static final String NULL_VARIABLES = null;
   public static final String JOB_TYPE = "testTask";
@@ -71,6 +71,15 @@ public final class DynamicScalingByGatewayTest {
 
     waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() != 0);
     waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() == 2);
+    final var broker0Partitions =
+        clientRule.getClient().newTopologyRequest().send().join().getBrokers().stream()
+            .filter(b -> b.getNodeId() == 0)
+            .findFirst()
+            .get()
+            .getPartitions();
+
+    // Broker 0 left partition 3
+    assertThat(broker0Partitions.stream().noneMatch(p -> p.getPartitionId() == 3)).isTrue();
   }
 
   private GatewayStub buildClient() {

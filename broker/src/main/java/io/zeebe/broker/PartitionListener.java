@@ -39,4 +39,6 @@ public interface PartitionListener {
    * @return future that should be completed by the listener
    */
   ActorFuture<Void> onBecomingLeader(int partitionId, long term, LogStream logStream);
+
+  default void leavePartition(final int partitionId) {}
 }

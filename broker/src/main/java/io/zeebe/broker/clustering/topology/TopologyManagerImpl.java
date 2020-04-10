@@ -68,6 +68,13 @@ public final class TopologyManagerImpl extends Actor
   }
 
   @Override
+  public void leavePartition(final int partitionId) {
+    removeIfLeader(localBroker, partitionId);
+    localBroker.leavePartition(partitionId);
+    publishTopologyChanges();
+  }
+
+  @Override
   public String getName() {
     return actorName;
   }

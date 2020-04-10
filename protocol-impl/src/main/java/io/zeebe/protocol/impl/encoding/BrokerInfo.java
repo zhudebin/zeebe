@@ -195,6 +195,12 @@ public final class BrokerInfo implements BufferReader, BufferWriter {
     return addPartitionRole(partitionId, PartitionRole.LEADER);
   }
 
+  public BrokerInfo leavePartition(final int partitionId) {
+    partitionLeaderTerms.remove(partitionId);
+    partitionRoles.remove(partitionId);
+    return this;
+  }
+
   @Override
   public void wrap(final DirectBuffer buffer, int offset, final int length) {
     reset();
