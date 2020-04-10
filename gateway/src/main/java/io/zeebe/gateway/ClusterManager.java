@@ -75,7 +75,7 @@ public class ClusterManager {
             .mapToObj(String::valueOf)
             .collect(Collectors.toSet());
 
-    Loggers.GATEWAY_LOGGER.info("Send join request to {}", nodeId);
+    Loggers.GATEWAY_LOGGER.info("Send leave request to {}", nodeId);
     client
         .sendClusterRequest(
             "reconfigure-leave-partitions", newMembers, MemberId.from(String.valueOf(nodeId)))
