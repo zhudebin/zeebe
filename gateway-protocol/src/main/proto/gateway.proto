@@ -311,11 +311,20 @@ message SetVariablesResponse {
   int64 key = 1;
 }
 
-message ClusterJoinRequest {
+message UpdateClusterSizeInitRequest {
   int32 newClusterSize = 1;
+  int32 nodeId = 2;
 }
 
-message ClusterJoinResponse {
+message UpdateClusterSizeInitResponse {
+}
+
+message UpdateClusterSizeCommitRequest {
+  int32 newClusterSize = 1;
+  int32 nodeId = 2;
+}
+
+message UpdateClusterSizeCommitResponse {
 }
 
 service Gateway {
@@ -490,6 +499,9 @@ service Gateway {
   rpc UpdateJobRetries (UpdateJobRetriesRequest) returns (UpdateJobRetriesResponse) {
   }
 
-  rpc UpdateClusterSize (ClusterJoinRequest) returns (ClusterJoinResponse) {
+  rpc UpdateClusterSizeInit (UpdateClusterSizeInitRequest) returns (UpdateClusterSizeInitResponse) {
+  }
+
+  rpc UpdateClusterSizeCommit (UpdateClusterSizeCommitRequest) returns (UpdateClusterSizeCommitResponse) {
   }
 }

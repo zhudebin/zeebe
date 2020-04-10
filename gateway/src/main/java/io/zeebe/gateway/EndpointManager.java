@@ -32,8 +32,6 @@ import io.zeebe.gateway.protocol.GatewayOuterClass.BrokerInfo;
 import io.zeebe.gateway.protocol.GatewayOuterClass.BrokerInfo.Builder;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CancelWorkflowInstanceRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CancelWorkflowInstanceResponse;
-import io.zeebe.gateway.protocol.GatewayOuterClass.ClusterJoinRequest;
-import io.zeebe.gateway.protocol.GatewayOuterClass.ClusterJoinResponse;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CompleteJobRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CompleteJobResponse;
 import io.zeebe.gateway.protocol.GatewayOuterClass.CreateWorkflowInstanceRequest;
@@ -56,6 +54,10 @@ import io.zeebe.gateway.protocol.GatewayOuterClass.ThrowErrorRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.ThrowErrorResponse;
 import io.zeebe.gateway.protocol.GatewayOuterClass.TopologyRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.TopologyResponse;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeCommitRequest;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeCommitResponse;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeInitRequest;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeInitResponse;
 import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateJobRetriesRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateJobRetriesResponse;
 import io.zeebe.msgpack.MsgpackPropertyException;
@@ -299,10 +301,19 @@ public final class EndpointManager extends GatewayGrpc.GatewayImplBase {
   }
 
   @Override
-  public void updateClusterSize(
-      final ClusterJoinRequest request,
-      final StreamObserver<ClusterJoinResponse> responseObserver) {
-    cluster.updateClusterSize(request.getNewClusterSize(), responseObserver);
+  public void updateClusterSizeInit(
+      final UpdateClusterSizeInitRequest request,
+      final StreamObserver<UpdateClusterSizeInitResponse> responseObserver) {
+    cluster.updateClusterSizeInit(
+        request.getNewClusterSize(), request.getNodeId(), responseObserver);
+  }
+
+  @Override
+  public void updateClusterSizeCommit(
+      final UpdateClusterSizeCommitRequest request,
+      final StreamObserver<UpdateClusterSizeCommitResponse> responseObserver) {
+    cluster.updateClusterSizeCommit(
+        request.getNewClusterSize(), request.getNodeId(), responseObserver);
   }
 
   private <GrpcRequestT, BrokerResponseT, GrpcResponseT> void sendRequest(

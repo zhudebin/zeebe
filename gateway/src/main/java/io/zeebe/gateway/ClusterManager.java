@@ -11,7 +11,8 @@ import io.atomix.cluster.MemberId;
 import io.grpc.stub.StreamObserver;
 import io.zeebe.gateway.impl.broker.BrokerClient;
 import io.zeebe.gateway.impl.broker.cluster.BrokerTopologyManager;
-import io.zeebe.gateway.protocol.GatewayOuterClass.ClusterJoinResponse;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeCommitResponse;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeInitResponse;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -19,7 +20,10 @@ import java.util.stream.IntStream;
 public class ClusterManager {
 
   private final BrokerTopologyManager topologyManager;
-  private final ClusterJoinResponse response = ClusterJoinResponse.newBuilder().build();
+  private final UpdateClusterSizeInitResponse responseInit =
+      UpdateClusterSizeInitResponse.newBuilder().build();
+  private final UpdateClusterSizeCommitResponse responseCommit =
+      UpdateClusterSizeCommitResponse.newBuilder().build();
   private final BrokerClient client;
 
   public ClusterManager(final BrokerClient client) {
@@ -27,64 +31,63 @@ public class ClusterManager {
     this.topologyManager = client.getTopologyManager();
   }
 
-  public void updateClusterSize(
-      final int newSize, final StreamObserver<ClusterJoinResponse> responseObserver) {
-    Loggers.GATEWAY_LOGGER.info("Received cluster update request {}", newSize);
-
+  public void updateClusterSizeInit(
+      final int newClusterSize,
+      final int nodeId,
+      final StreamObserver<UpdateClusterSizeInitResponse> responseObserver) {
     if (topologyManager.getTopology() == null) {
       // Can;t do anything
+      responseObserver.onError(new RuntimeException("Cannot find current clustersize"));
     }
     final int currentSize = topologyManager.getTopology().getClusterSize();
     final Set<String> newMembers =
-        IntStream.range(currentSize, newSize).mapToObj(String::valueOf).collect(Collectors.toSet());
-    updateJoin(0, newSize, newMembers, responseObserver);
+        IntStream.range(currentSize, newClusterSize)
+            .mapToObj(String::valueOf)
+            .collect(Collectors.toSet());
+
+    Loggers.GATEWAY_LOGGER.info("Send join request to {}", nodeId);
+    client
+        .sendClusterRequest(
+            "reconfigure-join-partitions", newMembers, MemberId.from(String.valueOf(nodeId)))
+        .whenComplete(
+            (r, e) -> {
+              if (e == null) {
+                responseObserver.onNext(responseInit);
+                responseObserver.onCompleted();
+              } else {
+                e.printStackTrace();
+                responseObserver.onError(e);
+              }
+            });
   }
 
-  private void updateJoin(
+  public void updateClusterSizeCommit(
+      final int newClusterSize,
       final int nodeId,
-      final int clusterSize,
-      final Set<String> newMembers,
-      final StreamObserver<ClusterJoinResponse> responseObserver) {
-    if (nodeId < clusterSize) {
-      Loggers.GATEWAY_LOGGER.info("Send join request to {}", nodeId);
-      client
-          .sendClusterRequest(
-              "reconfigure-join-partitions", newMembers, MemberId.from(String.valueOf(nodeId)))
-          .whenComplete(
-              (r, e) -> {
-                if (e == null) {
-                  updateJoin(nodeId + 1, clusterSize, newMembers, responseObserver);
-                } else {
-                  e.printStackTrace();
-                }
-              });
-    } else {
-      updateLeave(0, clusterSize, newMembers, responseObserver);
+      final StreamObserver<UpdateClusterSizeCommitResponse> responseObserver) {
+    if (topologyManager.getTopology() == null) {
+      // Can;t do anything
+      responseObserver.onError(new RuntimeException("Cannot find current clustersize"));
     }
-  }
+    final int currentSize = topologyManager.getTopology().getClusterSize();
+    final Set<String> newMembers =
+        IntStream.range(currentSize, newClusterSize)
+            .mapToObj(String::valueOf)
+            .collect(Collectors.toSet());
 
-  private void updateLeave(
-      final int nodeId,
-      final int clusterSize,
-      final Set<String> newMembers,
-      final StreamObserver<ClusterJoinResponse> responseObserver) {
-    if (nodeId < clusterSize) {
-      Loggers.GATEWAY_LOGGER.info("Send leave request to {}", nodeId);
-      client
-          .sendClusterRequest(
-              "reconfigure-leave-partitions", newMembers, MemberId.from(String.valueOf(nodeId)))
-          .whenComplete(
-              (r, e) -> {
-                if (e == null) {
-                  updateLeave(nodeId + 1, clusterSize, newMembers, responseObserver);
-                } else {
-                  e.printStackTrace();
-                }
-              });
-    } else {
-      Loggers.GATEWAY_LOGGER.info("Reconfigure complete");
-      responseObserver.onNext(response);
-      responseObserver.onCompleted();
-    }
+    Loggers.GATEWAY_LOGGER.info("Send join request to {}", nodeId);
+    client
+        .sendClusterRequest(
+            "reconfigure-leave-partitions", newMembers, MemberId.from(String.valueOf(nodeId)))
+        .whenComplete(
+            (r, e) -> {
+              if (e == null) {
+                responseObserver.onNext(responseCommit);
+                responseObserver.onCompleted();
+              } else {
+                e.printStackTrace();
+                responseObserver.onError(e);
+              }
+            });
   }
 }

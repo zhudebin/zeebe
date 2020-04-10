@@ -16,8 +16,8 @@ import io.zeebe.broker.Broker;
 import io.zeebe.broker.it.util.GrpcClientRule;
 import io.zeebe.gateway.protocol.GatewayGrpc;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
-import io.zeebe.gateway.protocol.GatewayOuterClass.ClusterJoinRequest;
-import io.zeebe.gateway.protocol.GatewayOuterClass.ClusterJoinResponse;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeCommitRequest;
+import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateClusterSizeInitRequest;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import java.util.concurrent.CompletableFuture;
@@ -49,13 +49,25 @@ public final class DynamicScalingByGatewayTest {
     Thread.sleep(5000);
     final var client = buildClient();
 
-    final CompletableFuture<Void> future = new CompletableFuture<>();
-    client
-        .withDeadlineAfter(60, TimeUnit.SECONDS)
-        .updateClusterSize(
-            ClusterJoinRequest.newBuilder().setNewClusterSize(3).build(),
-            new TestStreamObserver(future));
-    future.join();
+    for (int i = 0; i < 3; i++) {
+      final CompletableFuture<Void> future = new CompletableFuture<>();
+      client
+          .withDeadlineAfter(60, TimeUnit.SECONDS)
+          .updateClusterSizeInit(
+              UpdateClusterSizeInitRequest.newBuilder().setNewClusterSize(3).setNodeId(i).build(),
+              new TestStreamObserver<>(future));
+      future.join();
+    }
+
+    for (int i = 0; i < 3; i++) {
+      final CompletableFuture<Void> future = new CompletableFuture<>();
+      client
+          .withDeadlineAfter(60, TimeUnit.SECONDS)
+          .updateClusterSizeCommit(
+              UpdateClusterSizeCommitRequest.newBuilder().setNewClusterSize(3).setNodeId(i).build(),
+              new TestStreamObserver<>(future));
+      future.join();
+    }
 
     waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() != 0);
     waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() == 2);
@@ -71,7 +83,7 @@ public final class DynamicScalingByGatewayTest {
     return GatewayGrpc.newStub(channel);
   }
 
-  private final class TestStreamObserver implements StreamObserver<ClusterJoinResponse> {
+  private final class TestStreamObserver<V> implements StreamObserver<V> {
 
     final CompletableFuture<Void> future;
 
@@ -80,7 +92,7 @@ public final class DynamicScalingByGatewayTest {
     }
 
     @Override
-    public void onNext(final ClusterJoinResponse clusterJoinResponse) {}
+    public void onNext(final V clusterJoinResponse) {}
 
     @Override
     public void onError(final Throwable throwable) {}

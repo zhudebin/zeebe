@@ -576,17 +576,40 @@
             ]
           },
           {
-            "name": "ClusterJoinRequest",
+            "name": "UpdateClusterSizeInitRequest",
             "fields": [
               {
                 "id": 1,
                 "name": "newClusterSize",
                 "type": "int32"
+              },
+              {
+                "id": 2,
+                "name": "nodeId",
+                "type": "int32"
               }
             ]
           },
           {
-            "name": "ClusterJoinResponse"
+            "name": "UpdateClusterSizeInitResponse"
+          },
+          {
+            "name": "UpdateClusterSizeCommitRequest",
+            "fields": [
+              {
+                "id": 1,
+                "name": "newClusterSize",
+                "type": "int32"
+              },
+              {
+                "id": 2,
+                "name": "nodeId",
+                "type": "int32"
+              }
+            ]
+          },
+          {
+            "name": "UpdateClusterSizeCommitResponse"
           }
         ],
         "services": [
@@ -660,9 +683,14 @@
                 "out_type": "UpdateJobRetriesResponse"
               },
               {
-                "name": "UpdateClusterSize",
-                "in_type": "ClusterJoinRequest",
-                "out_type": "ClusterJoinResponse"
+                "name": "UpdateClusterSizeInit",
+                "in_type": "UpdateClusterSizeInitRequest",
+                "out_type": "UpdateClusterSizeInitResponse"
+              },
+              {
+                "name": "UpdateClusterSizeCommit",
+                "in_type": "UpdateClusterSizeCommitRequest",
+                "out_type": "UpdateClusterSizeCommitResponse"
               }
             ]
           }

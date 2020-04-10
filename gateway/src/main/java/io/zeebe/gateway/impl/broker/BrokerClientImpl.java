@@ -186,7 +186,7 @@ public final class BrokerClientImpl implements BrokerClient {
   @Override
   public CompletableFuture<Object> sendClusterRequest(
       final String s, final Set<String> newMembers, final MemberId to) {
-    return atomixCluster.getCommunicationService().send(s, newMembers, to, Duration.ofSeconds(60));
+    return atomixCluster.getCommunicationService().send(s, newMembers, to, Duration.ofSeconds(300));
   }
 
   private void doAndLogException(final Runnable r) {
