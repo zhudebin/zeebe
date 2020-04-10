@@ -203,6 +203,24 @@ func keyArg(key *int64) cobra.PositionalArgs {
 	}
 }
 
+func intArg(key *int32) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return fmt.Errorf("expects key as only positional argument")
+		}
+
+		value, err := strconv.ParseInt(args[0], 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid argument %q for %q: %s", args[0], "key", err)
+		}
+
+    i32 := int32(value)
+		*key = i32
+
+		return nil
+	}
+}
+
 func printJSON(value interface{}) error {
 	valueJSON, err := json.MarshalIndent(value, "", "  ")
 	if err == nil {

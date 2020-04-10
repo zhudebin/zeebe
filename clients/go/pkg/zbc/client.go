@@ -117,6 +117,14 @@ func (c *ClientImpl) NewJobWorker() worker.JobWorkerBuilderStep1 {
 	return worker.NewJobWorkerBuilder(c.gateway, c)
 }
 
+func (c *ClientImpl) NewUpdateClusterSizeInitCommand() commands.UpdateClusterSizeInitCommandStep1 {
+	return commands.NewUpdateClusterSizeInitCommand(c.gateway, c.credentialsProvider.ShouldRetryRequest)
+}
+
+func (c *ClientImpl) NewUpdateClusterSizeCommitCommand() commands.UpdateClusterSizeCommitCommandStep1 {
+	return commands.NewUpdateClusterSizeCommitCommand(c.gateway, c.credentialsProvider.ShouldRetryRequest)
+}
+
 func (c *ClientImpl) Close() error {
 	return c.connection.Close()
 }

@@ -39,5 +39,8 @@ type Client interface {
 
 	NewJobWorker() worker.JobWorkerBuilderStep1
 
+  NewUpdateClusterSizeInitCommand() commands.UpdateClusterSizeInitCommandStep1
+  NewUpdateClusterSizeCommitCommand() commands.UpdateClusterSizeCommitCommandStep1
+
 	Close() error
 }
