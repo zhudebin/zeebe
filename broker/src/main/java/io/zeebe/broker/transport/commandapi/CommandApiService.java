@@ -60,7 +60,7 @@ public final class CommandApiService extends Actor implements PartitionListener 
       final int partitionId, final long term, final LogStream logStream) {
     return actor.call(
         () -> {
-          requestHandler.removePartition(logStream);
+          requestHandler.removePartition(partitionId);
           cleanLeadingPartition(partitionId);
         });
   }
@@ -94,6 +94,15 @@ public final class CommandApiService extends Actor implements PartitionListener 
                   });
         });
     return future;
+  }
+
+  @Override
+  public void leavePartition(final int partitionId) {
+    actor.run(
+        () -> {
+          requestHandler.removePartition(partitionId);
+          cleanLeadingPartition(partitionId);
+        });
   }
 
   private void cleanLeadingPartition(final int partitionId) {

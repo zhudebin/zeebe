@@ -95,6 +95,7 @@ public final class BrokerTopologyManagerImpl extends Actor
                     brokerInfo.getNodeId(),
                     brokerInfo.getPartitionRoles(),
                     brokerInfo.getPartitionLeaderTerms());
+                newTopology.removeBroker(brokerInfo.getNodeId());
                 newTopology.addBrokerIfAbsent(brokerInfo.getNodeId());
                 processProperties(brokerInfo, newTopology);
                 break;

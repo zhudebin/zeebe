@@ -7,6 +7,7 @@
  */
 package io.zeebe.broker.clustering.topology;
 
+import io.zeebe.broker.Loggers;
 import io.zeebe.protocol.impl.encoding.BrokerInfo;
 import io.zeebe.protocol.record.PartitionRole;
 import io.zeebe.util.sched.ActorControl;
@@ -32,6 +33,8 @@ public final class TopologyPartitionListenerImpl implements TopologyPartitionLis
     final int currentLeader = partitionLeaders.get(partitionId);
 
     if (currentLeader != member.getNodeId()) {
+      Loggers.CLUSTERING_LOGGER.info(
+          "FINDME: Setting leader of partition {} {}", partitionId, member.getNodeId());
       partitionLeaders.put(partitionId, member.getNodeId());
     }
   }

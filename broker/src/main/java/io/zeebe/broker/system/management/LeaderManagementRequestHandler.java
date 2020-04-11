@@ -67,6 +67,11 @@ public final class LeaderManagementRequestHandler extends Actor implements Parti
   }
 
   @Override
+  public void leavePartition(final int partitionId) {
+    actor.run(() -> leaderForPartitions.remove(partitionId));
+  }
+
+  @Override
   public String getName() {
     return actorName;
   }

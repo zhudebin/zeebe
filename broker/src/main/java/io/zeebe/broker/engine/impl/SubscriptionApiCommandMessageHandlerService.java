@@ -78,4 +78,9 @@ public final class SubscriptionApiCommandMessageHandlerService extends Actor
                     }));
     return future;
   }
+
+  @Override
+  public void leavePartition(final int partitionId) {
+    actor.run(() -> leaderPartitions.remove(partitionId));
+  }
 }

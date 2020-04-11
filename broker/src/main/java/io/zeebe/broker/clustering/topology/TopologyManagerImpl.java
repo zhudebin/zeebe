@@ -64,6 +64,7 @@ public final class TopologyManagerImpl extends Actor
   @Override
   public ActorFuture<Void> onBecomingLeader(
       final int partitionId, final long term, final LogStream logStream) {
+    LOG.info("Set leader for partition {}", partitionId);
     return setLeader(term, partitionId);
   }
 
@@ -200,7 +201,7 @@ public final class TopologyManagerImpl extends Actor
           "Static configuration of node {} differs from local node {}",
           eventSource.id(),
           atomix.getMembershipService().getLocalMember().id());
-      return null;
+      // return null;
     }
     return brokerInfo;
   }

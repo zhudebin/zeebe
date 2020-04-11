@@ -99,6 +99,16 @@ public final class DynamicScalingTest {
 
     waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() == 2);
     waitUntil(() -> clusteringRule.getLeaderForPartition(3).getNodeId() != 0);
+
+    final List<Long> jobKeys =
+        IntStream.range(1, 3)
+            .mapToObj(i -> clientRule.createSingleJob(JOB_TYPE))
+            .collect(Collectors.toList());
+    final JobCompleter jobCompleter = new JobCompleter(jobKeys);
+
+    // then
+    jobCompleter.waitForJobCompletion();
+    jobCompleter.close();
   }
 
   class JobCompleter {
