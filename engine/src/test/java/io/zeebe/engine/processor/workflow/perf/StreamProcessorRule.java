@@ -226,7 +226,7 @@ public final class StreamProcessorRule implements TestRule {
     protected void before() {
       streams =
           new TestStreams(
-              dir,
+              temporaryFolder.getRoot(),
               temporaryFolder,
               closeables,
               actorSchedulerSupplier.get(),

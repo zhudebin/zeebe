@@ -16,7 +16,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-import io.atomix.storage.StorageLevel;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.db.ZeebeDbFactory;
 import io.zeebe.engine.processor.AsyncSnapshotDirector;
@@ -61,6 +60,7 @@ import java.util.stream.StreamSupport;
 import org.junit.rules.TemporaryFolder;
 
 final class TestStreams {
+
   private static final Duration SNAPSHOT_INTERVAL = Duration.ofMinutes(1);
 
   private static final Map<Class<?>, ValueType> VALUE_TYPES = new HashMap<>();
@@ -123,11 +123,11 @@ final class TestStreams {
 
   public SynchronousLogStream createLogStream(final String name, final int partitionId) {
     final File segments;
-    //    try {
-    segments = dir;
-    //    } catch (final IOException e) {
-    //      throw new UncheckedIOException(e);
-    //    }
+    try {
+      segments = dataDirectory.newFolder();
+    } catch (final IOException e) {
+      throw new UncheckedIOException(e);
+    }
 
     return createLogStream(name, partitionId, segments);
   }
@@ -144,8 +144,7 @@ final class TestStreams {
                 // seems to not have any effect
                 //                .withJournalIndexFactory(() -> new SparseJournalIndex(1))
                 .withMaxEntrySize(maxEntrySize)
-                .withMaxSegmentSize(maxSegmentSize)
-                .withStorageLevel(StorageLevel.MAPPED));
+                .withMaxSegmentSize(maxSegmentSize));
     // looks much better with these values
     //                .withMaxEntrySize(128 * 1024)
     //                .withMaxSegmentSize(256 * 1024));
@@ -381,6 +380,7 @@ final class TestStreams {
   }
 
   private static final class LogContext implements AutoCloseable {
+
     private final SynchronousLogStream logStream;
     private final AtomixLogStorageRule logStorageRule;
     private final LogStreamRecordWriter logStreamWriter;

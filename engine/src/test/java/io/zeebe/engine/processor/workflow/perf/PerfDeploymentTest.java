@@ -62,17 +62,17 @@ public final class PerfDeploymentTest {
   public static Object[][] parameters() {
     // cfgs
     final int[] entrySizeCfgs = {
-      64 * 1024, 128 * 1024, 256 * 1024, 512 * 1024, 1 * 1024 * 1024, 4 * 1024 * 1024
+      4 * 1024 * 1024//, 128 * 1024, 256 * 1024, 512 * 1024, 1 * 1024 * 1024, 4 * 1024 * 1024
     };
 
     final int[] segmentSizeCfgs = {
-      512 * 1024,
-      1 * 1024 * 1024,
-      16 * 1024 * 1024,
-      64 * 1024 * 1024,
       128 * 1024 * 1024,
-      256 * 1024 * 1024,
-      512 * 1024 * 1024
+//      1 * 1024 * 1024,
+//      16 * 1024 * 1024,
+//      64 * 1024 * 1024,
+//      128 * 1024 * 1024,
+//      256 * 1024 * 1024,
+//      512 * 1024 * 1024
     };
 
     final var tests = new Object[segmentSizeCfgs.length * entrySizeCfgs.length][];
