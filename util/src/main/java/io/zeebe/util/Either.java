@@ -150,6 +150,16 @@ public interface Either<L, R> {
   <T> Either<L, T> flatMap(Function<? super R, ? extends Either<L, T>> right);
 
   /**
+   * Flatmaps the left value into a new Either, if this is a {@link Left}.
+   *
+   * @param left the flatmapping function for the left value
+   * @return either a mapped {@link Left} or a new {@link Right} if this is a left; otherwise the
+   *     same right
+   * @see Either#flatMap(Function) for examples
+   */
+  Either<L, R> flatMapLeft(Function<? super L, ? extends Either<L, R>> left);
+
+  /**
    * Performs the given action with the value if this is a {@link Right}, otherwise does nothing.
    *
    * @param action the consuming function for the right value
@@ -219,8 +229,14 @@ public interface Either<L, R> {
       return (Either<T, R>) this;
     }
 
+    @Override
     public <T> Either<L, T> flatMap(final Function<? super R, ? extends Either<L, T>> right) {
       return right.apply(this.value);
+    }
+
+    @Override
+    public Either<L, R> flatMapLeft(final Function<? super L, ? extends Either<L, R>> left) {
+      return this;
     }
 
     @Override
@@ -310,6 +326,11 @@ public interface Either<L, R> {
     @SuppressWarnings("unchecked")
     public <T> Either<L, T> flatMap(final Function<? super R, ? extends Either<L, T>> right) {
       return (Either<L, T>) this;
+    }
+
+    @Override
+    public Either<L, R> flatMapLeft(final Function<? super L, ? extends Either<L, R>> left) {
+      return left.apply(this.value);
     }
 
     @Override

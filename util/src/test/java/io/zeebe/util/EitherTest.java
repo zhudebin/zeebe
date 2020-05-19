@@ -92,6 +92,12 @@ public class EitherTest {
   }
 
   @Test
+  public void onlyARightIsTransformedByFlatMapLeft() {
+    assertThat(Either.right(value).flatMapLeft(Either::left)).isEqualTo(Either.right(value));
+    assertThat(Either.left(value).flatMapLeft(Either::right)).isEqualTo(Either.right(value));
+  }
+
+  @Test
   public void onlyARightIsConsumedByIfRight() {
     final var verifiableConsumer = new VerifiableConsumer();
     Either.right(value).ifRight(verifiableConsumer);
