@@ -25,6 +25,7 @@ public abstract class AbstractListenerManager<E extends Event, L extends EventLi
   @Override
   public void addListener(final L listener) {
     listenerRegistry.addListener(listener);
+    onListenerAdded(listener);
   }
 
   @Override
@@ -40,4 +41,13 @@ public abstract class AbstractListenerManager<E extends Event, L extends EventLi
   protected void post(final E event) {
     listenerRegistry.process(event);
   }
+
+  /**
+   * Invoked when a listener is added. Override this method if you want to initialize the listeners.
+   * For example, this can be used to notify the listener about the events that were created before
+   * the listener was added.
+   *
+   * @param listener the listener which is added
+   */
+  protected void onListenerAdded(final L listener) {}
 }

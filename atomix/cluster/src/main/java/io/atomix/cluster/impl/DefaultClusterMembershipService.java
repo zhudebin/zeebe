@@ -21,6 +21,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import io.atomix.cluster.BootstrapService;
 import io.atomix.cluster.ClusterMembershipEvent;
+import io.atomix.cluster.ClusterMembershipEvent.Type;
 import io.atomix.cluster.ClusterMembershipEventListener;
 import io.atomix.cluster.ClusterMembershipService;
 import io.atomix.cluster.ManagedClusterMembershipService;
@@ -138,5 +139,11 @@ public class DefaultClusterMembershipService
               });
     }
     return CompletableFuture.completedFuture(null);
+  }
+
+  @Override
+  protected void onListenerAdded(final ClusterMembershipEventListener listener) {
+    getMembers()
+        .forEach(member -> listener.event(new ClusterMembershipEvent(Type.MEMBER_ADDED, member)));
   }
 }

@@ -8,7 +8,6 @@
 package io.zeebe.broker.clustering.topology;
 
 import io.atomix.cluster.ClusterMembershipEvent;
-import io.atomix.cluster.ClusterMembershipEvent.Type;
 import io.atomix.cluster.ClusterMembershipEventListener;
 import io.atomix.cluster.Member;
 import io.atomix.core.Atomix;
@@ -76,10 +75,6 @@ public final class TopologyManagerImpl extends Actor
     // ensures that the first published event will contain the broker's info
     publishTopologyChanges();
     atomix.getMembershipService().addListener(this);
-    atomix
-        .getMembershipService()
-        .getMembers()
-        .forEach(m -> event(new ClusterMembershipEvent(Type.MEMBER_ADDED, m)));
   }
 
   public ActorFuture<Void> setLeader(final long term, final int partitionId) {

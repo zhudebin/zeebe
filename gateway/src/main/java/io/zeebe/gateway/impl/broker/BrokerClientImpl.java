@@ -8,8 +8,6 @@
 package io.zeebe.gateway.impl.broker;
 
 import io.atomix.cluster.AtomixCluster;
-import io.atomix.cluster.ClusterMembershipEvent;
-import io.atomix.cluster.ClusterMembershipEvent.Type;
 import io.atomix.cluster.messaging.Subscription;
 import io.zeebe.gateway.Loggers;
 import io.zeebe.gateway.impl.broker.cluster.BrokerTopologyManager;
@@ -81,10 +79,6 @@ public final class BrokerClientImpl implements BrokerClient {
     topologyManager = new BrokerTopologyManagerImpl(membershipService::getMembers);
     actorScheduler.submitActor(topologyManager);
     membershipService.addListener(topologyManager);
-    membershipService
-        .getMembers()
-        .forEach(
-            member -> topologyManager.event(new ClusterMembershipEvent(Type.MEMBER_ADDED, member)));
 
     final var messagingService = atomixCluster.getMessagingService();
     final var atomixTransportAdapter = new AtomixClientTransportAdapter(messagingService);
