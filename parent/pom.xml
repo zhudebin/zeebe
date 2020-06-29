@@ -543,7 +543,11 @@
         <artifactId>testcontainers</artifactId>
         <version>${version.testcontainers}</version>
       </dependency>
-
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>elasticsearch</artifactId>
+        <version>${version.testcontainers}</version>
+      </dependency>
 
       <dependency>
         <groupId>com.netflix.concurrency-limits</groupId>
