@@ -32,7 +32,7 @@ which will install the following components the operator and Grafana.
 To do so, run:
 
 ```sh
-helm install metrics stable/prometheus-operator --atomic -f prometheus-operator-values.yml
+helm install metrics stable/prometheus-operator --set prometheusOperator.tlsProxy.enabled=false --atomic -f prometheus-operator-values.yml
 ```
 
 If you want to set up an ingress for Grafana (e.g. public endpoint), you can run
