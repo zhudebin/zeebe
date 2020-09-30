@@ -23,6 +23,7 @@ import java.util.List;
 
 /** Messaging configuration. */
 public class MessagingConfig implements Config {
+
   private List<String> interfaces = new ArrayList<>();
   private Integer port;
   private int connectionPoolSize = 8;
@@ -41,7 +42,7 @@ public class MessagingConfig implements Config {
    * Sets the local interfaces to which to bind the node.
    *
    * @param interfaces the local interfaces to which to bind the node
-   * @return the local cluster configuration
+   * @return the local messaging configuration
    */
   public MessagingConfig setInterfaces(final List<String> interfaces) {
     this.interfaces = interfaces;

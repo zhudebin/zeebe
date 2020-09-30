@@ -19,7 +19,6 @@ package io.atomix.cluster.messaging.impl;
 import static io.atomix.utils.concurrent.Threads.namedThreads;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.atomix.cluster.messaging.ManagedMessagingService;
@@ -33,7 +32,7 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
@@ -52,6 +51,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.Future;
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -69,14 +69,18 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Netty based MessagingService. */
 public class NettyMessagingService implements ManagedMessagingService {
 
-  private final Logger log = LoggerFactory.getLogger(getClass());
-  private final Address returnAddress;
+  private static final String DEFAULT_MESSAGING_INTERFACE = "0.0.0.0";
+  private static final Logger LOG = LoggerFactory.getLogger(NettyMessagingService.class);
+
+  private final Address advertisedAddress;
+  private final Collection<Address> addresses;
   private final int preamble;
   private final MessagingConfig config;
   private final ProtocolVersion protocolVersion;
@@ -95,33 +99,51 @@ public class NettyMessagingService implements ManagedMessagingService {
   private final List<CompletableFuture> openFutures;
 
   public NettyMessagingService(
-      final String cluster, final Address address, final MessagingConfig config) {
-    this(cluster, address, config, ProtocolVersion.latest());
+      final String cluster, final Address advertisedAddress, final MessagingConfig config) {
+    this(cluster, advertisedAddress, config, ProtocolVersion.latest());
   }
 
   NettyMessagingService(
       final String cluster,
-      final Address address,
+      final Address advertisedAddress,
       final MessagingConfig config,
       final ProtocolVersion protocolVersion) {
     preamble = cluster.hashCode();
-    returnAddress = address;
+    this.advertisedAddress = advertisedAddress;
     this.config = config;
     this.protocolVersion = protocolVersion;
+
     openFutures = new CopyOnWriteArrayList<>();
     channelPool = new ChannelPool(this::openChannel, config.getConnectionPoolSize());
+
+    final int messagingPort =
+        Optional.ofNullable(this.config.getPort()).orElse(this.advertisedAddress.port());
+    addresses =
+        this.config.getInterfaces().stream()
+            .map(iface -> Address.from(iface, messagingPort))
+            .collect(Collectors.toList());
+
+    if (addresses.isEmpty()) {
+      addresses.add(Address.from(DEFAULT_MESSAGING_INTERFACE, messagingPort));
+    }
   }
 
   @Override
-  public Address address() {
-    return returnAddress;
+  public Address advertisedAddress() {
+    return advertisedAddress;
+  }
+
+  @Override
+  public Collection<Address> addresses() {
+    return addresses;
   }
 
   @Override
   public CompletableFuture<Void> sendAsync(
       final Address address, final String type, final byte[] payload, final boolean keepAlive) {
     final long messageId = messageIdGenerator.incrementAndGet();
-    final ProtocolRequest message = new ProtocolRequest(messageId, returnAddress, type, payload);
+    final ProtocolRequest message =
+        new ProtocolRequest(messageId, advertisedAddress, type, payload);
     return executeOnPooledConnection(
         address, type, c -> c.sendAsync(message), MoreExecutors.directExecutor());
   }
@@ -167,7 +189,8 @@ public class NettyMessagingService implements ManagedMessagingService {
     }
 
     final long messageId = messageIdGenerator.incrementAndGet();
-    final ProtocolRequest message = new ProtocolRequest(messageId, returnAddress, type, payload);
+    final ProtocolRequest message =
+        new ProtocolRequest(messageId, advertisedAddress, type, payload);
     if (keepAlive) {
       return executeOnPooledConnection(
           address, type, c -> c.sendAndReceive(message, timeout), executor);
@@ -201,7 +224,7 @@ public class NettyMessagingService implements ManagedMessagingService {
                   try {
                     responsePayload = handler.apply(message.sender(), message.payload());
                   } catch (final Exception e) {
-                    log.warn("An error occurred in a message handler: {}", e);
+                    LOG.warn("An error occurred in a message handler: {}", e);
                     status = ProtocolReply.Status.ERROR_HANDLER_EXCEPTION;
                   }
                   connection.reply(message, status, Optional.ofNullable(responsePayload));
@@ -222,7 +245,7 @@ public class NettyMessagingService implements ManagedMessagingService {
                     if (error == null) {
                       status = ProtocolReply.Status.OK;
                     } else {
-                      log.warn("An error occurred in a message handler: {}", error);
+                      LOG.warn("An error occurred in a message handler", error);
                       status = ProtocolReply.Status.ERROR_HANDLER_EXCEPTION;
                     }
                     connection.reply(message, status, Optional.ofNullable(result));
@@ -238,7 +261,7 @@ public class NettyMessagingService implements ManagedMessagingService {
   @Override
   public CompletableFuture<MessagingService> start() {
     if (started.get()) {
-      log.warn("Already running at local address: {}", returnAddress);
+      LOG.warn("Already running at local address: {}", advertisedAddress);
       return CompletableFuture.completedFuture(this);
     }
 
@@ -248,10 +271,10 @@ public class NettyMessagingService implements ManagedMessagingService {
             () -> {
               timeoutExecutor =
                   Executors.newScheduledThreadPool(
-                      4, namedThreads("netty-messaging-timeout-%d", log));
+                      4, namedThreads("netty-messaging-timeout-%d", LOG));
               localConnection = new LocalClientConnection(timeoutExecutor, handlers);
               started.set(true);
-              log.info("Started");
+              LOG.info("Started");
             })
         .thenApply(v -> this);
   }
@@ -300,7 +323,7 @@ public class NettyMessagingService implements ManagedMessagingService {
               }
               openFutures.clear();
             } finally {
-              log.info("Stopped");
+              LOG.info("Stopped");
               if (interrupted) {
                 Thread.currentThread().interrupt();
               }
@@ -315,22 +338,22 @@ public class NettyMessagingService implements ManagedMessagingService {
     // try Epoll first and if that does work, use nio.
     try {
       clientGroup =
-          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-client-%d", log));
+          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-client-%d", LOG));
       serverGroup =
-          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-server-%d", log));
+          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-server-%d", LOG));
       serverChannelClass = EpollServerSocketChannel.class;
       clientChannelClass = EpollSocketChannel.class;
       return;
     } catch (final Throwable e) {
-      log.debug(
+      LOG.debug(
           "Failed to initialize native (epoll) transport. " + "Reason: {}. Proceeding with nio.",
           e.getMessage(),
           e);
     }
     clientGroup =
-        new NioEventLoopGroup(0, namedThreads("netty-messaging-event-nio-client-%d", log));
+        new NioEventLoopGroup(0, namedThreads("netty-messaging-event-nio-client-%d", LOG));
     serverGroup =
-        new NioEventLoopGroup(0, namedThreads("netty-messaging-event-nio-server-%d", log));
+        new NioEventLoopGroup(0, namedThreads("netty-messaging-event-nio-server-%d", LOG));
     serverChannelClass = NioServerSocketChannel.class;
     clientChannelClass = NioSocketChannel.class;
   }
@@ -350,7 +373,7 @@ public class NettyMessagingService implements ManagedMessagingService {
       final String type,
       final Function<ClientConnection, CompletableFuture<T>> callback,
       final Executor executor) {
-    final CompletableFuture<T> future = new CompletableFuture<T>();
+    final CompletableFuture<T> future = new CompletableFuture<>();
     executeOnPooledConnection(address, type, callback, executor, future);
     return future;
   }
@@ -371,7 +394,7 @@ public class NettyMessagingService implements ManagedMessagingService {
       final Function<ClientConnection, CompletableFuture<T>> callback,
       final Executor executor,
       final CompletableFuture<T> future) {
-    if (address.equals(returnAddress)) {
+    if (address.equals(advertisedAddress)) {
       callback
           .apply(localConnection)
           .whenComplete(
@@ -408,7 +431,7 @@ public class NettyMessagingService implements ManagedMessagingService {
                                   .close()
                                   .addListener(
                                       f -> {
-                                        log.debug(
+                                        LOG.debug(
                                             "Closing connection to {}", channel.remoteAddress());
                                         connection.close();
                                         connections.remove(channel);
@@ -436,7 +459,7 @@ public class NettyMessagingService implements ManagedMessagingService {
       final Function<ClientConnection, CompletableFuture<T>> callback,
       final Executor executor) {
     final CompletableFuture<T> future = new CompletableFuture<>();
-    if (address.equals(returnAddress)) {
+    if (address.equals(advertisedAddress)) {
       callback
           .apply(localConnection)
           .whenComplete(
@@ -575,12 +598,7 @@ public class NettyMessagingService implements ManagedMessagingService {
    */
   private CompletableFuture<Void> bind(final ServerBootstrap bootstrap) {
     final CompletableFuture<Void> future = new CompletableFuture<>();
-    final int port = config.getPort() != null ? config.getPort() : returnAddress.port();
-    if (config.getInterfaces().isEmpty()) {
-      bind(bootstrap, Lists.newArrayList("0.0.0.0").iterator(), port, future);
-    } else {
-      bind(bootstrap, config.getInterfaces().iterator(), port, future);
-    }
+    bind(bootstrap, addresses.iterator(), future);
     return future;
   }
 
@@ -588,36 +606,28 @@ public class NettyMessagingService implements ManagedMessagingService {
    * Recursively binds the given bootstrap to the given interfaces.
    *
    * @param bootstrap the bootstrap to bind
-   * @param ifaces an iterator of interfaces to which to bind
-   * @param port the port to which to bind
+   * @param addressIterator an iterator of addresses to which to bind
    * @param future the future to completed once the bootstrap has been bound to all provided
    *     interfaces
    */
   private void bind(
       final ServerBootstrap bootstrap,
-      final Iterator<String> ifaces,
-      final int port,
+      final Iterator<Address> addressIterator,
       final CompletableFuture<Void> future) {
-    if (ifaces.hasNext()) {
-      final String iface = ifaces.next();
-      bootstrap
-          .bind(iface, port)
-          .addListener(
-              (ChannelFutureListener)
-                  f -> {
-                    if (f.isSuccess()) {
-                      log.info("TCP server listening for connections on {}:{}", iface, port);
-                      serverChannel = f.channel();
-                      bind(bootstrap, ifaces, port, future);
-                    } else {
-                      log.warn(
-                          "Failed to bind TCP server to port {}:{} due to {}",
-                          iface,
-                          port,
-                          f.cause());
-                      future.completeExceptionally(f.cause());
-                    }
-                  });
+    if (addressIterator.hasNext()) {
+      final Address address = addressIterator.next();
+      final ChannelFuture result = bootstrap.bind(address.host(), address.port());
+      result.addListener(
+          f -> {
+            if (f.isSuccess()) {
+              LOG.debug("Messaging service bound to {}", address);
+              serverChannel = result.channel();
+              bind(bootstrap, addressIterator, future);
+            } else {
+              LOG.warn("Failed to bind messaging service to {}", address, f.cause());
+              future.completeExceptionally(f.cause());
+            }
+          });
     } else {
       future.complete(null);
     }
@@ -675,7 +685,7 @@ public class NettyMessagingService implements ManagedMessagingService {
       try {
         final int preamble = buffer.readInt();
         if (preamble != NettyMessagingService.this.preamble) {
-          log.warn("Received invalid handshake, closing connection");
+          LOG.warn("Received invalid handshake, closing connection");
           context.close();
           return OptionalInt.empty();
         }
@@ -696,7 +706,7 @@ public class NettyMessagingService implements ManagedMessagingService {
         final ChannelHandlerContext context,
         final Connection<M> connection,
         final ProtocolVersion protocolVersion) {
-      final MessagingProtocol protocol = protocolVersion.createProtocol(returnAddress);
+      final MessagingProtocol protocol = protocolVersion.createProtocol(advertisedAddress);
       context.pipeline().remove(this);
       context.pipeline().addLast("encoder", protocol.newEncoder());
       context.pipeline().addLast("decoder", protocol.newDecoder());
@@ -715,7 +725,7 @@ public class NettyMessagingService implements ManagedMessagingService {
 
     @Override
     public void channelActive(final ChannelHandlerContext context) throws Exception {
-      log.debug(
+      LOG.debug(
           "Writing client protocol version {} for connection to {}",
           protocolVersion,
           context.channel().remoteAddress());
@@ -737,7 +747,7 @@ public class NettyMessagingService implements ManagedMessagingService {
                   activateProtocolVersion(
                       context, getOrCreateClientConnection(context.channel()), protocolVersion);
                 } else {
-                  log.error("Failed to negotiate protocol version");
+                  LOG.error("Failed to negotiate protocol version");
                   context.close();
                 }
               });
@@ -754,7 +764,7 @@ public class NettyMessagingService implements ManagedMessagingService {
         final ChannelHandlerContext context,
         final Connection<ProtocolReply> connection,
         final ProtocolVersion protocolVersion) {
-      log.debug(
+      LOG.debug(
           "Activating client protocol version {} for connection to {}",
           protocolVersion,
           context.channel().remoteAddress());
@@ -792,7 +802,7 @@ public class NettyMessagingService implements ManagedMessagingService {
         final ChannelHandlerContext context,
         final Connection<ProtocolRequest> connection,
         final ProtocolVersion protocolVersion) {
-      log.debug(
+      LOG.debug(
           "Activating server protocol version {} for connection to {}",
           protocolVersion,
           context.channel().remoteAddress());
@@ -818,7 +828,7 @@ public class NettyMessagingService implements ManagedMessagingService {
 
     @Override
     public void exceptionCaught(final ChannelHandlerContext context, final Throwable cause) {
-      log.error("Exception inside channel handling pipeline", cause);
+      LOG.error("Exception inside channel handling pipeline", cause);
       connection.close();
       context.close();
     }
@@ -835,7 +845,7 @@ public class NettyMessagingService implements ManagedMessagingService {
       try {
         connection.dispatch((M) message);
       } catch (final RejectedExecutionException e) {
-        log.warn("Unable to dispatch message due to {}", e.getMessage());
+        LOG.warn("Unable to dispatch message due to {}", e.getMessage());
       }
     }
   }

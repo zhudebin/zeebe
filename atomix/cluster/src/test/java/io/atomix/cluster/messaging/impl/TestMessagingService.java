@@ -27,6 +27,8 @@ import io.atomix.utils.concurrent.Futures;
 import io.atomix.utils.net.Address;
 import java.net.ConnectException;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -94,8 +96,13 @@ public class TestMessagingService implements ManagedMessagingService {
   }
 
   @Override
-  public Address address() {
+  public Address advertisedAddress() {
     return address;
+  }
+
+  @Override
+  public Collection<Address> addresses() {
+    return Collections.singleton(address);
   }
 
   @Override

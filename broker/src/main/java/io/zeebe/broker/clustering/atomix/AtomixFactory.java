@@ -11,6 +11,9 @@ import io.atomix.cluster.Node;
 import io.atomix.cluster.discovery.BootstrapDiscoveryBuilder;
 import io.atomix.cluster.discovery.BootstrapDiscoveryProvider;
 import io.atomix.cluster.discovery.NodeDiscoveryProvider;
+import io.atomix.cluster.messaging.ManagedMessagingService;
+import io.atomix.cluster.messaging.MessagingConfig;
+import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.cluster.protocol.GroupMembershipProtocol;
 import io.atomix.cluster.protocol.SwimMembershipProtocol;
 import io.atomix.core.Atomix;
@@ -25,6 +28,7 @@ import io.zeebe.broker.system.configuration.ClusterCfg;
 import io.zeebe.broker.system.configuration.DataCfg;
 import io.zeebe.broker.system.configuration.MembershipCfg;
 import io.zeebe.broker.system.configuration.NetworkCfg;
+import io.zeebe.broker.system.configuration.SocketBindingCfg;
 import io.zeebe.logstreams.impl.log.ZeebeEntryValidator;
 import io.zeebe.snapshots.raft.ReceivableSnapshotStoreFactory;
 import java.io.File;
@@ -41,7 +45,7 @@ public final class AtomixFactory {
 
   private AtomixFactory() {}
 
-  public static Atomix fromConfiguration(
+  public static Atomix createAtomix(
       final BrokerCfg configuration, final ReceivableSnapshotStoreFactory snapshotStoreFactory) {
     final var clusterCfg = configuration.getCluster();
     final var nodeId = clusterCfg.getNodeId();
@@ -71,6 +75,9 @@ public final class AtomixFactory {
             .withClusterId(clusterCfg.getClusterName())
             .withMemberId(localMemberId)
             .withMembershipProtocol(membershipProtocol)
+            .withMessagingInterface(networkCfg.getInternalApi().getHost())
+            .withMessagingPort(networkCfg.getInternalApi().getPort())
+            .withHostId(networkCfg.getInternalApi().getAdvertisedHost())
             .withAddress(
                 Address.from(
                     networkCfg.getInternalApi().getAdvertisedHost(),
@@ -85,6 +92,19 @@ public final class AtomixFactory {
         createRaftPartitionGroup(configuration, rootDirectory, snapshotStoreFactory);
 
     return atomixBuilder.withPartitionGroups(partitionGroup).build();
+  }
+
+  public static ManagedMessagingService createMessagingService(
+      final ClusterCfg clusterCfg, final SocketBindingCfg socketBindingCfg) {
+    final Address advertisedAddress =
+        Address.from(socketBindingCfg.getAdvertisedHost(), socketBindingCfg.getAdvertisedPort());
+    final MessagingConfig messagingConfig =
+        new MessagingConfig()
+            .setInterfaces(List.of(socketBindingCfg.getHost()))
+            .setPort(socketBindingCfg.getPort());
+
+    return new NettyMessagingService(
+        clusterCfg.getClusterName(), advertisedAddress, messagingConfig);
   }
 
   private static RaftPartitionGroup createRaftPartitionGroup(

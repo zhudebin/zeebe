@@ -72,10 +72,10 @@ public class RollingUpdateTest {
   }
 
   @Rule public TemporaryFolder tmpFolder = new TemporaryFolder(SHARED_DATA);
+  @Rule public final Network network = Network.newNetwork();
 
   private List<ZeebeContainer> containers;
   private String initialContactPoints;
-  private Network network;
 
   @Before
   public void setup() {
@@ -84,7 +84,6 @@ public class RollingUpdateTest {
             .mapToObj(id -> "broker-" + id + ":" + ZeebePort.INTERNAL.getPort())
             .collect(Collectors.joining(","));
 
-    network = Network.newNetwork();
     containers =
         Arrays.asList(
             new ZeebeContainer("camunda/zeebe:" + OLD_VERSION),
@@ -99,7 +98,6 @@ public class RollingUpdateTest {
   @After
   public void tearDown() {
     containers.parallelStream().forEach(Startable::stop);
-    network.close();
   }
 
   @Test

@@ -33,11 +33,11 @@ public class TestMessagingServiceFactory {
   public void partition(final Address address) {
     final TestMessagingService service = services.get(address);
     services.values().stream()
-        .filter(s -> !s.address().equals(address))
+        .filter(s -> !s.advertisedAddress().equals(address))
         .forEach(
             s -> {
-              service.partition(s.address());
-              s.partition(service.address());
+              service.partition(s.advertisedAddress());
+              s.partition(service.advertisedAddress());
             });
   }
 
@@ -49,11 +49,11 @@ public class TestMessagingServiceFactory {
   public void heal(final Address address) {
     final TestMessagingService service = services.get(address);
     services.values().stream()
-        .filter(s -> !s.address().equals(address))
+        .filter(s -> !s.advertisedAddress().equals(address))
         .forEach(
             s -> {
-              service.heal(s.address());
-              s.heal(service.address());
+              service.heal(s.advertisedAddress());
+              s.heal(service.advertisedAddress());
             });
   }
 
@@ -66,8 +66,8 @@ public class TestMessagingServiceFactory {
   public void partition(final Address address1, final Address address2) {
     final TestMessagingService service1 = services.get(address1);
     final TestMessagingService service2 = services.get(address2);
-    service1.partition(service2.address());
-    service2.partition(service1.address());
+    service1.partition(service2.advertisedAddress());
+    service2.partition(service1.advertisedAddress());
   }
 
   /**
@@ -79,8 +79,8 @@ public class TestMessagingServiceFactory {
   public void heal(final Address address1, final Address address2) {
     final TestMessagingService service1 = services.get(address1);
     final TestMessagingService service2 = services.get(address2);
-    service1.heal(service2.address());
-    service2.heal(service1.address());
+    service1.heal(service2.advertisedAddress());
+    service2.heal(service1.advertisedAddress());
   }
 
   /**

@@ -9,13 +9,19 @@ package io.zeebe.broker.clustering.atomix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.atomix.cluster.messaging.ManagedMessagingService;
 import io.atomix.core.Atomix;
 import io.atomix.raft.partition.RaftPartitionGroup;
 import io.atomix.raft.partition.RaftPartitionGroupConfig;
 import io.atomix.storage.StorageLevel;
+import io.atomix.utils.net.Address;
 import io.zeebe.broker.system.configuration.BrokerCfg;
+import io.zeebe.broker.system.configuration.SocketBindingCfg;
+import io.zeebe.broker.system.configuration.SocketBindingCfg.CommandApiCfg;
 import io.zeebe.snapshots.broker.impl.FileBasedSnapshotStoreFactory;
+import io.zeebe.test.util.socket.SocketUtil;
 import io.zeebe.util.Environment;
+import java.util.Collection;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,7 +44,7 @@ public final class AtomixFactoryTest {
 
     // when
     final var atomix =
-        AtomixFactory.fromConfiguration(brokerConfig, new FileBasedSnapshotStoreFactory());
+        AtomixFactory.createAtomix(brokerConfig, new FileBasedSnapshotStoreFactory());
 
     // then
     final var config = getPartitionGroupConfig(atomix);
@@ -53,7 +59,7 @@ public final class AtomixFactoryTest {
 
     // when
     final var atomix =
-        AtomixFactory.fromConfiguration(brokerConfig, new FileBasedSnapshotStoreFactory());
+        AtomixFactory.createAtomix(brokerConfig, new FileBasedSnapshotStoreFactory());
 
     // then
     final var config = getPartitionGroupConfig(atomix);
@@ -68,7 +74,7 @@ public final class AtomixFactoryTest {
 
     // when
     final var atomix =
-        AtomixFactory.fromConfiguration(brokerConfig, new FileBasedSnapshotStoreFactory());
+        AtomixFactory.createAtomix(brokerConfig, new FileBasedSnapshotStoreFactory());
 
     // then
     final var config = getPartitionGroupConfig(atomix);
@@ -83,11 +89,64 @@ public final class AtomixFactoryTest {
 
     // when
     final var atomix =
-        AtomixFactory.fromConfiguration(brokerConfig, new FileBasedSnapshotStoreFactory());
+        AtomixFactory.createAtomix(brokerConfig, new FileBasedSnapshotStoreFactory());
 
     // then
     final var config = getPartitionGroupConfig(atomix);
     assertThat(config.getStorageConfig().shouldFlushExplicitly()).isTrue();
+  }
+
+  @Test
+  public void shouldBindInternalApiHostToMessagingInterface() {
+    // given
+    final var brokerConfig = newConfig();
+    final SocketBindingCfg internalApi = brokerConfig.getNetwork().getInternalApi();
+    internalApi.setHost("127.0.0.1");
+    internalApi.setPort(SocketUtil.getNextAddress().getPort());
+
+    // when
+    final var atomix =
+        AtomixFactory.createAtomix(brokerConfig, new FileBasedSnapshotStoreFactory());
+
+    // then
+    final Collection<Address> addresses = atomix.getMessagingService().addresses();
+    assertThat(addresses)
+        .containsExactly(Address.from(internalApi.getHost(), internalApi.getPort()));
+  }
+
+  @Test
+  public void shouldAdvertiseInternalApiAddress() {
+    // given
+    final BrokerCfg brokerConfig = newConfig();
+    final SocketBindingCfg internalApi = brokerConfig.getNetwork().getInternalApi();
+    internalApi.setAdvertisedHost("foo");
+    internalApi.setAdvertisedPort(8080);
+
+    // when
+    final var atomix =
+        AtomixFactory.createAtomix(brokerConfig, new FileBasedSnapshotStoreFactory());
+
+    // then
+    assertThat(atomix.getMessagingService().advertisedAddress())
+        .isEqualTo(Address.from("foo", 8080));
+  }
+
+  @Test
+  public void shouldCreateNewMessagingService() {
+    // given
+    final BrokerCfg brokerConfig = newConfig();
+    final CommandApiCfg commandApi = brokerConfig.getNetwork().getCommandApi();
+    commandApi.setAdvertisedHost("foo");
+    commandApi.setAdvertisedPort(8080);
+
+    // when
+    final ManagedMessagingService messagingService =
+        AtomixFactory.createMessagingService(brokerConfig.getCluster(), commandApi);
+
+    // then
+    assertThat(messagingService.advertisedAddress()).isEqualTo(Address.from("foo", 8080));
+    assertThat(messagingService.addresses())
+        .containsExactly(Address.from(commandApi.getHost(), commandApi.getPort()));
   }
 
   private RaftPartitionGroup getPartitionGroup(final Atomix atomix) {

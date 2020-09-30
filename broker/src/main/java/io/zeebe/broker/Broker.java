@@ -8,12 +8,9 @@
 package io.zeebe.broker;
 
 import io.atomix.cluster.MemberId;
-import io.atomix.cluster.messaging.MessagingConfig;
-import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.core.Atomix;
 import io.atomix.raft.partition.RaftPartition;
 import io.atomix.raft.partition.RaftPartitionGroup;
-import io.atomix.utils.net.Address;
 import io.zeebe.broker.bootstrap.CloseProcess;
 import io.zeebe.broker.bootstrap.StartProcess;
 import io.zeebe.broker.clustering.atomix.AtomixFactory;
@@ -32,6 +29,7 @@ import io.zeebe.broker.system.configuration.BrokerCfg;
 import io.zeebe.broker.system.configuration.ClusterCfg;
 import io.zeebe.broker.system.configuration.DataCfg;
 import io.zeebe.broker.system.configuration.NetworkCfg;
+import io.zeebe.broker.system.configuration.SocketBindingCfg.CommandApiCfg;
 import io.zeebe.broker.system.configuration.backpressure.BackpressureCfg;
 import io.zeebe.broker.system.management.BrokerAdminService;
 import io.zeebe.broker.system.management.BrokerAdminServiceImpl;
@@ -205,7 +203,8 @@ public final class Broker implements AutoCloseable {
     startContext.addStep("actor scheduler", this::actorSchedulerStep);
     startContext.addStep("membership and replication protocol", () -> atomixCreateStep(brokerCfg));
     startContext.addStep(
-        "command api transport", () -> commandApiTransportStep(clusterCfg, localBroker));
+        "command api transport",
+        () -> commandApiTransportStep(clusterCfg, brokerCfg.getNetwork().getCommandApi()));
     startContext.addStep(
         "command api handler", () -> commandApiHandlerStep(brokerCfg, localBroker));
     startContext.addStep("subscription api", () -> subscriptionAPIStep(localBroker));
@@ -250,7 +249,7 @@ public final class Broker implements AutoCloseable {
   private AutoCloseable atomixCreateStep(final BrokerCfg brokerCfg) {
     final var snapshotStoreFactory = new FileBasedSnapshotStoreFactory();
     snapshotStoreSupplier = snapshotStoreFactory;
-    atomix = AtomixFactory.fromConfiguration(brokerCfg, snapshotStoreFactory);
+    atomix = AtomixFactory.createAtomix(brokerCfg, snapshotStoreFactory);
 
     final var partitionGroup =
         (RaftPartitionGroup)
@@ -272,20 +271,18 @@ public final class Broker implements AutoCloseable {
   }
 
   private AutoCloseable commandApiTransportStep(
-      final ClusterCfg clusterCfg, final BrokerInfo localBroker) {
-
+      final ClusterCfg clusterCfg, final CommandApiCfg commandApiCfg) {
     final var nettyMessagingService =
-        new NettyMessagingService(
-            clusterCfg.getClusterName(),
-            Address.from(localBroker.getCommandApiAddress()),
-            new MessagingConfig());
-
+        AtomixFactory.createMessagingService(clusterCfg, commandApiCfg);
     nettyMessagingService.start().join();
-    LOG.debug("Bound command API to {} ", nettyMessagingService.address());
+    LOG.debug(
+        "Bound command API to {} (advertising {})",
+        nettyMessagingService.addresses(),
+        nettyMessagingService.advertisedAddress());
 
     final var transportFactory = new TransportFactory(scheduler);
     serverTransport =
-        transportFactory.createServerTransport(localBroker.getNodeId(), nettyMessagingService);
+        transportFactory.createServerTransport(clusterCfg.getNodeId(), nettyMessagingService);
 
     return () -> {
       serverTransport.close();
