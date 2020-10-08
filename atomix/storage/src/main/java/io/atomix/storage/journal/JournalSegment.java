@@ -33,7 +33,7 @@ import java.util.Set;
  *
  * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
-public class JournalSegment<E> implements AutoCloseable {
+public class JournalSegment implements AutoCloseable {
 
   private final JournalSegmentFile file;
   private final JournalSegmentDescriptor descriptor;
@@ -41,8 +41,8 @@ public class JournalSegment<E> implements AutoCloseable {
   private final int maxEntrySize;
   private final JournalIndex index;
   private final Namespace namespace;
-  private final JournalWriter<E> writer;
-  private final Set<JournalReader<E>> readers = Sets.newConcurrentHashSet();
+  private final JournalWriter writer;
+  private final Set<JournalReader> readers = Sets.newConcurrentHashSet();
   private boolean open = true;
 
   public JournalSegment(
@@ -138,7 +138,7 @@ public class JournalSegment<E> implements AutoCloseable {
    *
    * @return The segment writer.
    */
-  public JournalWriter<E> writer() {
+  public JournalWriter writer() {
     checkOpen();
     return writer;
   }
@@ -148,27 +148,27 @@ public class JournalSegment<E> implements AutoCloseable {
    *
    * @return A new segment reader.
    */
-  JournalReader<E> createReader() {
+  JournalReader createReader() {
     checkOpen();
-    final JournalReader<E> reader;
+    final JournalReader reader;
     if (storageLevel == StorageLevel.MAPPED) {
-      reader = new MappedJournalSegmentReader<>(file, this, maxEntrySize, index, namespace);
+      reader = new MappedJournalSegmentReader(file, this, maxEntrySize, index, namespace);
     } else {
-      reader = new FileChannelJournalSegmentReader<>(file, this, maxEntrySize, index, namespace);
+      reader = new FileChannelJournalSegmentReader(file, this, maxEntrySize, index, namespace);
     }
     readers.add(reader);
     return reader;
   }
 
-  private JournalWriter<E> createWriter(
+  private JournalWriter createWriter(
       final JournalSegmentFile file,
       final StorageLevel storageLevel,
       final int maxEntrySize,
       final Namespace namespace) {
     if (storageLevel == StorageLevel.MAPPED) {
-      return new MappedJournalSegmentWriter<>(file, this, maxEntrySize, index, namespace);
+      return new MappedJournalSegmentWriter(file, this, maxEntrySize, index, namespace);
     } else {
-      return new FileChannelJournalSegmentWriter<>(file, this, maxEntrySize, index, namespace);
+      return new FileChannelJournalSegmentWriter(file, this, maxEntrySize, index, namespace);
     }
   }
 
@@ -177,7 +177,7 @@ public class JournalSegment<E> implements AutoCloseable {
    *
    * @param reader the closed reader
    */
-  void onReaderClosed(final JournalReader<E> reader) {
+  void onReaderClosed(final JournalReader reader) {
     readers.remove(reader);
   }
 

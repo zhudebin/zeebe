@@ -20,13 +20,13 @@ import io.atomix.storage.statistics.JournalMetrics;
 import java.nio.BufferOverflowException;
 
 /** Raft log writer. */
-public class SegmentedJournalWriter<E> implements JournalWriter<E> {
-  private final SegmentedJournal<E> journal;
+public class SegmentedJournalWriter implements JournalWriter {
+  private final SegmentedJournal journal;
   private final JournalMetrics journalMetrics;
-  private JournalSegment<E> currentSegment;
-  private JournalWriter<E> currentWriter;
+  private JournalSegment currentSegment;
+  private JournalWriter currentWriter;
 
-  public SegmentedJournalWriter(final SegmentedJournal<E> journal) {
+  public SegmentedJournalWriter(final SegmentedJournal journal) {
     this.journal = journal;
     journalMetrics = journal.getJournalMetrics();
     currentSegment = journal.getLastSegment();
@@ -39,7 +39,7 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
   }
 
   @Override
-  public Indexed<E> getLastEntry() {
+  public Indexed<RaftLogEntry> getLastEntry() {
     return currentWriter.getLastEntry();
   }
 
@@ -49,7 +49,7 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
   }
 
   @Override
-  public <T extends E> Indexed<T> append(final T entry) {
+  public  Indexed<RaftLogEntry> append(final RaftLogEntry entry) {
     try {
       return currentWriter.append(entry);
     } catch (final BufferOverflowException e) {
@@ -64,7 +64,7 @@ public class SegmentedJournalWriter<E> implements JournalWriter<E> {
   }
 
   @Override
-  public void append(final Indexed<E> entry) {
+  public void append(final Indexed<RaftLogEntry> entry) {
     try {
       currentWriter.append(entry);
     } catch (final BufferOverflowException e) {

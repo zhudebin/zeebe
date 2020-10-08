@@ -16,9 +16,9 @@
  */
 package io.atomix.storage.journal;
 
-import com.esotericsoftware.kryo.KryoException;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.index.JournalIndex;
+import io.atomix.storage.protocol.EntryEncoder;
 import io.atomix.utils.serializer.Namespace;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -28,6 +28,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
+import org.agrona.concurrent.UnsafeBuffer;
 
 /**
  * Segment writer.
@@ -45,20 +46,22 @@ import java.util.zip.Checksum;
  *
  * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
-class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
+class FileChannelJournalSegmentWriter implements JournalWriter {
 
   private final FileChannel channel;
-  private final JournalSegment<E> segment;
+  private final JournalSegment segment;
   private final int maxEntrySize;
   private final JournalIndex index;
   private final Namespace namespace;
   private final ByteBuffer memory;
   private final long firstIndex;
-  private Indexed<E> lastEntry;
+  private Indexed<RaftLogEntry> lastEntry;
+  private final EntryEncoder encoder = new EntryEncoder();
+  private final RaftLogEntryWriterReader entryWriterReader = new RaftLogEntryWriterReader();
 
   FileChannelJournalSegmentWriter(
       final JournalSegmentFile file,
-      final JournalSegment<E> segment,
+      final JournalSegment segment,
       final int maxEntrySize,
       final JournalIndex index,
       final Namespace namespace) {
@@ -81,7 +84,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
   }
 
   @Override
-  public Indexed<E> getLastEntry() {
+  public Indexed<RaftLogEntry> getLastEntry() {
     return lastEntry;
   }
 
@@ -95,7 +98,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
   }
 
   @Override
-  public <T extends E> Indexed<T> append(final T entry) {
+  public Indexed<RaftLogEntry> append(final RaftLogEntry entry) {
     // Store the entry index.
     final long index = getNextIndex();
 
@@ -103,13 +106,15 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
       // Serialize the entry.
       memory.clear();
       memory.position(Integer.BYTES + Integer.BYTES);
-      try {
-        namespace.serialize(entry, memory);
-      } catch (final KryoException e) {
-        throw new StorageException.TooLarge(
-            "Entry size exceeds maximum allowed bytes (" + maxEntrySize + ")");
-      }
-      memory.flip();
+
+      entryWriterReader.write(new UnsafeBuffer(memory), memory.position());
+      //      try {
+      //        namespace.serialize(entry, memory);
+      //      } catch (final KryoException e) {
+      //        throw new StorageException.TooLarge(
+      //            "Entry size exceeds maximum allowed bytes (" + maxEntrySize + ")");
+      //      }
+      //      memory.flip();
 
       final int length = memory.limit() - (Integer.BYTES + Integer.BYTES);
 
@@ -141,17 +146,17 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
       channel.write(memory);
 
       // Update the last entry with the correct index/term/length.
-      final Indexed<E> indexedEntry = new Indexed<>(index, entry, length);
+      final Indexed<RaftLogEntry> indexedEntry = new Indexed<>(index, entry, length);
       lastEntry = indexedEntry;
       this.index.index(lastEntry, (int) position);
-      return (Indexed<T>) indexedEntry;
+      return indexedEntry;
     } catch (final IOException e) {
       throw new StorageException(e);
     }
   }
 
   @Override
-  public void append(final Indexed<E> entry) {
+  public void append(final Indexed<RaftLogEntry> entry) {
     final long nextIndex = getNextIndex();
 
     // If the entry's index is greater than the next index in the segment, skip some entries.
@@ -207,7 +212,7 @@ class FileChannelJournalSegmentWriter<E> implements JournalWriter<E> {
         if (checksum == crc32.getValue()) {
           final int limit = memory.limit();
           memory.limit(memory.position() + length);
-          final E entry = namespace.deserialize(memory);
+          final RaftLogEntry entry = namespace.deserialize(memory);
           memory.limit(limit);
           lastEntry = new Indexed<>(nextIndex, entry, length);
           this.index.index(lastEntry, (int) position);

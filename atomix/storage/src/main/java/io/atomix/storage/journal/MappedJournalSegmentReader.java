@@ -32,18 +32,18 @@ import org.agrona.IoUtil;
  *
  * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
-class MappedJournalSegmentReader<E> implements JournalReader<E> {
+class MappedJournalSegmentReader implements JournalReader {
   private final MappedByteBuffer buffer;
   private final int maxEntrySize;
   private final JournalIndex index;
   private final Namespace namespace;
-  private final JournalSegment<E> segment;
-  private Indexed<E> currentEntry;
-  private Indexed<E> nextEntry;
+  private final JournalSegment segment;
+  private Indexed currentEntry;
+  private Indexed nextEntry;
 
   MappedJournalSegmentReader(
       final JournalSegmentFile file,
-      final JournalSegment<E> segment,
+      final JournalSegment segment,
       final int maxEntrySize,
       final JournalIndex index,
       final Namespace namespace) {
@@ -78,7 +78,7 @@ class MappedJournalSegmentReader<E> implements JournalReader<E> {
   }
 
   @Override
-  public Indexed<E> getCurrentEntry() {
+  public Indexed<RaftLogEntry> getCurrentEntry() {
     return currentEntry;
   }
 
@@ -97,7 +97,7 @@ class MappedJournalSegmentReader<E> implements JournalReader<E> {
   }
 
   @Override
-  public Indexed<E> next() {
+  public Indexed<RaftLogEntry> next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -181,7 +181,7 @@ class MappedJournalSegmentReader<E> implements JournalReader<E> {
       // If the stored checksum equals the computed checksum, return the entry.
       if (checksum == crc32.getValue()) {
         slice.rewind();
-        final E entry = namespace.deserialize(slice);
+        final RaftLogEntry entry = namespace.deserialize(slice);
         nextEntry = new Indexed<>(index, entry, length);
         buffer.position(buffer.position() + length);
       } else {
