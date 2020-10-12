@@ -35,7 +35,7 @@ public class EntrySerializer {
   private final ZeebeEncoder zbEncoder = new ZeebeEncoder();
   private final ZeebeDecoder zbDecoder = new ZeebeDecoder();
 
-  public void serializeRaftLogEntry(
+  public int serializeRaftLogEntry(
       final MutableDirectBuffer buffer, final int offset, final RaftLogEntry entry) {
     headerEncoder
         .wrap(buffer, offset)
@@ -50,6 +50,11 @@ public class EntrySerializer {
         .timestamp(entry.timestamp())
         .entryType(entry.type())
         .putEntry(entry.entry(), 0, entry.entry().capacity());
+
+    return headerEncoder.encodedLength()
+        + rfEncoder.encodedLength()
+        + EntryEncoder.entryHeaderLength()
+        + entry.entry().capacity();
   }
 
   public RaftLogEntry deserializeRaftLogEntry(final DirectBuffer buffer, final int offset) {
@@ -82,7 +87,10 @@ public class EntrySerializer {
         .highestPosition(entry.highestPosition())
         .putData(entry.data(), 0, entry.data().capacity());
 
-    return zbEncoder.encodedLength();
+    return headerEncoder.encodedLength()
+        + zbEncoder.encodedLength()
+        + ZeebeEncoder.dataHeaderLength()
+        + entry.data().capacity();
   }
 
   public ZeebeEntry deserializeZeebeEntry(final RaftLogEntry entry, final int offset) {
@@ -93,14 +101,12 @@ public class EntrySerializer {
         headerDecoder.blockLength(),
         headerDecoder.version());
 
-    final UnsafeBuffer dataBuffer = new UnsafeBuffer(ByteBuffer.allocate(zbDecoder.dataLength()));
-    zbDecoder.getData(dataBuffer, 0, zbDecoder.dataLength());
+    final long lowestPosition = zbDecoder.lowestPosition();
+    final long highestPosition = zbDecoder.highestPosition();
+    final UnsafeBuffer dataBuffer = new UnsafeBuffer();
+    zbDecoder.wrapData(dataBuffer);
 
     return new ZeebeEntry(
-        entry.term(),
-        entry.timestamp(),
-        zbDecoder.lowestPosition(),
-        zbDecoder.highestPosition(),
-        dataBuffer);
+        entry.term(), entry.timestamp(), lowestPosition, highestPosition, dataBuffer);
   }
 }

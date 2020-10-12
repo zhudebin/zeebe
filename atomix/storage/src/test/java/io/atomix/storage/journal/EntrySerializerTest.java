@@ -44,8 +44,9 @@ public class EntrySerializerTest {
 
     // serialize RaftLogEntry
     final RaftLogEntry entry =
-        new RaftLogEntry(term, timestamp, EntryType.ZEEBE, new UnsafeBuffer(record));
-    serializer.serializeRaftLogEntry(raftLogEntryMemory, 0, entry);
+        new RaftLogEntry(
+            term, timestamp, EntryType.ZEEBE, new UnsafeBuffer(zbEntryMemory, 0, zbEntryLength));
+    final int rfEntryLength = serializer.serializeRaftLogEntry(raftLogEntryMemory, 0, entry);
 
     // deserialize RaftLogEntry
     final RaftLogEntry deserializedEntry =
