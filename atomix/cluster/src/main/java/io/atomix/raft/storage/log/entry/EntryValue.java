@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.atomix.storage.journal;
+package io.atomix.raft.storage.log.entry;
 
 import io.atomix.storage.protocol.EntryType;
 import org.agrona.MutableDirectBuffer;

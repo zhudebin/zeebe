@@ -9,19 +9,20 @@ package io.zeebe.logstreams.util;
 
 import static org.mockito.Mockito.spy;
 
-import io.atomix.raft.partition.impl.RaftNamespaces;
 import io.atomix.raft.storage.RaftStorage;
 import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.log.RaftLogReader;
-import io.atomix.storage.journal.RaftLogEntry;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.storage.system.MetaStore;
 import io.atomix.raft.zeebe.EntryValidator;
 import io.atomix.raft.zeebe.ValidationResult;
-import io.atomix.storage.journal.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.JournalReader.Mode;
+import io.atomix.storage.journal.RaftLogEntry;
+import io.atomix.storage.protocol.EntryType;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.logstreams.storage.atomix.AtomixAppenderSupplier;
 import io.zeebe.logstreams.storage.atomix.AtomixLogStorage;
@@ -38,6 +39,8 @@ import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import org.agrona.DirectBuffer;
+import org.agrona.ExpandableDirectByteBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
 
@@ -47,6 +50,7 @@ public final class AtomixLogStorageRule extends ExternalResource
   private final TemporaryFolder temporaryFolder;
   private final int partitionId;
   private final UnaryOperator<RaftStorage.Builder> builder;
+  private final EntrySerializer entrySerializer = new EntrySerializer();
 
   private ZeebeIndexAdapter indexMapping;
   private RaftStorage raftStorage;
@@ -116,8 +120,9 @@ public final class AtomixLogStorageRule extends ExternalResource
     final Indexed<RaftLogEntry> lastEntry = raftLog.writer().getLastEntry();
 
     ZeebeEntry lastZbEntry = null;
-    if (lastEntry != null && lastEntry.type() == ZeebeEntry.class) {
-      lastZbEntry = ((ZeebeEntry) lastEntry.cast().entry());
+    if (lastEntry != null && lastEntry.entry().type() == EntryType.ZEEBE) {
+      final Indexed<ZeebeEntry> zeebeEntryIndexed = entrySerializer.asZeebeEntry(lastEntry);
+      lastZbEntry = zeebeEntryIndexed.entry();
     }
 
     final ValidationResult result = entryValidator.validateEntry(lastZbEntry, zbEntry);
@@ -131,7 +136,19 @@ public final class AtomixLogStorageRule extends ExternalResource
       return;
     }
 
-    final Indexed<ZeebeEntry> entry = raftLog.writer().append(zbEntry);
+    final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
+    final int length = entrySerializer.serializeZeebeEntry(buffer, 0, zbEntry);
+    final Indexed<RaftLogEntry> appended =
+        raftLog
+            .writer()
+            .append(
+                new RaftLogEntry(
+                    zbEntry.term(),
+                    zbEntry.timestamp(),
+                    EntryType.ZEEBE,
+                    new UnsafeBuffer(buffer, 0, length)));
+    final Indexed<ZeebeEntry> entry =
+        new Indexed<>(appended.index(), zbEntry, appended.entry().entry().capacity());
 
     listener.onWrite(entry);
     raftLog.writer().commit(entry.index());
@@ -246,7 +263,7 @@ public final class AtomixLogStorageRule extends ExternalResource
     return RaftStorage.builder()
         .withFlushOnCommit()
         .withStorageLevel(StorageLevel.DISK)
-        .withNamespace(RaftNamespaces.RAFT_STORAGE)
+        .withJournalSerde(new EntrySerializer())
         .withRetainStaleSnapshots();
   }
 

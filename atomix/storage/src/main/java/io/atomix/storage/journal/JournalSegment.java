@@ -23,7 +23,6 @@ import com.google.common.collect.Sets;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.index.JournalIndex;
-import io.atomix.utils.serializer.Namespace;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Set;
@@ -40,9 +39,9 @@ public class JournalSegment implements AutoCloseable {
   private final StorageLevel storageLevel;
   private final int maxEntrySize;
   private final JournalIndex index;
-  private final Namespace namespace;
   private final JournalWriter writer;
   private final Set<JournalReader> readers = Sets.newConcurrentHashSet();
+  private final JournalSerde serde;
   private boolean open = true;
 
   public JournalSegment(
@@ -50,15 +49,15 @@ public class JournalSegment implements AutoCloseable {
       final JournalSegmentDescriptor descriptor,
       final StorageLevel storageLevel,
       final int maxEntrySize,
-      final Namespace namespace,
+      final JournalSerde serde,
       final JournalIndex journalIndex) {
     this.file = file;
     this.descriptor = descriptor;
     this.storageLevel = storageLevel;
     this.maxEntrySize = maxEntrySize;
     index = journalIndex;
-    this.namespace = namespace;
-    writer = createWriter(file, storageLevel, maxEntrySize, namespace);
+    this.serde = serde;
+    writer = createWriter(file, storageLevel, maxEntrySize, serde);
   }
 
   /**
@@ -152,9 +151,9 @@ public class JournalSegment implements AutoCloseable {
     checkOpen();
     final JournalReader reader;
     if (storageLevel == StorageLevel.MAPPED) {
-      reader = new MappedJournalSegmentReader(file, this, maxEntrySize, index, namespace);
+      reader = new MappedJournalSegmentReader(file, this, maxEntrySize, index, serde);
     } else {
-      reader = new FileChannelJournalSegmentReader(file, this, maxEntrySize, index, namespace);
+      reader = new FileChannelJournalSegmentReader(file, this, maxEntrySize, index, serde);
     }
     readers.add(reader);
     return reader;
@@ -164,11 +163,11 @@ public class JournalSegment implements AutoCloseable {
       final JournalSegmentFile file,
       final StorageLevel storageLevel,
       final int maxEntrySize,
-      final Namespace namespace) {
+      final JournalSerde serde) {
     if (storageLevel == StorageLevel.MAPPED) {
-      return new MappedJournalSegmentWriter(file, this, maxEntrySize, index, namespace);
+      return new MappedJournalSegmentWriter(file, this, maxEntrySize, index, serde);
     } else {
-      return new FileChannelJournalSegmentWriter(file, this, maxEntrySize, index, namespace);
+      return new FileChannelJournalSegmentWriter(file, this, maxEntrySize, index, serde);
     }
   }
 

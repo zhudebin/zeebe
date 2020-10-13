@@ -21,8 +21,8 @@ import io.atomix.storage.journal.JournalReader;
 import io.atomix.storage.journal.RaftLogEntry;
 
 /** Raft log reader. */
-public class RaftLogReader extends DelegatingJournalReader<RaftLogEntry> {
-  RaftLogReader(final JournalReader<RaftLogEntry> delegate) {
+public class RaftLogReader extends DelegatingJournalReader {
+  RaftLogReader(final JournalReader delegate) {
     super(delegate);
   }
 }

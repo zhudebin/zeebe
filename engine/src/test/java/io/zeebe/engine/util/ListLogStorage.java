@@ -51,7 +51,7 @@ public class ListLogStorage implements LogStorage {
 
         final var entry = entries.get(index);
         final var data = entry.getData();
-        readBuffer.wrap(data, data.position(), data.remaining());
+        readBuffer.wrap(data, 0, data.capacity());
 
         return address + 1;
       }
@@ -85,7 +85,7 @@ public class ListLogStorage implements LogStorage {
   public void append(
       final long lowestPosition,
       final long highestPosition,
-      final ByteBuffer blockBuffer,
+      final DirectBuffer blockBuffer,
       final AppendListener listener) {
     try {
       final var entry = new Entry(lowestPosition, highestPosition, blockBuffer);
@@ -127,9 +127,9 @@ public class ListLogStorage implements LogStorage {
   private static final class Entry {
     private final long lowestPosition;
     private final long highestPosition;
-    private final ByteBuffer data;
+    private final DirectBuffer data;
 
-    public Entry(final long lowestPosition, final long highestPosition, final ByteBuffer data) {
+    public Entry(final long lowestPosition, final long highestPosition, final DirectBuffer data) {
       this.lowestPosition = lowestPosition;
       this.highestPosition = highestPosition;
       this.data = data;
@@ -143,7 +143,7 @@ public class ListLogStorage implements LogStorage {
       return highestPosition;
     }
 
-    public ByteBuffer getData() {
+    public DirectBuffer getData() {
       return data;
     }
   }

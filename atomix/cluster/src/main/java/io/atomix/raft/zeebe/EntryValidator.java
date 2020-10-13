@@ -15,7 +15,7 @@
  */
 package io.atomix.raft.zeebe;
 
-import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 
 @FunctionalInterface
 public interface EntryValidator {

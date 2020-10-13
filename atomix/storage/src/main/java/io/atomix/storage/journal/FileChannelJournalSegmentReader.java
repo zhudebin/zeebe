@@ -19,7 +19,6 @@ package io.atomix.storage.journal;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.Position;
-import io.atomix.utils.serializer.Namespace;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -38,12 +37,12 @@ import org.agrona.concurrent.UnsafeBuffer;
  */
 class FileChannelJournalSegmentReader implements JournalReader {
 
-  public static final EntrySerializer SERIALIZER = new EntrySerializer();
   private final FileChannel channel;
   private final int maxEntrySize;
   private final JournalIndex index;
-  private final Namespace namespace;
+  private final JournalSerde serializer;
   private final ByteBuffer memory;
+  private final DirectBuffer readBuffer;
   private final JournalSegment segment;
   private Indexed<RaftLogEntry> currentEntry;
   private Indexed<RaftLogEntry> nextEntry;
@@ -53,13 +52,14 @@ class FileChannelJournalSegmentReader implements JournalReader {
       final JournalSegment segment,
       final int maxEntrySize,
       final JournalIndex index,
-      final Namespace namespace) {
+      final JournalSerde serializer) {
     this.segment = segment;
     this.maxEntrySize = maxEntrySize;
     this.index = index;
-    this.namespace = namespace;
+    this.serializer = serializer;
     channel = file.openChannel(StandardOpenOption.READ);
     memory = ByteBuffer.allocate((maxEntrySize + Integer.BYTES + Integer.BYTES) * 2);
+    readBuffer = new UnsafeBuffer(memory);
     reset();
   }
 
@@ -218,8 +218,10 @@ class FileChannelJournalSegmentReader implements JournalReader {
       return;
     }
 
-    final DirectBuffer buffer = new UnsafeBuffer(memory, memory.position(), length);
-    nextEntry = new Indexed<>(index, SERIALIZER.deserializeRaftLogEntry(buffer, 0), length);
+    final RaftLogEntry raftLogEntry =
+        serializer.deserializeRaftLogEntry(readBuffer, memory.position());
+    memory.position(memory.position() + length);
+    nextEntry = new Indexed<>(index, raftLogEntry, length);
 
     // If the stored checksum equals the computed checksum, set the next entry.
     //    final int limit = memory.limit();

@@ -19,8 +19,11 @@ package io.atomix.raft.storage.log.entry;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import io.atomix.raft.cluster.RaftMember;
+import io.atomix.storage.protocol.EntryType;
 import io.atomix.utils.misc.TimestampPrinter;
 import java.util.Collection;
+import java.util.Objects;
+import org.agrona.MutableDirectBuffer;
 
 /**
  * Stores a cluster configuration.
@@ -30,7 +33,7 @@ import java.util.Collection;
  * represent a server in the cluster. Each time the set of members changes or a property of a single
  * member changes, a new {@code ConfigurationEntry} must be logged for the configuration change.
  */
-public class ConfigurationEntry {
+public class ConfigurationEntry implements EntryValue {
 
   private final Collection<RaftMember> members;
   private final long term;
@@ -52,12 +55,42 @@ public class ConfigurationEntry {
     return members;
   }
 
+  @Override
   public long term() {
     return term;
   }
 
+  @Override
   public long timestamp() {
     return timestamp;
+  }
+
+  @Override
+  public EntryType type() {
+    return EntryType.CONFIGURATION;
+  }
+
+  @Override
+  public int serialize(
+      final EntrySerializer serializer, final MutableDirectBuffer dest, final int offset) {
+    return serializer.serializeConfigurationEntry(dest, offset, this);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(members, term, timestamp);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final ConfigurationEntry that = (ConfigurationEntry) o;
+    return term == that.term && timestamp == that.timestamp && members.equals(that.members);
   }
 
   @Override

@@ -18,14 +18,15 @@ package io.atomix.storage.journal;
 
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.Position;
-import io.atomix.utils.serializer.Namespace;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
+import org.agrona.DirectBuffer;
 import org.agrona.IoUtil;
+import org.agrona.concurrent.UnsafeBuffer;
 
 /**
  * Log segment reader.
@@ -36,24 +37,26 @@ class MappedJournalSegmentReader implements JournalReader {
   private final MappedByteBuffer buffer;
   private final int maxEntrySize;
   private final JournalIndex index;
-  private final Namespace namespace;
+  private final JournalSerde serde;
   private final JournalSegment segment;
-  private Indexed currentEntry;
-  private Indexed nextEntry;
+  private final DirectBuffer readBuffer;
+  private Indexed<RaftLogEntry> currentEntry;
+  private Indexed<RaftLogEntry> nextEntry;
 
   MappedJournalSegmentReader(
       final JournalSegmentFile file,
       final JournalSegment segment,
       final int maxEntrySize,
       final JournalIndex index,
-      final Namespace namespace) {
-    this.maxEntrySize = maxEntrySize;
-    this.index = index;
-    this.namespace = namespace;
-    this.segment = segment;
+      final JournalSerde serde) {
     buffer =
         IoUtil.mapExistingFile(
             file.file(), MapMode.READ_ONLY, file.name(), 0, segment.descriptor().maxSegmentSize());
+    this.maxEntrySize = maxEntrySize;
+    this.index = index;
+    this.serde = serde;
+    this.segment = segment;
+    readBuffer = new UnsafeBuffer(buffer);
     reset();
   }
 
@@ -181,9 +184,9 @@ class MappedJournalSegmentReader implements JournalReader {
       // If the stored checksum equals the computed checksum, return the entry.
       if (checksum == crc32.getValue()) {
         slice.rewind();
-        final RaftLogEntry entry = namespace.deserialize(slice);
-        nextEntry = new Indexed<>(index, entry, length);
+        final RaftLogEntry entry = serde.deserializeRaftLogEntry(readBuffer, buffer.position());
         buffer.position(buffer.position() + length);
+        nextEntry = new Indexed<>(index, entry, length);
       } else {
         buffer.reset();
         nextEntry = null;

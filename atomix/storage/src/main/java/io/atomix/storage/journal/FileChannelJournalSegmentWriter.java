@@ -18,7 +18,6 @@ package io.atomix.storage.journal;
 
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.index.JournalIndex;
-import io.atomix.utils.serializer.Namespace;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
@@ -27,6 +26,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
+import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 
 /**
@@ -47,32 +47,32 @@ import org.agrona.concurrent.UnsafeBuffer;
  */
 class FileChannelJournalSegmentWriter implements JournalWriter {
 
-  public static final EntrySerializer SERIALIZER = new EntrySerializer();
   private final FileChannel channel;
   private final JournalSegment segment;
   private final int maxEntrySize;
   private final JournalIndex index;
-  private final Namespace namespace;
+  private final JournalSerde serde;
   private final ByteBuffer memory;
+  private final MutableDirectBuffer writeBuffer;
   private final long firstIndex;
   private Indexed<RaftLogEntry> lastEntry;
-  private final RaftLogEntryWriterReader entryWriterReader = new RaftLogEntryWriterReader();
 
   FileChannelJournalSegmentWriter(
       final JournalSegmentFile file,
       final JournalSegment segment,
       final int maxEntrySize,
       final JournalIndex index,
-      final Namespace namespace) {
+      final JournalSerde serde) {
     this.segment = segment;
     this.maxEntrySize = maxEntrySize;
     this.index = index;
-    this.namespace = namespace;
+    this.serde = serde;
     firstIndex = segment.index();
     channel =
         file.openChannel(
             StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
     memory = ByteBuffer.allocate((maxEntrySize + Integer.BYTES + Integer.BYTES) * 2);
+    writeBuffer = new UnsafeBuffer(memory);
     memory.limit(0);
     reset(0);
   }
@@ -104,11 +104,14 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
     try {
       // Serialize the entry.
       memory.clear();
-      memory.position(Integer.BYTES + Integer.BYTES);
 
       //      entryWriterReader.write(new UnsafeBuffer(memory), memory.position());
 
-      SERIALIZER.serializeRaftLogEntry(new UnsafeBuffer(memory), memory.position(), entry);
+      final int entryOffset = Integer.BYTES + Integer.BYTES;
+      int length = serde.computeSerializedLength(entry);
+
+      // simulate what memory.flip() was doing
+      memory.limit(entryOffset + length);
 
       //      try {
       //        namespace.serialize(entry, memory);
@@ -118,12 +121,11 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
       //      }
       //      memory.flip();
 
-      final int length = memory.limit() - (Integer.BYTES + Integer.BYTES);
+      // final int length = memory.limit() - (Integer.BYTES + Integer.BYTES);
 
       // Ensure there's enough space left in the buffer to store the entry.
       final long position = channel.position();
-      if (segment.descriptor().maxSegmentSize() - position
-          < length + Integer.BYTES + Integer.BYTES) {
+      if (segment.descriptor().maxSegmentSize() - position < length + entryOffset) {
         throw new BufferOverflowException();
       }
 
@@ -133,12 +135,11 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
             "Entry size " + length + " exceeds maximum allowed bytes (" + maxEntrySize + ")");
       }
 
+      length = serde.serializeRaftLogEntry(writeBuffer, entryOffset, entry);
+
       // Compute the checksum for the entry.
       final Checksum crc32 = new CRC32();
-      crc32.update(
-          memory.array(),
-          Integer.BYTES + Integer.BYTES,
-          memory.limit() - (Integer.BYTES + Integer.BYTES));
+      crc32.update(memory.array(), entryOffset, length);
       final long checksum = crc32.getValue();
 
       // Create a single byte[] in memory for the entire entry and write it as a batch to the
@@ -212,10 +213,8 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
 
         // If the stored checksum equals the computed checksum, return the entry.
         if (checksum == crc32.getValue()) {
-          final int limit = memory.limit();
-          memory.limit(memory.position() + length);
-          final RaftLogEntry entry = namespace.deserialize(memory);
-          memory.limit(limit);
+          final RaftLogEntry entry = serde.deserializeRaftLogEntry(writeBuffer, memory.position());
+          memory.position(memory.position() + length);
           lastEntry = new Indexed<>(nextIndex, entry, length);
           this.index.index(lastEntry, (int) position);
           nextIndex++;

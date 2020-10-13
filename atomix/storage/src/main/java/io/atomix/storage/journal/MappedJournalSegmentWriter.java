@@ -16,16 +16,16 @@
  */
 package io.atomix.storage.journal;
 
-import com.esotericsoftware.kryo.KryoException;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.index.JournalIndex;
-import io.atomix.utils.serializer.Namespace;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.util.zip.CRC32;
 import org.agrona.IoUtil;
+import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 
 /**
  * Segment writer.
@@ -49,23 +49,25 @@ class MappedJournalSegmentWriter implements JournalWriter {
   private final JournalSegment segment;
   private final int maxEntrySize;
   private final JournalIndex index;
-  private final Namespace namespace;
+  private final JournalSerde serde;
   private final long firstIndex;
   private Indexed<RaftLogEntry> lastEntry;
   private boolean isOpen = true;
+  private final MutableDirectBuffer writeBuffer;
 
   MappedJournalSegmentWriter(
       final JournalSegmentFile file,
       final JournalSegment segment,
       final int maxEntrySize,
       final JournalIndex index,
-      final Namespace namespace) {
+      final JournalSerde serde) {
+    buffer = mapFile(file, segment);
     this.segment = segment;
     this.maxEntrySize = maxEntrySize;
     this.index = index;
-    this.namespace = namespace;
+    this.serde = serde;
     firstIndex = segment.index();
-    buffer = mapFile(file, segment);
+    writeBuffer = new UnsafeBuffer(buffer);
     reset(0);
   }
 
@@ -108,13 +110,12 @@ class MappedJournalSegmentWriter implements JournalWriter {
 
     buffer.position(position + Integer.BYTES + Integer.BYTES);
 
-    try {
-      namespace.serialize(entry, buffer);
-    } catch (final KryoException e) {
+    int length = serde.computeSerializedLength(entry);
+    if (length > buffer.remaining()) {
       throw new BufferOverflowException();
     }
 
-    final int length = buffer.position() - (position + Integer.BYTES + Integer.BYTES);
+    // final int length = buffer.position() - (position + Integer.BYTES + Integer.BYTES);
 
     // If the entry length exceeds the maximum entry size then throw an exception.
     if (length > maxEntrySize) {
@@ -123,6 +124,13 @@ class MappedJournalSegmentWriter implements JournalWriter {
       buffer.position(position);
       throw new StorageException.TooLarge(
           "Entry size " + length + " exceeds maximum allowed bytes (" + maxEntrySize + ")");
+    }
+
+    try {
+      length =
+          serde.serializeRaftLogEntry(writeBuffer, position + Integer.BYTES + Integer.BYTES, entry);
+    } catch (final IndexOutOfBoundsException e) {
+      throw new BufferOverflowException();
     }
 
     // Compute the checksum for the entry.
@@ -197,7 +205,7 @@ class MappedJournalSegmentWriter implements JournalWriter {
         // If the stored checksum equals the computed checksum, return the entry.
         if (checksum == crc32.getValue()) {
           slice.rewind();
-          final RaftLogEntry entry = namespace.deserialize(slice);
+          final RaftLogEntry entry = serde.deserializeRaftLogEntry(writeBuffer, buffer.position());
           lastEntry = new Indexed<>(nextIndex, entry, length);
           this.index.index(lastEntry, position);
           nextIndex++;

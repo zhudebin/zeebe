@@ -135,7 +135,7 @@ public final class LogStorageAppenderTest {
         .append(
             eq(lowestPosition),
             eq(highestPosition),
-            any(ByteBuffer.class),
+            any(DirectBuffer.class),
             any(AppendListener.class));
 
     // ensure events were written properly

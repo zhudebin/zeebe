@@ -22,6 +22,7 @@ import io.zeebe.logstreams.impl.backpressure.BackpressureConstants;
 import io.zeebe.logstreams.impl.backpressure.NoopAppendLimiter;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.util.Environment;
+import io.zeebe.util.buffer.BufferUtil;
 import io.zeebe.util.collection.Tuple;
 import io.zeebe.util.health.FailureListener;
 import io.zeebe.util.health.HealthMonitorable;
@@ -32,6 +33,7 @@ import io.zeebe.util.sched.future.CompletableActorFuture;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.function.LongConsumer;
+import org.agrona.DirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 
@@ -110,7 +112,7 @@ public class LogStorageAppender extends Actor implements HealthMonitorable {
   private void appendBlock(final BlockPeek blockPeek) {
     final ByteBuffer rawBuffer = blockPeek.getRawBuffer();
     final int bytes = rawBuffer.remaining();
-    final ByteBuffer copiedBuffer = ByteBuffer.allocate(bytes).put(rawBuffer).flip();
+    final DirectBuffer copiedBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(bytes).put(rawBuffer).flip());
     final Tuple<Long, Long> positions = readLowestHighestPosition(copiedBuffer);
 
     // Commit position is the position of the last event.
@@ -173,18 +175,17 @@ public class LogStorageAppender extends Actor implements HealthMonitorable {
     }
   }
 
-  private Tuple<Long, Long> readLowestHighestPosition(final ByteBuffer buffer) {
-    final var view = new UnsafeBuffer(buffer);
+  private Tuple<Long, Long> readLowestHighestPosition(final DirectBuffer buffer) {
     final var positions = new Tuple<>(Long.MAX_VALUE, Long.MIN_VALUE);
     var offset = 0;
 
     do {
-      positionReader.wrap(view, offset);
+      positionReader.wrap(buffer, offset);
       final long pos = positionReader.getPosition();
       positions.setLeft(Math.min(positions.getLeft(), pos));
       positions.setRight(Math.max(positions.getRight(), pos));
       offset += positionReader.getLength();
-    } while (offset < view.capacity());
+    } while (offset < buffer.capacity());
 
     return positions;
   }

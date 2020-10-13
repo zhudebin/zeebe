@@ -26,7 +26,6 @@ import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.JournalReader.Mode;
 import io.atomix.storage.journal.index.SparseJournalIndex;
 import io.atomix.storage.protocol.EntryType;
-import io.atomix.utils.serializer.Namespace;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,15 +53,10 @@ public abstract class AbstractJournalTest {
 
   protected static final RaftLogEntry ENTRY =
       new RaftLogEntry(1, 1, EntryType.NULL_VAL, new UnsafeBuffer());
-  private static final Namespace NAMESPACE =
-      Namespace.builder()
-          // .register(TestEntry.class)
-          .register(byte[].class)
-          .build();
-
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   protected final int entriesPerSegment;
+  protected final TestJournalSerde serde = new TestJournalSerde();
   protected SegmentedJournal journal;
 
   private final int maxSegmentSize;
@@ -72,18 +66,19 @@ public abstract class AbstractJournalTest {
   protected AbstractJournalTest(final int maxSegmentSize, final int cacheSize) {
     this.maxSegmentSize = maxSegmentSize;
     this.cacheSize = cacheSize;
-    final int entryLength = (NAMESPACE.serialize(ENTRY).length + 8);
+    final int entryLength = (serde.serializeRaftLogEntry(ENTRY) + 8);
     entriesPerSegment = (maxSegmentSize - 64) / entryLength;
   }
 
   protected abstract StorageLevel storageLevel();
 
-  @Parameterized.Parameters
+  @Parameterized.Parameters(name = "maxSegmentSize = {0}, cacheSize = {1}")
   public static Collection primeNumbers() {
     final List<Object[]> runs = new ArrayList<>();
+    final TestJournalSerde serde = new TestJournalSerde();
     for (int i = 1; i <= 10; i++) {
       for (int j = 1; j <= 10; j++) {
-        runs.add(new Object[] {64 + (i * (NAMESPACE.serialize(ENTRY).length + 8) + j), j});
+        runs.add(new Object[] {64 + (i * (serde.serializeRaftLogEntry(ENTRY) + 8) + j), j});
       }
     }
     return runs;
@@ -94,7 +89,7 @@ public abstract class AbstractJournalTest {
     return SegmentedJournal.<RaftLogEntry>builder()
         .withName("test")
         .withDirectory(folder)
-        .withNamespace(NAMESPACE)
+        .withSerde(serde)
         .withStorageLevel(storageLevel())
         .withMaxSegmentSize(maxSegmentSize)
         .withMaxEntrySize(48)
@@ -120,7 +115,7 @@ public abstract class AbstractJournalTest {
     final JournalReader reader = journal.openReader(1, Mode.ALL);
 
     // when
-    journal.writer().append(AbstractJournalTest.getTestEntry(8));
+    journal.writer().append(AbstractJournalTest.getTestEntry(1));
     final boolean empty = reader.isEmpty();
 
     // then
@@ -133,7 +128,7 @@ public abstract class AbstractJournalTest {
     final JournalReader reader = journal.openReader(1, Mode.COMMITS);
 
     // when
-    journal.writer().append(AbstractJournalTest.getTestEntry(8));
+    journal.writer().append(ENTRY);
     final boolean empty = reader.isEmpty();
 
     // then
@@ -147,7 +142,7 @@ public abstract class AbstractJournalTest {
 
     // when
     final Indexed<RaftLogEntry> indexed =
-        journal.writer().append(AbstractJournalTest.getTestEntry(8));
+        journal.writer().append(AbstractJournalTest.getTestEntry(1));
     journal.writer().commit(indexed.index());
     final boolean empty = reader.isEmpty();
 
@@ -167,7 +162,6 @@ public abstract class AbstractJournalTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   public void testWriteRead() throws Exception {
     final JournalWriter writer = journal.writer();
     JournalReader reader = journal.openReader(1);
@@ -325,7 +319,6 @@ public abstract class AbstractJournalTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   public void testWriteReadEntries() throws Exception {
     final JournalWriter writer = journal.writer();
     final JournalReader reader = journal.openReader(1);
@@ -336,11 +329,11 @@ public abstract class AbstractJournalTest {
       Indexed<RaftLogEntry> entry;
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(32, entry.entry().entry().capacity());
+      assertEquals(0, entry.entry().entry().capacity());
       reader.reset(i);
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(32, entry.entry().entry().capacity());
+      assertEquals(0, entry.entry().entry().capacity());
 
       if (i > 6) {
         reader.reset(i - 5);
@@ -359,12 +352,11 @@ public abstract class AbstractJournalTest {
       assertTrue(reader.hasNext());
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(32, entry.entry().entry().capacity());
+      assertEquals(0, entry.entry().entry().capacity());
     }
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   public void testWriteReadCommittedEntries() throws Exception {
     final JournalWriter writer = journal.writer();
     final JournalReader reader = journal.openReader(1, JournalReader.Mode.COMMITS);
@@ -377,11 +369,11 @@ public abstract class AbstractJournalTest {
       Indexed<RaftLogEntry> entry;
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(32, entry.entry().entry().capacity());
+      assertEquals(0, entry.entry().entry().capacity());
       reader.reset(i);
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(32, entry.entry().entry().capacity());
+      assertEquals(0, entry.entry().entry().capacity());
     }
   }
 
@@ -437,7 +429,7 @@ public abstract class AbstractJournalTest {
 
       int writerIndex;
       for (writerIndex = 1; writerIndex <= totalWrites - 2; writerIndex++) {
-        final RaftLogEntry entry = getTestEntry(16);
+        final RaftLogEntry entry = getTestEntry(1);
         assertEquals(writerIndex, writer.append(entry).index());
         written.put(writerIndex, entry);
       }
@@ -457,7 +449,7 @@ public abstract class AbstractJournalTest {
       writer.truncate(commitPosition + 1);
 
       for (writerIndex = commitPosition + 2; writerIndex <= totalWrites; writerIndex++) {
-        final RaftLogEntry entry = getTestEntry(32);
+        final RaftLogEntry entry = getTestEntry(1);
         assertEquals(writerIndex, writer.append(entry).index());
         written.put(writerIndex, entry);
       }

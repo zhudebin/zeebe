@@ -19,21 +19,21 @@ package io.atomix.raft.storage.log;
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.DelegatingJournal;
 import io.atomix.storage.journal.JournalReader;
+import io.atomix.storage.journal.JournalSerde;
 import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.storage.journal.SegmentedJournal;
 import io.atomix.storage.journal.index.JournalIndex;
-import io.atomix.utils.serializer.Namespace;
 import java.io.File;
 import java.util.function.Supplier;
 
 /** Raft log. */
-public class RaftLog extends DelegatingJournal<RaftLogEntry> {
+public class RaftLog extends DelegatingJournal {
 
-  private final SegmentedJournal<RaftLogEntry> journal;
+  private final SegmentedJournal journal;
   private final RaftLogWriter writer;
   private volatile long commitIndex;
 
-  protected RaftLog(final SegmentedJournal<RaftLogEntry> journal) {
+  protected RaftLog(final SegmentedJournal journal) {
     super(journal);
     this.journal = journal;
     writer = new RaftLogWriter(journal.writer());
@@ -180,11 +180,11 @@ public class RaftLog extends DelegatingJournal<RaftLogEntry> {
     /**
      * Sets the log serialization namespace, returning the builder for method chaining.
      *
-     * @param namespace The journal namespace.
+     * @param serde The journal namespace.
      * @return The journal builder.
      */
-    public Builder withNamespace(final Namespace namespace) {
-      journalBuilder.withNamespace(namespace);
+    public Builder withSerde(final JournalSerde serde) {
+      journalBuilder.withSerde(serde);
       return this;
     }
 

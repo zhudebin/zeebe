@@ -19,17 +19,16 @@ package io.atomix.storage.journal;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import io.atomix.storage.protocol.EntryType;
+import java.util.Objects;
 import org.agrona.DirectBuffer;
 
 /** Stores a state change in a RaftLog. */
 public class RaftLogEntry {
 
-  private long term;
-  private long timestamp;
-  private EntryType entryType;
-  private DirectBuffer entry;
-
-  public RaftLogEntry() {}
+  private final long term;
+  private final long timestamp;
+  private final EntryType entryType;
+  private final DirectBuffer entry;
 
   public RaftLogEntry(
       final long term, final long timestamp, final EntryType entryType, final DirectBuffer entry) {
@@ -48,22 +47,6 @@ public class RaftLogEntry {
     return term;
   }
 
-  public void setTerm(final long term) {
-    this.term = term;
-  }
-
-  public void setTimestamp(final long timestamp) {
-    this.timestamp = timestamp;
-  }
-
-  public void setEntryType(final EntryType entryType) {
-    this.entryType = entryType;
-  }
-
-  public void setEntry(final DirectBuffer entry) {
-    this.entry = entry;
-  }
-
   public long timestamp() {
     return timestamp;
   }
@@ -74,6 +57,26 @@ public class RaftLogEntry {
 
   public DirectBuffer entry() {
     return entry;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(term, timestamp, entryType, entry);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final RaftLogEntry that = (RaftLogEntry) o;
+    return term == that.term
+        && timestamp == that.timestamp
+        && entryType == that.entryType
+        && entry.equals(that.entry);
   }
 
   @Override

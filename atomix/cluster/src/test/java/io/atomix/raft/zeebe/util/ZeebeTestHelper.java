@@ -23,7 +23,7 @@ import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.JournalReader.Mode;
-import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Optional;

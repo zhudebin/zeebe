@@ -16,7 +16,7 @@
 package io.atomix.raft.zeebe;
 
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import java.nio.ByteBuffer;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;

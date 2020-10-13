@@ -16,6 +16,11 @@
  */
 package io.atomix.raft.storage.log.entry;
 
+import io.atomix.storage.protocol.EntryType;
+import org.agrona.DirectBuffer;
+import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
+
 /**
  * Indicates a leader change has occurred.
  *
@@ -25,8 +30,7 @@ package io.atomix.raft.storage.log.entry;
  * following leader changes. Initialize entries are always the first entry to be committed at the
  * start of a leader's term.
  */
-public class InitializeEntry {
-
+public class InitializeEntry implements EntryValue {
   private final long term;
   private final long timestamp;
 
@@ -35,11 +39,24 @@ public class InitializeEntry {
     this.timestamp = timestamp;
   }
 
+  @Override
   public long term() {
     return term;
   }
 
+  @Override
   public long timestamp() {
     return timestamp;
+  }
+
+  @Override
+  public EntryType type() {
+    return EntryType.INITIALIZE;
+  }
+
+  @Override
+  public int serialize(
+      final EntrySerializer serializer, final MutableDirectBuffer dest, final int offset) {
+    return 0;
   }
 }

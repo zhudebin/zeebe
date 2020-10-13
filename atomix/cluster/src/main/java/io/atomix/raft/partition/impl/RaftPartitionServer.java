@@ -31,6 +31,7 @@ import io.atomix.raft.partition.RaftStorageConfig;
 import io.atomix.raft.roles.RaftRole;
 import io.atomix.raft.storage.RaftStorage;
 import io.atomix.raft.storage.log.RaftLogReader;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.JournalReader.Mode;
@@ -256,7 +257,7 @@ public class RaftPartitionServer implements Managed<RaftPartitionServer> {
     try {
       Files.walkFileTree(
           partition.dataDirectory().toPath(),
-          new SimpleFileVisitor<Path>() {
+          new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs)
                 throws IOException {
@@ -319,7 +320,7 @@ public class RaftPartitionServer implements Managed<RaftPartitionServer> {
         .withMaxEntrySize((int) storageConfig.getMaxEntrySize().bytes())
         .withFlushOnCommit(storageConfig.isFlushOnCommit())
         .withFreeDiskSpace(storageConfig.getFreeDiskSpace())
-        .withNamespace(RaftNamespaces.RAFT_STORAGE)
+        .withJournalSerde(new EntrySerializer())
         .withSnapshotStore(persistedSnapshotStore)
         .withJournalIndexFactory(journalIndexFactory)
         .build();

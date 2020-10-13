@@ -45,15 +45,17 @@ import io.atomix.raft.protocol.TransferResponse;
 import io.atomix.raft.protocol.VoteRequest;
 import io.atomix.raft.protocol.VoteResponse;
 import io.atomix.raft.storage.log.entry.ConfigurationEntry;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
+import io.atomix.raft.storage.log.entry.EntryValue;
+import io.atomix.raft.storage.log.entry.InitializeEntry;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.storage.system.Configuration;
 import io.atomix.raft.zeebe.ValidationResult;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.StorageException;
-import io.atomix.storage.journal.EntrySerializer;
-import io.atomix.storage.journal.EntryValue;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.RaftLogEntry;
-import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.storage.protocol.EntryType;
 import io.atomix.utils.concurrent.Futures;
 import io.atomix.utils.concurrent.Scheduled;
 import io.zeebe.snapshots.raft.PersistedSnapshotListener;
@@ -77,7 +79,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
   private Scheduled appendTimer;
   private long configuring;
   private CompletableFuture<Void> commitInitialEntriesFuture;
-  private ZeebeEntry lastZbEntry = null;
+  private Indexed<ZeebeEntry> lastZbEntry = null;
 
   public LeaderRole(final RaftContext context) {
     super(context);
@@ -324,14 +326,14 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
     return future;
   }
 
-  private ZeebeEntry findLastZeebeEntry() {
+  private Indexed<ZeebeEntry> findLastZeebeEntry() {
     long index = raft.getLogWriter().getLastIndex();
     while (index > 0) {
       raft.getLogReader().reset(index);
       final Indexed<RaftLogEntry> lastEntry = raft.getLogReader().next();
 
-      if (lastEntry != null && lastEntry.type() == ZeebeEntry.class) {
-        return ((ZeebeEntry) lastEntry.entry());
+      if (lastEntry != null && lastEntry.entry().type() == EntryType.ZEEBE) {
+        return entrySerializer.asZeebeEntry(lastEntry);
       }
 
       --index;
@@ -609,7 +611,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
    * @param entry the entry to append
    * @return a completable future to be completed once the entry has been appended
    */
-  private <E> CompletableFuture<Indexed<RaftLogEntry>> append(final E entry) {
+  private <E extends EntryValue> CompletableFuture<Indexed<RaftLogEntry>> append(final E entry) {
     CompletableFuture<Indexed<RaftLogEntry>> resultingFuture = null;
     int retries = 0;
 
@@ -703,7 +705,8 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
       return;
     }
 
-    final ValidationResult result = raft.getEntryValidator().validateEntry(lastZbEntry, entry);
+    final ValidationResult result =
+        raft.getEntryValidator().validateEntry(lastZbEntry.entry(), entry);
     if (result.failed()) {
       appendListener.onWriteError(new IllegalStateException(result.getErrorMessage()));
       raft.transition(Role.FOLLOWER);
@@ -720,12 +723,10 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
                   raft.transition(Role.FOLLOWER);
                 }
               } else {
-                if (indexed.type().equals(ZeebeEntry.class)) {
-                  lastZbEntry = indexed.entry();
-                  appendListener.onWrite(indexed);
-                }
-
-                replicate(indexed, appendListener);
+                final Indexed<ZeebeEntry> zeebeEntryIndexed = entrySerializer.asZeebeEntry(indexed);
+                lastZbEntry = zeebeEntryIndexed;
+                appendListener.onWrite(zeebeEntryIndexed);
+                replicate(zeebeEntryIndexed, appendListener);
               }
             });
   }

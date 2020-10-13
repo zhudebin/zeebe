@@ -26,7 +26,6 @@ import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.SparseJournalIndex;
 import io.atomix.storage.statistics.JournalMetrics;
-import io.atomix.utils.serializer.Namespace;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -54,7 +53,7 @@ public class SegmentedJournal implements Journal {
   private final String name;
   private final StorageLevel storageLevel;
   private final File directory;
-  private final Namespace namespace;
+  private final JournalSerde serde;
   private final int maxSegmentSize;
   private final int maxEntrySize;
   private final int maxEntriesPerSegment;
@@ -71,7 +70,7 @@ public class SegmentedJournal implements Journal {
       final String name,
       final StorageLevel storageLevel,
       final File directory,
-      final Namespace namespace,
+      final JournalSerde serde,
       final int maxSegmentSize,
       final int maxEntrySize,
       final int maxEntriesPerSegment,
@@ -81,7 +80,7 @@ public class SegmentedJournal implements Journal {
     this.name = checkNotNull(name, "name cannot be null");
     this.storageLevel = checkNotNull(storageLevel, "storageLevel cannot be null");
     this.directory = checkNotNull(directory, "directory cannot be null");
-    this.namespace = checkNotNull(namespace, "namespace cannot be null");
+    this.serde = checkNotNull(serde, "namespace cannot be null");
     this.maxSegmentSize = maxSegmentSize;
     this.maxEntrySize = maxEntrySize;
     this.maxEntriesPerSegment = maxEntriesPerSegment;
@@ -493,7 +492,7 @@ public class SegmentedJournal implements Journal {
   protected JournalSegment newSegment(
       final JournalSegmentFile segmentFile, final JournalSegmentDescriptor descriptor) {
     return new JournalSegment(
-        segmentFile, descriptor, storageLevel, maxEntrySize, namespace, journalIndexFactory.get());
+        segmentFile, descriptor, storageLevel, maxEntrySize, serde, journalIndexFactory.get());
   }
 
   /** Loads a segment. */
@@ -708,7 +707,7 @@ public class SegmentedJournal implements Journal {
     protected String name = DEFAULT_NAME;
     protected StorageLevel storageLevel = StorageLevel.DISK;
     protected File directory = new File(DEFAULT_DIRECTORY);
-    protected Namespace namespace;
+    protected JournalSerde serde;
     protected int maxSegmentSize = DEFAULT_MAX_SEGMENT_SIZE;
     protected int maxEntrySize = DEFAULT_MAX_ENTRY_SIZE;
     protected int maxEntriesPerSegment = DEFAULT_MAX_ENTRIES_PER_SEGMENT;
@@ -773,11 +772,11 @@ public class SegmentedJournal implements Journal {
     /**
      * Sets the journal namespace, returning the builder for method chaining.
      *
-     * @param namespace The journal serializer.
+     * @param serde The journal serializer.
      * @return The journal builder.
      */
-    public Builder<E> withNamespace(final Namespace namespace) {
-      this.namespace = checkNotNull(namespace, "namespace cannot be null");
+    public Builder<E> withSerde(final JournalSerde serde) {
+      this.serde = checkNotNull(serde, "serde cannot be null");
       return this;
     }
 
@@ -896,7 +895,7 @@ public class SegmentedJournal implements Journal {
           name,
           storageLevel,
           directory,
-          namespace,
+          serde,
           maxSegmentSize,
           maxEntrySize,
           maxEntriesPerSegment,

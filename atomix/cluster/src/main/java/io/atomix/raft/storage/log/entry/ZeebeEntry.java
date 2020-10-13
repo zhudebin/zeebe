@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.atomix.storage.journal;
+package io.atomix.raft.storage.log.entry;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -102,7 +102,7 @@ public class ZeebeEntry implements EntryValue {
     return lowestPosition == that.lowestPosition
         && highestPosition == that.highestPosition
         && term == that.term
-        && timestamp == that.term
+        && timestamp == that.timestamp
         && data.equals(that.data);
   }
 

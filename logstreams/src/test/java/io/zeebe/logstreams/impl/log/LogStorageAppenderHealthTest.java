@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.BiConsumer;
+import org.agrona.DirectBuffer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -133,7 +134,7 @@ public final class LogStorageAppenderHealthTest {
     public void append(
         final long lowestPosition,
         final long highestPosition,
-        final ByteBuffer blockBuffer,
+        final DirectBuffer blockBuffer,
         final AppendListener listener) {
       actor.run(() -> onAppend.accept(highestPosition, listener));
     }

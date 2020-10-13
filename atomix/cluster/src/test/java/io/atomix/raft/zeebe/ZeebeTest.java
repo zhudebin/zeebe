@@ -29,7 +29,7 @@ import io.atomix.raft.zeebe.util.ZeebeTestHelper;
 import io.atomix.raft.zeebe.util.ZeebeTestNode;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.RaftLogEntry;
-import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.utils.concurrent.Futures;
 import java.io.File;
 import java.io.IOException;

@@ -20,6 +20,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import io.atomix.raft.partition.impl.RaftNamespaces;
 import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.system.MetaStore;
 import io.atomix.storage.StorageException;
@@ -27,10 +28,10 @@ import io.atomix.storage.StorageLevel;
 import io.atomix.storage.buffer.FileBuffer;
 import io.atomix.storage.journal.JournalSegmentDescriptor;
 import io.atomix.storage.journal.JournalSegmentFile;
+import io.atomix.storage.journal.JournalSerde;
 import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.statistics.StorageStatistics;
-import io.atomix.utils.serializer.Namespace;
 import io.atomix.utils.serializer.Serializer;
 import io.zeebe.snapshots.raft.PersistedSnapshotStore;
 import io.zeebe.snapshots.raft.ReceivableSnapshotStore;
@@ -63,7 +64,7 @@ public final class RaftStorage {
   private final String prefix;
   private final StorageLevel storageLevel;
   private final File directory;
-  private final Namespace namespace;
+  private final JournalSerde serde;
   private final int maxSegmentSize;
   private final int maxEntrySize;
   private final int maxEntriesPerSegment;
@@ -78,7 +79,7 @@ public final class RaftStorage {
       final String prefix,
       final StorageLevel storageLevel,
       final File directory,
-      final Namespace namespace,
+      final JournalSerde serde,
       final int maxSegmentSize,
       final int maxEntrySize,
       final int maxEntriesPerSegment,
@@ -91,7 +92,7 @@ public final class RaftStorage {
     this.prefix = prefix;
     this.storageLevel = storageLevel;
     this.directory = directory;
-    this.namespace = namespace;
+    this.serde = serde;
     this.maxSegmentSize = maxSegmentSize;
     this.maxEntrySize = maxEntrySize;
     this.maxEntriesPerSegment = maxEntriesPerSegment;
@@ -127,8 +128,8 @@ public final class RaftStorage {
    *
    * @return The storage serializer.
    */
-  public Namespace namespace() {
-    return namespace;
+  public JournalSerde serde() {
+    return serde;
   }
 
   /**
@@ -241,7 +242,7 @@ public final class RaftStorage {
    * @return The metastore.
    */
   public MetaStore openMetaStore() {
-    return new MetaStore(this, Serializer.using(namespace));
+    return new MetaStore(this, Serializer.using(RaftNamespaces.RAFT_STORAGE));
   }
 
   /**
@@ -290,7 +291,7 @@ public final class RaftStorage {
         .withName(prefix)
         .withDirectory(directory)
         .withStorageLevel(storageLevel)
-        .withNamespace(namespace)
+        .withSerde(serde)
         .withMaxSegmentSize(maxSegmentSize)
         .withMaxEntrySize(maxEntrySize)
         .withFreeDiskSpace(freeDiskSpace)
@@ -384,7 +385,7 @@ public final class RaftStorage {
     private String prefix = DEFAULT_PREFIX;
     private StorageLevel storageLevel = StorageLevel.DISK;
     private File directory = new File(DEFAULT_DIRECTORY);
-    private Namespace namespace;
+    private JournalSerde serde;
     private int maxSegmentSize = DEFAULT_MAX_SEGMENT_SIZE;
     private int maxEntrySize = DEFAULT_MAX_ENTRY_SIZE;
     private int maxEntriesPerSegment = DEFAULT_MAX_ENTRIES_PER_SEGMENT;
@@ -456,12 +457,12 @@ public final class RaftStorage {
     /**
      * Sets the storage namespace.
      *
-     * @param namespace The storage namespace.
+     * @param serde The storage namespace.
      * @return The storage builder.
      * @throws NullPointerException If the {@code namespace} is {@code null}
      */
-    public Builder withNamespace(final Namespace namespace) {
-      this.namespace = checkNotNull(namespace, "namespace cannot be null");
+    public Builder withJournalSerde(final JournalSerde serde) {
+      this.serde = checkNotNull(serde, "namespace cannot be null");
       return this;
     }
 
@@ -635,7 +636,7 @@ public final class RaftStorage {
           prefix,
           storageLevel,
           directory,
-          namespace,
+          serde,
           maxSegmentSize,
           maxEntrySize,
           maxEntriesPerSegment,

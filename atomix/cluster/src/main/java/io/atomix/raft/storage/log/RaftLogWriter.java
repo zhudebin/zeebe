@@ -21,9 +21,9 @@ import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.storage.journal.SegmentedJournalWriter;
 
 /** Raft log writer. */
-public class RaftLogWriter extends DelegatingJournalWriter<RaftLogEntry> {
+public class RaftLogWriter extends DelegatingJournalWriter {
 
-  public RaftLogWriter(final SegmentedJournalWriter<RaftLogEntry> writer) {
+  public RaftLogWriter(final SegmentedJournalWriter writer) {
     super(writer);
   }
 }

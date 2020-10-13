@@ -33,6 +33,7 @@ import io.atomix.raft.roles.LeaderRole;
 import io.atomix.raft.snapshot.InMemorySnapshot;
 import io.atomix.raft.snapshot.TestSnapshotStore;
 import io.atomix.raft.storage.RaftStorage;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.zeebe.EntryValidator;
 import io.atomix.raft.zeebe.NoopEntryValidator;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
@@ -40,7 +41,7 @@ import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.JournalReader.Mode;
 import io.atomix.storage.journal.RaftLogEntry;
-import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.utils.AbstractIdentifier;
 import io.atomix.utils.concurrent.SingleThreadContext;
 import io.atomix.utils.concurrent.ThreadContext;
@@ -486,7 +487,7 @@ public final class RaftRule extends ExternalResource {
                 snapshotStores.compute(
                     memberId.id(),
                     (k, v) -> new TestSnapshotStore(getOrCreatePersistedSnapshot(memberId.id()))))
-            .withNamespace(RaftNamespaces.RAFT_STORAGE);
+            .withJournalSerde(new EntrySerializer());
     return configurator.apply(defaults).build();
   }
 

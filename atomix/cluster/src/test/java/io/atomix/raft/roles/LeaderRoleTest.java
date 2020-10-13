@@ -32,13 +32,14 @@ import io.atomix.raft.impl.RaftContext;
 import io.atomix.raft.metrics.RaftReplicationMetrics;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogWriter;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.zeebe.ValidationResult;
 import io.atomix.raft.zeebe.ZeebeLogAppender.AppendListener;
 import io.atomix.raft.zeebe.util.TestAppender;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.RaftLogEntry;
-import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.utils.concurrent.SingleThreadContext;
 import io.zeebe.snapshots.raft.ReceivableSnapshotStore;
 import java.io.IOException;
@@ -57,6 +58,7 @@ import org.mockito.Mockito;
 
 public class LeaderRoleTest {
 
+  private final EntrySerializer serializer = new EntrySerializer();
   private LeaderRole leaderRole;
   private RaftLogWriter writer;
   private RaftContext context;
@@ -76,11 +78,11 @@ public class LeaderRoleTest {
 
     writer = mock(RaftLogWriter.class);
     when(writer.getNextIndex()).thenReturn(1L);
-    when(writer.append(any(ZeebeEntry.class)))
+    when(writer.append(any(RaftLogEntry.class)))
         .then(
             i -> {
-              final ZeebeEntry zeebeEntry = i.getArgument(0);
-              return new Indexed<>(1, zeebeEntry, 45);
+              final RaftLogEntry entry = i.getArgument(0);
+              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
             });
     when(context.getLogWriter()).thenReturn(writer);
 
@@ -132,13 +134,13 @@ public class LeaderRoleTest {
   public void shouldRetryAppendEntryOnIOException() throws InterruptedException {
     // given
 
-    when(writer.append(any(ZeebeEntry.class)))
+    when(writer.append(any(RaftLogEntry.class)))
         .thenThrow(new StorageException(new IOException()))
         .thenThrow(new StorageException(new IOException()))
         .then(
             i -> {
-              final ZeebeEntry zeebeEntry = i.getArgument(0);
-              return new Indexed<>(1, zeebeEntry, 45);
+              final RaftLogEntry entry = i.getArgument(0);
+              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
             });
 
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -172,7 +174,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldStopRetryAppendEntryAfterMaxRetries() throws InterruptedException {
     // given
-    when(writer.append(any(ZeebeEntry.class))).thenThrow(new StorageException(new IOException()));
+    when(writer.append(any(RaftLogEntry.class))).thenThrow(new StorageException(new IOException()));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -209,7 +211,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldStopAppendEntryOnOutOfDisk() throws InterruptedException {
     // given
-    when(writer.append(any(ZeebeEntry.class)))
+    when(writer.append(any(RaftLogEntry.class)))
         .thenThrow(new StorageException.OutOfDiskSpace("Boom file out"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
@@ -248,7 +250,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldStopAppendEntryOnToLargeEntry() throws InterruptedException {
     // given
-    when(writer.append(any(ZeebeEntry.class)))
+    when(writer.append(any(RaftLogEntry.class)))
         .thenThrow(new StorageException.TooLarge("Too large entry"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
@@ -286,7 +288,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldTransitionToFollowerWhenAppendEntryException() throws InterruptedException {
     // given
-    when(writer.append(any(ZeebeEntry.class))).thenThrow(new RuntimeException("expected"));
+    when(writer.append(any(RaftLogEntry.class))).thenThrow(new RuntimeException("expected"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -324,7 +326,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldNotAppendFollowingEntryOnException() throws InterruptedException {
     // given
-    when(writer.append(any(ZeebeEntry.class))).thenThrow(new RuntimeException("expected"));
+    when(writer.append(any(RaftLogEntry.class))).thenThrow(new RuntimeException("expected"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -384,7 +386,7 @@ public class LeaderRoleTest {
   public void shouldRetryAppendEntriesInOrder() throws InterruptedException {
     // given
 
-    when(writer.append(any(ZeebeEntry.class)))
+    when(writer.append(any(RaftLogEntry.class)))
         .thenThrow(new StorageException(new IOException()))
         .thenThrow(new StorageException(new IOException()))
         .then(
@@ -431,11 +433,11 @@ public class LeaderRoleTest {
   @Test
   public void shouldDetectInconsistencyWithLastEntry() throws InterruptedException {
     // given
-    when(writer.append(any(ZeebeEntry.class)))
+    when(writer.append(any(RaftLogEntry.class)))
         .then(
             i -> {
-              final ZeebeEntry zeebeEntry = i.getArgument(0);
-              return new Indexed<>(1, zeebeEntry, 45);
+              final RaftLogEntry entry = i.getArgument(0);
+              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
             });
 
     final DirectBuffer data = new UnsafeBuffer(ByteBuffer.allocate(Integer.BYTES).putInt(0, 1));
