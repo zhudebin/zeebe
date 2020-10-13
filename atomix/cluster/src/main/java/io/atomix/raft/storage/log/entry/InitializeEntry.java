@@ -17,9 +17,7 @@
 package io.atomix.raft.storage.log.entry;
 
 import io.atomix.storage.protocol.EntryType;
-import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 
 /**
  * Indicates a leader change has occurred.

@@ -7,9 +7,9 @@
  */
 package io.zeebe.broker.system.partitions;
 
-import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.RaftLogEntry;
 import java.util.Optional;
 
 /**

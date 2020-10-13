@@ -22,7 +22,6 @@ import io.zeebe.logstreams.impl.backpressure.BackpressureConstants;
 import io.zeebe.logstreams.impl.backpressure.NoopAppendLimiter;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.util.Environment;
-import io.zeebe.util.buffer.BufferUtil;
 import io.zeebe.util.collection.Tuple;
 import io.zeebe.util.health.FailureListener;
 import io.zeebe.util.health.HealthMonitorable;
@@ -112,7 +111,8 @@ public class LogStorageAppender extends Actor implements HealthMonitorable {
   private void appendBlock(final BlockPeek blockPeek) {
     final ByteBuffer rawBuffer = blockPeek.getRawBuffer();
     final int bytes = rawBuffer.remaining();
-    final DirectBuffer copiedBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(bytes).put(rawBuffer).flip());
+    final DirectBuffer copiedBuffer =
+        new UnsafeBuffer(ByteBuffer.allocateDirect(bytes).put(rawBuffer).flip());
     final Tuple<Long, Long> positions = readLowestHighestPosition(copiedBuffer);
 
     // Commit position is the position of the last event.

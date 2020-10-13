@@ -15,8 +15,8 @@
  */
 package io.atomix.raft.zeebe;
 
-import io.atomix.storage.journal.Indexed;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
+import io.atomix.storage.journal.Indexed;
 import java.nio.ByteBuffer;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -40,7 +40,10 @@ public interface ZeebeLogAppender {
       long lowestPosition, long highestPosition, DirectBuffer data, AppendListener appendListener);
 
   default void appendEntry(
-      long lowestPosition, long highestPosition, ByteBuffer data, AppendListener appendListener) {
+      final long lowestPosition,
+      final long highestPosition,
+      final ByteBuffer data,
+      final AppendListener appendListener) {
     appendEntry(lowestPosition, highestPosition, new UnsafeBuffer(data), appendListener);
   }
 

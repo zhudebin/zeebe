@@ -24,12 +24,12 @@ import static org.junit.Assume.assumeTrue;
 import com.google.common.base.Stopwatch;
 import io.atomix.raft.RaftCommitListener;
 import io.atomix.raft.partition.impl.RaftPartitionServer;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.zeebe.util.TestAppender;
 import io.atomix.raft.zeebe.util.ZeebeTestHelper;
 import io.atomix.raft.zeebe.util.ZeebeTestNode;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.RaftLogEntry;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.utils.concurrent.Futures;
 import java.io.File;
 import java.io.IOException;
@@ -121,7 +121,7 @@ public class ZeebeTest {
     stop();
   }
 
-  @SuppressWarnings("squid:S2699") // awaitAllContain is the assert here
+  // awaitAllContain is the assert here
   @Test
   public void shouldAppendAndReplicate() {
     // given
@@ -196,7 +196,7 @@ public class ZeebeTest {
     assertEquals(newLeader, helper.awaitLeader(partitionId));
   }
 
-  @SuppressWarnings("squid:S2699") // awaitAllContain is the assert here
+  // awaitAllContain is the assert here
   @Test
   public void shouldAppendAllEntriesEvenWithFollowerFailures() {
     assumeTrue(nodes.size() > 1);

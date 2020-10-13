@@ -30,7 +30,6 @@ import io.zeebe.util.ByteValue;
 import io.zeebe.util.buffer.BufferReader;
 import io.zeebe.util.buffer.BufferWriter;
 import io.zeebe.util.sched.testing.ActorSchedulerRule;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;

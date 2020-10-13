@@ -17,6 +17,7 @@ import io.zeebe.client.api.command.ClientStatusException;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.test.util.BrokerClassRuleHelper;
 import io.zeebe.test.util.record.RecordingExporter;
+import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -93,7 +94,7 @@ public final class CancelWorkflowInstanceTest {
     final var command = CLIENT_RULE.getClient().newCancelInstanceCommand(elementInstanceKey).send();
 
     // then
-    assertThatThrownBy(() -> command.join())
+    assertThatThrownBy(() -> command.join(5, TimeUnit.SECONDS))
         .isInstanceOf(ClientStatusException.class)
         .extracting("status.code")
         .isEqualTo(Code.NOT_FOUND);

@@ -164,8 +164,8 @@ public final class AtomixLogStorageReaderTest {
   public void shouldReturnEmptyIfLogContainsNonZeebeEntries() {
     // given
     final var reader = storageRule.get().newReader();
-    final ConfigurationEntry configurationEntry = new ConfigurationEntry(1,
-        System.currentTimeMillis(), Collections.emptyList());
+    final ConfigurationEntry configurationEntry =
+        new ConfigurationEntry(1, System.currentTimeMillis(), Collections.emptyList());
 
     // when
     final var entry =
@@ -184,8 +184,8 @@ public final class AtomixLogStorageReaderTest {
   public void shouldNotReturnEmptyIfAtLeastOneZeebeEntryPresent() {
     // given
     final var reader = storageRule.get().newReader();
-    final ConfigurationEntry configurationEntry = new ConfigurationEntry(1,
-        System.currentTimeMillis(), Collections.emptyList());
+    final ConfigurationEntry configurationEntry =
+        new ConfigurationEntry(1, System.currentTimeMillis(), Collections.emptyList());
 
     // when
     final var entry =
