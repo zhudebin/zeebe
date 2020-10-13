@@ -17,6 +17,7 @@ package io.atomix.raft.roles;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -126,7 +127,7 @@ public class LeaderRoleTest {
     leaderRole.appendEntry(0, 1, data, listener);
 
     // then
-    latch.await(10, TimeUnit.SECONDS);
+    assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
     assertEquals(0, latch.getCount());
   }
 
@@ -391,8 +392,8 @@ public class LeaderRoleTest {
         .thenThrow(new StorageException(new IOException()))
         .then(
             i -> {
-              final ZeebeEntry zeebeEntry = i.getArgument(0);
-              return new Indexed<>(1, zeebeEntry, 45);
+              final RaftLogEntry entry = i.getArgument(0);
+              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
             });
 
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);

@@ -39,17 +39,23 @@ import io.atomix.raft.protocol.VoteRequest;
 import io.atomix.raft.protocol.VoteResponse;
 import io.atomix.raft.storage.log.entry.ConfigurationEntry;
 import io.atomix.raft.storage.log.entry.InitializeEntry;
-import io.atomix.raft.storage.system.Configuration;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
+import io.atomix.raft.storage.system.Configuration;
+import io.atomix.storage.journal.RaftLogEntry;
+import io.atomix.storage.protocol.EntryType;
 import io.atomix.utils.serializer.FallbackNamespace;
 import io.atomix.utils.serializer.Namespace;
 import io.atomix.utils.serializer.NamespaceImpl.Builder;
 import io.atomix.utils.serializer.Namespaces;
+import io.atomix.utils.serializer.serializers.DirectBufferSerializer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
+import org.agrona.ExpandableArrayBuffer;
+import org.agrona.ExpandableDirectByteBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 
 /** Storage serializer namespaces. */
 public final class RaftNamespaces {
@@ -121,6 +127,13 @@ public final class RaftNamespaces {
           .register(Instant.class)
           .register(Configuration.class)
           .register(ZeebeEntry.class)
+          .register(RaftLogEntry.class)
+          .register(EntryType.class)
+          .register(
+              new DirectBufferSerializer(),
+              UnsafeBuffer.class,
+              ExpandableDirectByteBuffer.class,
+              ExpandableArrayBuffer.class)
           .setCompatible(true)
           .build("RaftProtocol");
 
@@ -164,6 +177,13 @@ public final class RaftNamespaces {
         .register(RaftMember.Type.class)
         .register(Instant.class)
         .register(Configuration.class)
-        .register(ZeebeEntry.class);
+        .register(ZeebeEntry.class)
+        .register(RaftLogEntry.class)
+        .register(EntryType.class)
+        .register(
+            new DirectBufferSerializer(),
+            UnsafeBuffer.class,
+            ExpandableDirectByteBuffer.class,
+            ExpandableArrayBuffer.class);
   }
 }

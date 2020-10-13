@@ -79,7 +79,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
   private Scheduled appendTimer;
   private long configuring;
   private CompletableFuture<Void> commitInitialEntriesFuture;
-  private Indexed<ZeebeEntry> lastZbEntry = null;
+  private ZeebeEntry lastZbEntry = null;
 
   public LeaderRole(final RaftContext context) {
     super(context);
@@ -326,14 +326,14 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
     return future;
   }
 
-  private Indexed<ZeebeEntry> findLastZeebeEntry() {
+  private ZeebeEntry findLastZeebeEntry() {
     long index = raft.getLogWriter().getLastIndex();
     while (index > 0) {
       raft.getLogReader().reset(index);
       final Indexed<RaftLogEntry> lastEntry = raft.getLogReader().next();
 
       if (lastEntry != null && lastEntry.entry().type() == EntryType.ZEEBE) {
-        return entrySerializer.asZeebeEntry(lastEntry);
+        return entrySerializer.asZeebeEntry(lastEntry).entry();
       }
 
       --index;
@@ -367,6 +367,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
   private CompletableFuture<Void> appendInitialEntries() {
     final long term = raft.getTerm();
 
+    log.warn("Appending an initial entry");
     return append(new InitializeEntry(term, appender.getTime())).thenApply(index -> null);
   }
 
@@ -378,6 +379,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
     // ensure
     // that the commitIndex is not increased until the no-op entry (appender.index()) is committed.
     final CompletableFuture<Void> future = new CompletableFuture<>();
+    log.warn("Committing the initial entry");
     appender
         .appendEntries(appender.getIndex())
         .whenComplete(
@@ -705,8 +707,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
       return;
     }
 
-    final ValidationResult result =
-        raft.getEntryValidator().validateEntry(lastZbEntry.entry(), entry);
+    final ValidationResult result = raft.getEntryValidator().validateEntry(lastZbEntry, entry);
     if (result.failed()) {
       appendListener.onWriteError(new IllegalStateException(result.getErrorMessage()));
       raft.transition(Role.FOLLOWER);
@@ -723,8 +724,9 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
                   raft.transition(Role.FOLLOWER);
                 }
               } else {
-                final Indexed<ZeebeEntry> zeebeEntryIndexed = entrySerializer.asZeebeEntry(indexed);
-                lastZbEntry = zeebeEntryIndexed;
+                final Indexed<ZeebeEntry> zeebeEntryIndexed =
+                    new Indexed<>(indexed.index(), entry, indexed.size());
+                lastZbEntry = entry;
                 appendListener.onWrite(zeebeEntryIndexed);
                 replicate(zeebeEntryIndexed, appendListener);
               }

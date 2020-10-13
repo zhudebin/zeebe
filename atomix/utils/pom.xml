@@ -34,6 +34,10 @@
       <artifactId>config</artifactId>
       <groupId>com.typesafe</groupId>
     </dependency>
+    <dependency>
+      <groupId>org.agrona</groupId>
+      <artifactId>agrona</artifactId>
+    </dependency>
 
     <dependency>
       <artifactId>objenesis</artifactId>
