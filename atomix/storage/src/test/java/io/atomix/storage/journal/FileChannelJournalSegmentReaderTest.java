@@ -23,6 +23,8 @@ import io.atomix.storage.journal.index.SparseJournalIndex;
 import io.atomix.storage.protocol.EntryType;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -58,7 +60,15 @@ public class FileChannelJournalSegmentReaderTest {
 
       final var expectedEntryCount = entriesPerSegment * 3;
       for (int i = 0; i < expectedEntryCount; i++) {
-        writer.append(ENTRY);
+        writer.append(
+            new RaftLogEntry(
+                1,
+                1,
+                EntryType.ZEEBE,
+                new UnsafeBuffer(
+                    ByteBuffer.allocate(Integer.BYTES)
+                        .order(ByteOrder.LITTLE_ENDIAN)
+                        .putInt(0, i))));
       }
 
       // when
@@ -68,7 +78,7 @@ public class FileChannelJournalSegmentReaderTest {
       }
 
       // then
-      assertThat(entries)
+      assertThat(entries.stream().map(e -> e.entry().getInt(0, ByteOrder.LITTLE_ENDIAN)))
           .hasSize(expectedEntryCount)
           .isEqualTo(IntStream.range(0, expectedEntryCount).boxed().collect(Collectors.toList()));
     }
