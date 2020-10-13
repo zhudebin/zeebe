@@ -7,11 +7,14 @@
  */
 package io.zeebe.logstreams.storage.atomix;
 
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.Position;
 import io.atomix.storage.journal.index.SparseJournalIndex;
+import io.atomix.storage.protocol.EntryType;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
@@ -21,6 +24,7 @@ public final class ZeebeIndexAdapter implements JournalIndex, ZeebeIndexMapping 
       new ConcurrentSkipListMap<>();
   private final ConcurrentNavigableMap<Long, Long> indexPositionMapping =
       new ConcurrentSkipListMap<>();
+  private final EntrySerializer entrySerializer = new EntrySerializer();
   private final SparseJournalIndex sparseJournalIndex;
   private final int density;
 
@@ -34,11 +38,11 @@ public final class ZeebeIndexAdapter implements JournalIndex, ZeebeIndexMapping 
   }
 
   @Override
-  public void index(final Indexed indexedEntry, final int position) {
+  public void index(final Indexed<RaftLogEntry> indexedEntry, final int position) {
     final var index = indexedEntry.index();
     if (index % density == 0) {
-      if (indexedEntry.type() == ZeebeEntry.class) {
-        final ZeebeEntry zeebeEntry = (ZeebeEntry) indexedEntry.entry();
+      if (indexedEntry.entry().type() == EntryType.ZEEBE) {
+        final ZeebeEntry zeebeEntry = entrySerializer.asZeebeEntry(indexedEntry).entry();
         final var lowestPosition = zeebeEntry.lowestPosition();
 
         positionIndexMapping.put(lowestPosition, index);

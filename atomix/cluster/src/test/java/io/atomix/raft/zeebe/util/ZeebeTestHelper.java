@@ -20,10 +20,11 @@ import static org.junit.Assert.assertTrue;
 import io.atomix.raft.RaftServer.Role;
 import io.atomix.raft.partition.impl.RaftPartitionServer;
 import io.atomix.raft.storage.log.RaftLogReader;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
+import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.JournalReader.Mode;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Optional;
@@ -33,11 +34,11 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /** Utilities to help write tests; as these are utils, everything is public by default */
-@SuppressWarnings("WeakerAccess")
 public class ZeebeTestHelper {
 
   private static final long DEFAULT_TIMEOUT_MS = 10_000;
   private final Collection<ZeebeTestNode> nodes;
+  private final EntrySerializer entrySerializer = new EntrySerializer();
 
   public ZeebeTestHelper(final Collection<ZeebeTestNode> nodes) {
     this.nodes = nodes;
@@ -93,7 +94,7 @@ public class ZeebeTestHelper {
     try (final RaftLogReader reader = partition.openReader(indexed.index(), Mode.COMMITS)) {
 
       if (reader.hasNext() && reader.getNextIndex() == indexed.index()) {
-        return isEntryEqualTo(reader.next().cast(), indexed);
+        return isEntryEqualTo(entrySerializer.asZeebeEntry(reader.next()), indexed);
       }
     }
 

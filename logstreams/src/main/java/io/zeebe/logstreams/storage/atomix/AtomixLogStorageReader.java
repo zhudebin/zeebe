@@ -8,8 +8,10 @@
 package io.zeebe.logstreams.storage.atomix;
 
 import io.atomix.raft.storage.log.RaftLogReader;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.protocol.EntryType;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.logstreams.spi.LogStorageReader;
 import java.util.Optional;
@@ -18,6 +20,7 @@ import org.agrona.DirectBuffer;
 public final class AtomixLogStorageReader implements LogStorageReader {
   private final RaftLogReader reader;
   private final ZeebeIndexMapping zeebeIndexMapping;
+  private final EntrySerializer entrySerializer = new EntrySerializer();
 
   public AtomixLogStorageReader(
       final ZeebeIndexMapping zeebeIndexMapping, final RaftLogReader reader) {
@@ -32,7 +35,7 @@ public final class AtomixLogStorageReader implements LogStorageReader {
       // InitialEntry, so this should be rather fast in practice
       reader.reset();
       while (reader.hasNext()) {
-        if (reader.next().type() == ZeebeEntry.class) {
+        if (reader.next().entry().type() == EntryType.ZEEBE) {
           return false;
         }
       }
@@ -83,8 +86,8 @@ public final class AtomixLogStorageReader implements LogStorageReader {
       }
 
       final var indexed = reader.next();
-      if (indexed.type() == ZeebeEntry.class) {
-        wrapEntryData(indexed.cast(), readBuffer);
+      if (indexed.entry().type() == EntryType.ZEEBE) {
+        wrapEntryData(entrySerializer.asZeebeEntry(indexed), readBuffer);
         return reader.getNextIndex();
       }
 
@@ -143,8 +146,9 @@ public final class AtomixLogStorageReader implements LogStorageReader {
   public Optional<Indexed<ZeebeEntry>> findEntry(final long index) {
     if (reader.getCurrentIndex() == index) {
       final var entry = reader.getCurrentEntry();
-      if (entry != null && entry.type().equals(ZeebeEntry.class)) {
-        return Optional.of(reader.getCurrentEntry().cast());
+      if (entry != null && entry.entry().type() == EntryType.ZEEBE) {
+        final Indexed<ZeebeEntry> zeebeEntry = entrySerializer.asZeebeEntry(entry);
+        return Optional.of(zeebeEntry);
       }
     }
 
@@ -154,8 +158,9 @@ public final class AtomixLogStorageReader implements LogStorageReader {
 
     while (reader.hasNext()) {
       final var entry = reader.next();
-      if (entry.type().equals(ZeebeEntry.class)) {
-        return Optional.of(entry.cast());
+      if (entry != null && entry.entry().type() == EntryType.ZEEBE) {
+        final Indexed<ZeebeEntry> zeebeEntry = entrySerializer.asZeebeEntry(entry);
+        return Optional.of(zeebeEntry);
       }
     }
 

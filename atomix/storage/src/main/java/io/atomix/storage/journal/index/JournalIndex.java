@@ -17,6 +17,7 @@
 package io.atomix.storage.journal.index;
 
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.RaftLogEntry;
 
 /** Journal index. */
 public interface JournalIndex {
@@ -27,7 +28,7 @@ public interface JournalIndex {
    * @param indexed the indexed entry for which to add the entry
    * @param position the position of the given index
    */
-  void index(Indexed indexed, int position);
+  void index(Indexed<RaftLogEntry> indexed, int position);
 
   /**
    * Looks up the position of the given index.

@@ -10,10 +10,12 @@ package io.zeebe.logstreams.storage.atomix;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import io.atomix.raft.storage.log.entry.InitializeEntry;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.Position;
+import io.atomix.storage.protocol.EntryType;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
 
 public class AtomixIndexTest {
@@ -201,6 +203,9 @@ public class AtomixIndexTest {
   }
 
   private static Indexed asIndexedEntry(final long index) {
-    return new Indexed(index, new InitializeEntry(0, System.currentTimeMillis()), 0);
+    return new Indexed(
+        index,
+        new RaftLogEntry(0, System.currentTimeMillis(), EntryType.INITIALIZE, new UnsafeBuffer()),
+        0);
   }
 }

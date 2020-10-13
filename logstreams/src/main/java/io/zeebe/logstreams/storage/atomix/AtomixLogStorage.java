@@ -10,7 +10,6 @@ package io.zeebe.logstreams.storage.atomix;
 import io.atomix.raft.partition.RaftPartition;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.logstreams.spi.LogStorageReader;
-import java.nio.ByteBuffer;
 import java.util.NoSuchElementException;
 import org.agrona.DirectBuffer;
 

@@ -59,25 +59,6 @@ public class Indexed<E> {
     return size;
   }
 
-  /**
-   * Returns the entry type class.
-   *
-   * @return The entry class.
-   */
-  public Class<?> type() {
-    return entry.getClass();
-  }
-
-  /**
-   * Casts the entry to the given type.
-   *
-   * @return The cast entry.
-   */
-  @SuppressWarnings("unchecked")
-  public <E> Indexed<E> cast() {
-    return (Indexed<E>) this;
-  }
-
   @Override
   public int hashCode() {
     return Objects.hash(index, entry, size);
