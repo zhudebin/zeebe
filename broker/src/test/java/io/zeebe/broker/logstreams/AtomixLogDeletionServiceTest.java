@@ -81,7 +81,7 @@ public final class AtomixLogDeletionServiceTest {
     compactor.awaitCompaction(2L, Duration.ofSeconds(5));
     reader.reset();
     final var entries = readAllEntries(reader);
-    assertThat(entries).isNotEmpty().hasSize(2).extracting(Indexed::index).containsExactly(2L, 3L);
+    assertThat(entries).hasSize(2).extracting(Indexed::index).containsExactly(2L, 3L);
   }
 
   @Test
@@ -133,7 +133,7 @@ public final class AtomixLogDeletionServiceTest {
     try {
       return builder
           // hardcode max segment size to allow a single entry only
-          .withMaxSegmentSize(JournalSegmentDescriptor.BYTES + 9 * Integer.BYTES)
+          .withMaxSegmentSize(JournalSegmentDescriptor.BYTES + 20 * Integer.BYTES)
           .withSnapshotStore(
               new FileBasedSnapshotStore(
                   new SnapshotMetrics("1"),

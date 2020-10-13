@@ -17,6 +17,7 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
 import io.zeebe.broker.system.partitions.impl.AsyncSnapshotDirector;
@@ -40,6 +41,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
 import org.junit.Rule;
@@ -59,6 +61,7 @@ public final class AsyncSnapshotingTest {
   public final RuleChain chain =
       RuleChain.outerRule(autoCloseableRule).around(tempFolderRule).around(actorSchedulerRule);
 
+  private final EntrySerializer entrySerializer = new EntrySerializer();
   private StateControllerImpl snapshotController;
   private LogStream logStream;
   private AsyncSnapshotDirector asyncSnapshotDirector;
@@ -82,10 +85,13 @@ public final class AsyncSnapshotingTest {
             factory.getReceivableSnapshotStore(partitionName),
             rootDirectory.resolve("runtime"),
             new NoneSnapshotReplication(),
-            l ->
-                Optional.of(
-                    new Indexed(
-                        l + 100, new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer()), 0)),
+            l -> {
+              final ZeebeEntry zeebeEntry =
+                  new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer());
+              final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
+              return Optional.of(
+                  new Indexed<>(l + 100, entrySerializer.asRaftLogEntry(zeebeEntry, buffer, 0), 0));
+            },
             db -> Long.MAX_VALUE);
 
     snapshotController.openDb();

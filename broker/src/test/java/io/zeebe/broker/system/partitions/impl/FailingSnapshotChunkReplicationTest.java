@@ -9,6 +9,7 @@ package io.zeebe.broker.system.partitions.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
 import io.zeebe.broker.system.partitions.SnapshotReplication;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,6 +37,7 @@ public final class FailingSnapshotChunkReplicationTest {
   @Rule public final TemporaryFolder tempFolderRule = new TemporaryFolder();
   @Rule public final AutoCloseableRule autoCloseableRule = new AutoCloseableRule();
 
+  private final EntrySerializer entrySerializer = new EntrySerializer();
   private StateControllerImpl replicatorSnapshotController;
   private StateControllerImpl receiverSnapshotController;
   private ConstructableSnapshotStore senderStore;
@@ -59,9 +62,13 @@ public final class FailingSnapshotChunkReplicationTest {
             senderFactory.getReceivableSnapshotStore("1"),
             senderRoot.resolve("runtime"),
             replicator,
-            l ->
-                Optional.of(
-                    new Indexed(l, new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer()), 0)),
+            l -> {
+              final ZeebeEntry zeebeEntry =
+                  new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer());
+              final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
+              return Optional.of(
+                  new Indexed<>(l + 100, entrySerializer.asRaftLogEntry(zeebeEntry, buffer, 0), 0));
+            },
             db -> Long.MAX_VALUE);
     senderStore.addSnapshotListener(replicatorSnapshotController);
 
@@ -73,9 +80,13 @@ public final class FailingSnapshotChunkReplicationTest {
             receiverFactory.getReceivableSnapshotStore("1"),
             receiverRoot.resolve("runtime"),
             replicator,
-            l ->
-                Optional.ofNullable(
-                    new Indexed(l, new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer()), 0)),
+            l -> {
+              final ZeebeEntry zeebeEntry =
+                  new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer());
+              final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
+              return Optional.of(
+                  new Indexed<>(l + 100, entrySerializer.asRaftLogEntry(zeebeEntry, buffer, 0), 0));
+            },
             db -> Long.MAX_VALUE);
     receiverStore.addSnapshotListener(receiverSnapshotController);
 

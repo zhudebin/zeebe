@@ -10,6 +10,7 @@ package io.zeebe.broker.system.partitions.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
 import io.zeebe.db.impl.DefaultColumnFamily;
@@ -28,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.Optional;
+import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.collections.MutableLong;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
@@ -40,6 +42,7 @@ public final class StateControllerImplTest {
   @Rule public final TemporaryFolder tempFolderRule = new TemporaryFolder();
   @Rule public final AutoCloseableRule autoCloseableRule = new AutoCloseableRule();
 
+  private final EntrySerializer entrySerializer = new EntrySerializer();
   private final MutableLong exporterPosition = new MutableLong(Long.MAX_VALUE);
   private StateControllerImpl snapshotController;
   private ConstructableSnapshotStore store;
@@ -60,9 +63,13 @@ public final class StateControllerImplTest {
             factory.getReceivableSnapshotStore("1"),
             rootDirectory.resolve("runtime"),
             new NoneSnapshotReplication(),
-            l ->
-                Optional.ofNullable(
-                    new Indexed(l, new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer()), 0)),
+            l -> {
+              final ZeebeEntry zeebeEntry =
+                  new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer());
+              final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
+              return Optional.of(
+                  new Indexed<>(l, entrySerializer.asRaftLogEntry(zeebeEntry, buffer, 0), 0));
+            },
             db -> exporterPosition.get());
 
     autoCloseableRule.manage(snapshotController);
