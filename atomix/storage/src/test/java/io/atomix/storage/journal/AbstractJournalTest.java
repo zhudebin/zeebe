@@ -89,7 +89,7 @@ public abstract class AbstractJournalTest {
     return SegmentedJournal.<RaftLogEntry>builder()
         .withName("test")
         .withDirectory(folder)
-        .withSerde(serde)
+        .withSerde(TestJournalSerde::new)
         .withStorageLevel(storageLevel())
         .withMaxSegmentSize(maxSegmentSize)
         .withMaxEntrySize(48)

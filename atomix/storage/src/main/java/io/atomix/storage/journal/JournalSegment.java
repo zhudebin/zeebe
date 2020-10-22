@@ -26,6 +26,7 @@ import io.atomix.storage.journal.index.JournalIndex;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Log segment.
@@ -41,7 +42,7 @@ public class JournalSegment implements AutoCloseable {
   private final JournalIndex index;
   private final JournalWriter writer;
   private final Set<JournalReader> readers = Sets.newConcurrentHashSet();
-  private final JournalSerde serde;
+  private final Supplier<JournalSerde> serdeFactory;
   private boolean open = true;
 
   public JournalSegment(
@@ -49,15 +50,15 @@ public class JournalSegment implements AutoCloseable {
       final JournalSegmentDescriptor descriptor,
       final StorageLevel storageLevel,
       final int maxEntrySize,
-      final JournalSerde serde,
+      final Supplier<JournalSerde> serdeFactory,
       final JournalIndex journalIndex) {
     this.file = file;
     this.descriptor = descriptor;
     this.storageLevel = storageLevel;
     this.maxEntrySize = maxEntrySize;
     index = journalIndex;
-    this.serde = serde;
-    writer = createWriter(file, storageLevel, maxEntrySize, serde);
+    this.serdeFactory = serdeFactory;
+    writer = createWriter(file, storageLevel, maxEntrySize, serdeFactory.get());
   }
 
   /**
@@ -151,9 +152,10 @@ public class JournalSegment implements AutoCloseable {
     checkOpen();
     final JournalReader reader;
     if (storageLevel == StorageLevel.MAPPED) {
-      reader = new MappedJournalSegmentReader(file, this, maxEntrySize, index, serde);
+      reader = new MappedJournalSegmentReader(file, this, maxEntrySize, index, serdeFactory.get());
     } else {
-      reader = new FileChannelJournalSegmentReader(file, this, maxEntrySize, index, serde);
+      reader =
+          new FileChannelJournalSegmentReader(file, this, maxEntrySize, index, serdeFactory.get());
     }
     readers.add(reader);
     return reader;

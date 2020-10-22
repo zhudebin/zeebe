@@ -486,7 +486,7 @@ public final class RaftRule extends ExternalResource {
                 snapshotStores.compute(
                     memberId.id(),
                     (k, v) -> new TestSnapshotStore(getOrCreatePersistedSnapshot(memberId.id()))))
-            .withJournalSerde(new EntrySerializer());
+            .withJournalSerde(EntrySerializer::new);
     return configurator.apply(defaults).build();
   }
 

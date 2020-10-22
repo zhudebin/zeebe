@@ -200,7 +200,7 @@ public class RaftTest extends ConcurrentTestCase {
             .withMaxEntriesPerSegment(10)
             .withSnapshotStore(new TestSnapshotStore(new AtomicReference<>()))
             .withMaxSegmentSize(1024 * 10)
-            .withJournalSerde(new EntrySerializer());
+            .withJournalSerde(EntrySerializer::new);
     return configurator.apply(defaults).build();
   }
 

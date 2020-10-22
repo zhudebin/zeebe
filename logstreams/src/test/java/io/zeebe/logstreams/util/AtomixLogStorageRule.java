@@ -263,7 +263,7 @@ public final class AtomixLogStorageRule extends ExternalResource
     return RaftStorage.builder()
         .withFlushOnCommit()
         .withStorageLevel(StorageLevel.DISK)
-        .withJournalSerde(new EntrySerializer())
+        .withJournalSerde(EntrySerializer::new)
         .withRetainStaleSnapshots();
   }
 

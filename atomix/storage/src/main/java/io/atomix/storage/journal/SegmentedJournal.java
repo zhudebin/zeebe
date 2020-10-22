@@ -53,7 +53,7 @@ public class SegmentedJournal implements Journal {
   private final String name;
   private final StorageLevel storageLevel;
   private final File directory;
-  private final JournalSerde serde;
+  private final Supplier<JournalSerde> serdeFactory;
   private final int maxSegmentSize;
   private final int maxEntrySize;
   private final int maxEntriesPerSegment;
@@ -70,7 +70,7 @@ public class SegmentedJournal implements Journal {
       final String name,
       final StorageLevel storageLevel,
       final File directory,
-      final JournalSerde serde,
+      final Supplier<JournalSerde> serdeFactory,
       final int maxSegmentSize,
       final int maxEntrySize,
       final int maxEntriesPerSegment,
@@ -80,7 +80,7 @@ public class SegmentedJournal implements Journal {
     this.name = checkNotNull(name, "name cannot be null");
     this.storageLevel = checkNotNull(storageLevel, "storageLevel cannot be null");
     this.directory = checkNotNull(directory, "directory cannot be null");
-    this.serde = checkNotNull(serde, "namespace cannot be null");
+    this.serdeFactory = checkNotNull(serdeFactory, "namespace cannot be null");
     this.maxSegmentSize = maxSegmentSize;
     this.maxEntrySize = maxEntrySize;
     this.maxEntriesPerSegment = maxEntriesPerSegment;
@@ -492,7 +492,12 @@ public class SegmentedJournal implements Journal {
   protected JournalSegment newSegment(
       final JournalSegmentFile segmentFile, final JournalSegmentDescriptor descriptor) {
     return new JournalSegment(
-        segmentFile, descriptor, storageLevel, maxEntrySize, serde, journalIndexFactory.get());
+        segmentFile,
+        descriptor,
+        storageLevel,
+        maxEntrySize,
+        serdeFactory,
+        journalIndexFactory.get());
   }
 
   /** Loads a segment. */
@@ -707,7 +712,7 @@ public class SegmentedJournal implements Journal {
     protected String name = DEFAULT_NAME;
     protected StorageLevel storageLevel = StorageLevel.DISK;
     protected File directory = new File(DEFAULT_DIRECTORY);
-    protected JournalSerde serde;
+    protected Supplier<JournalSerde> serdeFactory;
     protected int maxSegmentSize = DEFAULT_MAX_SEGMENT_SIZE;
     protected int maxEntrySize = DEFAULT_MAX_ENTRY_SIZE;
     protected int maxEntriesPerSegment = DEFAULT_MAX_ENTRIES_PER_SEGMENT;
@@ -775,8 +780,8 @@ public class SegmentedJournal implements Journal {
      * @param serde The journal serializer.
      * @return The journal builder.
      */
-    public Builder<E> withSerde(final JournalSerde serde) {
-      this.serde = checkNotNull(serde, "serde cannot be null");
+    public Builder<E> withSerde(final Supplier<JournalSerde> serde) {
+      serdeFactory = checkNotNull(serde, "serde cannot be null");
       return this;
     }
 
@@ -895,7 +900,7 @@ public class SegmentedJournal implements Journal {
           name,
           storageLevel,
           directory,
-          serde,
+          serdeFactory,
           maxSegmentSize,
           maxEntrySize,
           maxEntriesPerSegment,

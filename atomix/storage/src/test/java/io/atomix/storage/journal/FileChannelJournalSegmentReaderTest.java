@@ -117,7 +117,7 @@ public class FileChannelJournalSegmentReaderTest {
     return SegmentedJournal.<Integer>builder()
         .withName("test")
         .withDirectory(directory)
-        .withSerde(serde)
+        .withSerde(TestJournalSerde::new)
         .withStorageLevel(StorageLevel.DISK)
         .withMaxEntrySize(entrySize)
         .withMaxSegmentSize(maxSegmentSize)

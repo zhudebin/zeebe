@@ -320,7 +320,7 @@ public class RaftPartitionServer implements Managed<RaftPartitionServer> {
         .withMaxEntrySize((int) storageConfig.getMaxEntrySize().bytes())
         .withFlushOnCommit(storageConfig.isFlushOnCommit())
         .withFreeDiskSpace(storageConfig.getFreeDiskSpace())
-        .withJournalSerde(new EntrySerializer())
+        .withJournalSerde(EntrySerializer::new)
         .withSnapshotStore(persistedSnapshotStore)
         .withJournalIndexFactory(journalIndexFactory)
         .build();

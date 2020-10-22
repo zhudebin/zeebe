@@ -19,9 +19,11 @@ package io.atomix.storage.journal;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.Position;
+import io.atomix.storage.protocol.MessageHeaderDecoder;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.NoSuchElementException;
@@ -39,11 +41,13 @@ class FileChannelJournalSegmentReader implements JournalReader {
 
   private final FileChannel channel;
   private final int maxEntrySize;
-  private final JournalIndex index;
-  private final JournalSerde serializer;
+  private final JournalIndex journalIndex;
+  private final JournalSerde serde;
   private final ByteBuffer memory;
   private final DirectBuffer readBuffer;
   private final JournalSegment segment;
+  private final Checksum checksum = new CRC32();
+  private final MessageHeaderDecoder headerDecoder = new MessageHeaderDecoder();
   private Indexed<RaftLogEntry> currentEntry;
   private Indexed<RaftLogEntry> nextEntry;
 
@@ -51,14 +55,16 @@ class FileChannelJournalSegmentReader implements JournalReader {
       final JournalSegmentFile file,
       final JournalSegment segment,
       final int maxEntrySize,
-      final JournalIndex index,
-      final JournalSerde serializer) {
+      final JournalIndex journalIndex,
+      final JournalSerde serde) {
     this.segment = segment;
     this.maxEntrySize = maxEntrySize;
-    this.index = index;
-    this.serializer = serializer;
+    this.journalIndex = journalIndex;
+    this.serde = serde;
     channel = file.openChannel(StandardOpenOption.READ);
-    memory = ByteBuffer.allocate((maxEntrySize + Integer.BYTES + Integer.BYTES) * 2);
+    memory =
+        ByteBuffer.allocateDirect((maxEntrySize + Integer.BYTES + Integer.BYTES) * 2)
+            .order(ByteOrder.LITTLE_ENDIAN);
     readBuffer = new UnsafeBuffer(memory);
     reset();
   }
@@ -66,7 +72,7 @@ class FileChannelJournalSegmentReader implements JournalReader {
   @Override
   public boolean isEmpty() {
     try {
-      return channel.size() == 0;
+      return channel.size() <= JournalSegmentDescriptor.BYTES;
     } catch (final IOException e) {
       throw new StorageException(e);
     }
@@ -145,7 +151,7 @@ class FileChannelJournalSegmentReader implements JournalReader {
 
     reset();
 
-    final Position position = this.index.lookup(index - 1);
+    final Position position = journalIndex.lookup(index - 1);
     if (position != null && position.index() >= firstIndex && position.index() <= lastIndex) {
       currentEntry = new Indexed<>(position.index() - 1, null, 0);
       try {
@@ -178,15 +184,15 @@ class FileChannelJournalSegmentReader implements JournalReader {
   /** Reads the next entry in the segment. */
   private void readNext() {
     final long index = getNextIndex();
+    boolean success = false;
+
+    // Mark the buffer so it can be reset if necessary.
+    memory.mark();
 
     try {
-      // Mark the buffer so it can be reset if necessary.
-      memory.mark();
-
       final var cantReadLength = memory.remaining() < Integer.BYTES;
       if (cantReadLength) {
         readBytesIntoBuffer();
-        memory.mark();
       }
 
       final int length = memory.getInt();
@@ -199,16 +205,18 @@ class FileChannelJournalSegmentReader implements JournalReader {
       final var cantReadEntry = memory.remaining() < (length + Integer.BYTES);
       if (cantReadEntry) {
         readBytesIntoBuffer();
-        memory.mark();
-        // we don't need to read the length again
       }
 
       readNextEntry(index, length);
-
-    } catch (final BufferUnderflowException e) {
-      resetReading();
+      success = true;
+    } catch (final BufferUnderflowException | IndexOutOfBoundsException e) {
+      // do nothing
     } catch (final IOException e) {
       throw new StorageException(e);
+    } finally {
+      if (!success) {
+        resetReading();
+      }
     }
   }
 
@@ -218,17 +226,10 @@ class FileChannelJournalSegmentReader implements JournalReader {
       return;
     }
 
-    final RaftLogEntry raftLogEntry =
-        serializer.deserializeRaftLogEntry(readBuffer, memory.position());
-    memory.position(memory.position() + length);
+    final int offset = memory.position();
+    final RaftLogEntry raftLogEntry = serde.deserializeRaftLogEntry(readBuffer, offset);
+    memory.position(offset + length);
     nextEntry = new Indexed<>(index, raftLogEntry, length);
-
-    // If the stored checksum equals the computed checksum, set the next entry.
-    //    final int limit = memory.limit();
-    //    memory.limit(memory.position() + length);
-    //    final E entry = namespace.deserialize(memory);
-    //    memory.limit(limit);
-    //    nextEntry = new Indexed<>(index, entry, length);
   }
 
   private void resetReading() {
@@ -238,13 +239,12 @@ class FileChannelJournalSegmentReader implements JournalReader {
 
   private boolean isChecksumInvalid(final int length) {
     // Read the checksum of the entry.
-    final long checksum = memory.getInt() & 0xFFFFFFFFL;
+    final long entryChecksum = memory.getInt() & 0xFFFFFFFFL;
 
-    // Compute the checksum for the entry bytes.
-    final Checksum crc32 = new CRC32();
-    crc32.update(memory.array(), memory.position(), length);
+    checksum.reset();
+    checksum.update(memory.asReadOnlyBuffer().limit(length));
 
-    return checksum != crc32.getValue();
+    return entryChecksum != checksum.getValue();
   }
 
   private boolean isLengthInvalid(final int length) {
@@ -264,5 +264,6 @@ class FileChannelJournalSegmentReader implements JournalReader {
     channel.read(memory);
     channel.position(position);
     memory.flip();
+    memory.mark();
   }
 }

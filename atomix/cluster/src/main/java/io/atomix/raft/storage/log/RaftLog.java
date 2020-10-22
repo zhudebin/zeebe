@@ -183,7 +183,7 @@ public class RaftLog extends DelegatingJournal {
      * @param serde The journal namespace.
      * @return The journal builder.
      */
-    public Builder withSerde(final JournalSerde serde) {
+    public Builder withSerde(final Supplier<JournalSerde> serde) {
       journalBuilder.withSerde(serde);
       return this;
     }
