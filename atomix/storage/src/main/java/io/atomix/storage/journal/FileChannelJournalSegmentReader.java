@@ -19,7 +19,6 @@ package io.atomix.storage.journal;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.Position;
-import io.atomix.storage.protocol.MessageHeaderDecoder;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -47,7 +46,6 @@ class FileChannelJournalSegmentReader implements JournalReader {
   private final DirectBuffer readBuffer;
   private final JournalSegment segment;
   private final Checksum checksum = new CRC32();
-  private final MessageHeaderDecoder headerDecoder = new MessageHeaderDecoder();
   private Indexed<RaftLogEntry> currentEntry;
   private Indexed<RaftLogEntry> nextEntry;
 
@@ -209,7 +207,7 @@ class FileChannelJournalSegmentReader implements JournalReader {
 
       readNextEntry(index, length);
       success = true;
-    } catch (final BufferUnderflowException | IndexOutOfBoundsException e) {
+    } catch (final BufferUnderflowException e) {
       // do nothing
     } catch (final IOException e) {
       throw new StorageException(e);
@@ -242,7 +240,7 @@ class FileChannelJournalSegmentReader implements JournalReader {
     final long entryChecksum = memory.getInt() & 0xFFFFFFFFL;
 
     checksum.reset();
-    checksum.update(memory.asReadOnlyBuffer().limit(length));
+    checksum.update(memory.asReadOnlyBuffer().limit(memory.position() + length));
 
     return entryChecksum != checksum.getValue();
   }

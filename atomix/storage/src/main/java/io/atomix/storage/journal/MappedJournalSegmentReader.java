@@ -19,11 +19,12 @@ package io.atomix.storage.journal;
 import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.journal.index.Position;
 import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 import org.agrona.DirectBuffer;
 import org.agrona.IoUtil;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -36,10 +37,11 @@ import org.agrona.concurrent.UnsafeBuffer;
 class MappedJournalSegmentReader implements JournalReader {
   private final MappedByteBuffer buffer;
   private final int maxEntrySize;
-  private final JournalIndex index;
+  private final JournalIndex journalIndex;
   private final JournalSerde serde;
   private final JournalSegment segment;
   private final DirectBuffer readBuffer;
+  private final Checksum checksum = new CRC32();
   private Indexed<RaftLogEntry> currentEntry;
   private Indexed<RaftLogEntry> nextEntry;
 
@@ -47,13 +49,13 @@ class MappedJournalSegmentReader implements JournalReader {
       final JournalSegmentFile file,
       final JournalSegment segment,
       final int maxEntrySize,
-      final JournalIndex index,
+      final JournalIndex journalIndex,
       final JournalSerde serde) {
     buffer =
         IoUtil.mapExistingFile(
             file.file(), MapMode.READ_ONLY, file.name(), 0, segment.descriptor().maxSegmentSize());
     this.maxEntrySize = maxEntrySize;
-    this.index = index;
+    this.journalIndex = journalIndex;
     this.serde = serde;
     this.segment = segment;
     readBuffer = new UnsafeBuffer(buffer);
@@ -133,7 +135,7 @@ class MappedJournalSegmentReader implements JournalReader {
 
     reset();
 
-    final Position position = this.index.lookup(index - 1);
+    final Position position = journalIndex.lookup(index - 1);
     if (position != null && position.index() >= firstIndex && position.index() <= lastIndex) {
       currentEntry = new Indexed<>(position.index() - 1, null, 0);
       buffer.position(position.position());
@@ -157,42 +159,41 @@ class MappedJournalSegmentReader implements JournalReader {
   private void readNext() {
     // Compute the index of the next entry in the segment.
     final long index = getNextIndex();
-
-    // Mark the buffer so it can be reset if necessary.
-    buffer.mark();
+    final int offset = buffer.position();
+    final int checksumOffset = offset + Integer.BYTES;
+    final int entryOffset = checksumOffset + Integer.BYTES;
 
     try {
+      if (entryOffset > buffer.capacity()) {
+        nextEntry = null;
+        return;
+      }
+
       // Read the length of the entry.
-      final int length = buffer.getInt();
+      final int entryLength = readBuffer.getInt(offset, ByteOrder.LITTLE_ENDIAN);
 
       // If the buffer length is zero then return.
-      if (length <= 0 || length > maxEntrySize) {
-        buffer.reset();
+      if (entryLength <= 0 || entryLength > maxEntrySize) {
         nextEntry = null;
         return;
       }
 
       // Read the checksum of the entry.
-      final long checksum = buffer.getInt() & 0xFFFFFFFFL;
+      final int entryChecksum = (int) (readBuffer.getInt(checksumOffset) & 0xFFFFFFFFL);
 
       // Compute the checksum for the entry bytes.
-      final CRC32 crc32 = new CRC32();
-      final ByteBuffer slice = buffer.slice();
-      slice.limit(length);
-      crc32.update(slice);
+      checksum.reset();
+      checksum.update(
+          buffer.asReadOnlyBuffer().position(entryOffset).limit(entryOffset + entryLength));
+      final int computedChecksum = (int) (checksum.getValue() & 0xFFFFFFFFL);
 
       // If the stored checksum equals the computed checksum, return the entry.
-      if (checksum == crc32.getValue()) {
-        slice.rewind();
-        final RaftLogEntry entry = serde.deserializeRaftLogEntry(readBuffer, buffer.position());
-        buffer.position(buffer.position() + length);
-        nextEntry = new Indexed<>(index, entry, length);
-      } else {
-        buffer.reset();
-        nextEntry = null;
+      if (entryChecksum == computedChecksum) {
+        final RaftLogEntry entry = serde.deserializeRaftLogEntry(readBuffer, entryOffset);
+        buffer.position(entryOffset + entryLength);
+        nextEntry = new Indexed<>(index, entry, entryLength);
       }
-    } catch (final BufferUnderflowException e) {
-      buffer.reset();
+    } catch (final BufferUnderflowException | IndexOutOfBoundsException e) {
       nextEntry = null;
     }
   }

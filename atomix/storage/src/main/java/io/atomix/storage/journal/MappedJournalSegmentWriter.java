@@ -20,9 +20,10 @@ import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.index.JournalIndex;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 import org.agrona.IoUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -45,12 +46,14 @@ import org.agrona.concurrent.UnsafeBuffer;
  */
 class MappedJournalSegmentWriter implements JournalWriter {
 
+  private static final int ENTRY_PREAMBLE_SIZE = Integer.BYTES + Integer.BYTES;
   private final MappedByteBuffer buffer;
   private final JournalSegment segment;
   private final int maxEntrySize;
-  private final JournalIndex index;
+  private final JournalIndex journalIndex;
   private final JournalSerde serde;
   private final long firstIndex;
+  private final Checksum checksum = new CRC32();
   private Indexed<RaftLogEntry> lastEntry;
   private boolean isOpen = true;
   private final MutableDirectBuffer writeBuffer;
@@ -59,12 +62,12 @@ class MappedJournalSegmentWriter implements JournalWriter {
       final JournalSegmentFile file,
       final JournalSegment segment,
       final int maxEntrySize,
-      final JournalIndex index,
+      final JournalIndex journalIndex,
       final JournalSerde serde) {
     buffer = mapFile(file, segment);
     this.segment = segment;
     this.maxEntrySize = maxEntrySize;
-    this.index = index;
+    this.journalIndex = journalIndex;
     this.serde = serde;
     firstIndex = segment.index();
     writeBuffer = new UnsafeBuffer(buffer);
@@ -101,57 +104,56 @@ class MappedJournalSegmentWriter implements JournalWriter {
   public Indexed<RaftLogEntry> append(final RaftLogEntry entry) {
     // Store the entry index.
     final long index = getNextIndex();
+    final int offset = buffer.position();
+    final int checksumOffset = offset + Integer.BYTES;
+    final int entryOffset = checksumOffset + Integer.BYTES;
+
+    final int entryLength = serde.computeSerializedLength(entry);
+    if ((entryLength + ENTRY_PREAMBLE_SIZE) > buffer.remaining()) {
+      throw new BufferOverflowException();
+    }
 
     // Serialize the entry.
-    final int position = buffer.position();
-    if (position + Integer.BYTES + Integer.BYTES > buffer.limit()) {
+    if (entryOffset + entryLength > buffer.limit()) {
       throw new BufferOverflowException();
     }
-
-    buffer.position(position + Integer.BYTES + Integer.BYTES);
-
-    int length = serde.computeSerializedLength(entry);
-    if (length > buffer.remaining()) {
-      throw new BufferOverflowException();
-    }
-
-    // final int length = buffer.position() - (position + Integer.BYTES + Integer.BYTES);
 
     // If the entry length exceeds the maximum entry size then throw an exception.
-    if (length > maxEntrySize) {
-      // Just reset the buffer. There's no need to zero the bytes since we haven't written the
-      // length or checksum.
-      buffer.position(position);
+    if (entryLength > maxEntrySize) {
       throw new StorageException.TooLarge(
-          "Entry size " + length + " exceeds maximum allowed bytes (" + maxEntrySize + ")");
+          "Entry size " + entryLength + " exceeds maximum allowed bytes (" + maxEntrySize + ")");
     }
 
+    // write length so we can read back the correct entry
+    writeBuffer.putInt(offset, entryLength, ByteOrder.LITTLE_ENDIAN);
+
     try {
-      length =
-          serde.serializeRaftLogEntry(writeBuffer, position + Integer.BYTES + Integer.BYTES, entry);
+      final int serializedLength = serde.serializeRaftLogEntry(writeBuffer, entryOffset, entry);
+      assert entryLength == serializedLength
+          : "Expected computed length "
+              + entryLength
+              + " to be equal to serialized length "
+              + serializedLength;
     } catch (final IndexOutOfBoundsException e) {
       throw new BufferOverflowException();
     }
 
     // Compute the checksum for the entry.
-    final CRC32 crc32 = new CRC32();
-    buffer.position(position + Integer.BYTES + Integer.BYTES);
-    final ByteBuffer slice = buffer.slice();
-    slice.limit(length);
-    crc32.update(slice);
-    final long checksum = crc32.getValue();
-
-    // Create a single byte[] in memory for the entire entry and write it as a batch to the
-    // underlying buffer.
-    buffer.position(position);
-    buffer.putInt(length);
-    buffer.putInt((int) checksum);
-    buffer.position(position + Integer.BYTES + Integer.BYTES + length);
+    checksum.reset();
+    checksum.update(
+        buffer.asReadOnlyBuffer().position(entryOffset).limit(entryOffset + entryLength));
+    final int entryChecksum = (int) (checksum.getValue() & 0xFFFFFFFFL);
+    writeBuffer.putInt(checksumOffset, entryChecksum, ByteOrder.LITTLE_ENDIAN);
 
     // Update the last entry with the correct index/term/length.
-    final Indexed<RaftLogEntry> indexedEntry = new Indexed<>(index, entry, length);
+    final Indexed<RaftLogEntry> indexedEntry = new Indexed<>(index, entry, entryLength);
     lastEntry = indexedEntry;
-    this.index.index(lastEntry, position);
+
+    // update position in the buffer for the next entry
+    buffer.position(entryOffset + entryLength);
+
+    // index entry to make it efficiently searchable
+    journalIndex.index(lastEntry, offset);
     return indexedEntry;
   }
 
@@ -180,50 +182,50 @@ class MappedJournalSegmentWriter implements JournalWriter {
 
     // Clear the buffer indexes.
     buffer.position(JournalSegmentDescriptor.BYTES);
-
-    // Record the current buffer position.
-    int position = buffer.position();
-
-    // Read the entry length.
     buffer.mark();
 
     try {
-      int length = buffer.getInt();
+      int entryLength = writeBuffer.getInt(buffer.position(), ByteOrder.LITTLE_ENDIAN);
 
       // If the length is non-zero, read the entry.
-      while (0 < length && length <= maxEntrySize && (index == 0 || nextIndex <= index)) {
+      while (0 < entryLength && entryLength <= maxEntrySize && (index == 0 || nextIndex <= index)) {
+        final int offset = buffer.position();
+        final int checksumOffset = offset + Integer.BYTES;
+        final int entryOffset = checksumOffset + Integer.BYTES;
 
         // Read the checksum of the entry.
-        final long checksum = buffer.getInt() & 0xFFFFFFFFL;
+        final int entryChecksum =
+            (int) (writeBuffer.getInt(checksumOffset, ByteOrder.LITTLE_ENDIAN) & 0xFFFFFFFFL);
 
         // Compute the checksum for the entry bytes.
-        final CRC32 crc32 = new CRC32();
-        final ByteBuffer slice = buffer.slice();
-        slice.limit(length);
-        crc32.update(slice);
+        checksum.reset();
+        checksum.update(
+            buffer.asReadOnlyBuffer().position(entryOffset).limit(entryOffset + entryLength));
+        final int computedChecksum = (int) (checksum.getValue() & 0xFFFFFFFFL);
 
         // If the stored checksum equals the computed checksum, return the entry.
-        if (checksum == crc32.getValue()) {
-          slice.rewind();
-          final RaftLogEntry entry = serde.deserializeRaftLogEntry(writeBuffer, buffer.position());
-          lastEntry = new Indexed<>(nextIndex, entry, length);
-          this.index.index(lastEntry, position);
+        if (entryChecksum == computedChecksum) {
+          final RaftLogEntry entry = serde.deserializeRaftLogEntry(writeBuffer, entryOffset);
+          lastEntry = new Indexed<>(nextIndex, entry, entryLength);
+          journalIndex.index(lastEntry, offset);
           nextIndex++;
         } else {
           break;
         }
 
         // Update the current position for indexing.
-        position = buffer.position() + length;
-        buffer.position(position);
-
+        buffer.position(entryOffset + entryLength);
         buffer.mark();
-        length = buffer.getInt();
+        if (buffer.remaining() < Integer.BYTES) {
+          break;
+        }
+
+        entryLength = writeBuffer.getInt(buffer.position(), ByteOrder.LITTLE_ENDIAN);
       }
 
       // Reset the buffer to the previous mark.
       buffer.reset();
-    } catch (final BufferUnderflowException e) {
+    } catch (final BufferUnderflowException | IndexOutOfBoundsException e) {
       buffer.reset();
     }
   }
@@ -239,7 +241,7 @@ class MappedJournalSegmentWriter implements JournalWriter {
     lastEntry = null;
 
     // Truncate the index.
-    this.index.truncate(index);
+    journalIndex.truncate(index);
 
     if (index < segment.index()) {
       buffer.position(JournalSegmentDescriptor.BYTES);

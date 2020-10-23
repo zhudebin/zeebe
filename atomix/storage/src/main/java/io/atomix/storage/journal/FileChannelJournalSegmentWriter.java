@@ -136,12 +136,12 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
 
       // store entry checksum along with the entry to verify integrity on reads
       checksum.reset();
-      checksum.update(memory.position(entryOffset).limit(length));
-      final long entryChecksum = checksum.getValue();
-      writeBuffer.putInt(Integer.BYTES, (int) entryChecksum, ByteOrder.LITTLE_ENDIAN);
+      checksum.update(memory.asReadOnlyBuffer().position(entryOffset).limit(entryOffset + length));
+      final int entryChecksum = (int) (checksum.getValue() & 0xFFFFFFFFL);
+      writeBuffer.putInt(Integer.BYTES, entryChecksum, ByteOrder.LITTLE_ENDIAN);
 
       // write the entry to file
-      channel.write(memory.position(0).limit(entryOffset + length));
+      channel.write(memory.asReadOnlyBuffer().limit(entryOffset + length));
 
       // Update the last entry with the correct index/term/length.
       final Indexed<RaftLogEntry> indexedEntry = new Indexed<>(index, entry, length);
@@ -203,7 +203,7 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
 
         // Compute the checksum for the entry bytes
         checksum.reset();
-        checksum.update(memory.asReadOnlyBuffer().limit(length));
+        checksum.update(memory.asReadOnlyBuffer().limit(memory.position() + length));
 
         // If the stored checksum equals the computed checksum, return the entry.
         if (entryChecksum == checksum.getValue()) {

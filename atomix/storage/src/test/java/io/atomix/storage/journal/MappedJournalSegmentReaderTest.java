@@ -35,7 +35,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-public class FileChannelJournalSegmentReaderTest {
+public class MappedJournalSegmentReaderTest {
   private static final RaftLogEntry ENTRY =
       new RaftLogEntry(1, 1, EntryType.INITIALIZE, new UnsafeBuffer());
 
@@ -155,7 +155,7 @@ public class FileChannelJournalSegmentReaderTest {
         .withName("test")
         .withDirectory(directory)
         .withSerde(TestJournalSerde::new)
-        .withStorageLevel(StorageLevel.DISK)
+        .withStorageLevel(StorageLevel.MAPPED)
         .withMaxEntrySize(entrySize * 2)
         .withMaxSegmentSize(maxSegmentSize)
         .withJournalIndexFactory(() -> journalIndex)
