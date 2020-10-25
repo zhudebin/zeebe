@@ -18,9 +18,9 @@ package io.atomix.raft.storage.log;
 
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.DelegatingJournal;
+import io.atomix.storage.journal.Entry;
 import io.atomix.storage.journal.JournalReader;
 import io.atomix.storage.journal.JournalSerde;
-import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.storage.journal.SegmentedJournal;
 import io.atomix.storage.journal.index.JournalIndex;
 import java.io.File;
@@ -120,8 +120,7 @@ public class RaftLog extends DelegatingJournal {
   /** Raft log builder. */
   public static class Builder implements io.atomix.utils.Builder<RaftLog> {
 
-    private final SegmentedJournal.Builder<RaftLogEntry> journalBuilder =
-        SegmentedJournal.builder();
+    private final SegmentedJournal.Builder<Entry> journalBuilder = SegmentedJournal.builder();
 
     protected Builder() {}
 

@@ -47,7 +47,7 @@ public class DelegatingJournalReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getCurrentEntry() {
+  public Indexed<Entry> getCurrentEntry() {
     return delegate.getCurrentEntry();
   }
 
@@ -62,7 +62,7 @@ public class DelegatingJournalReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> next() {
+  public Indexed<Entry> next() {
     return delegate.next();
   }
 

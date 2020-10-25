@@ -19,11 +19,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import com.google.common.base.Stopwatch;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.zeebe.util.TestAppender;
 import io.atomix.raft.zeebe.util.ZeebeTestHelper;
 import io.atomix.raft.zeebe.util.ZeebeTestNode;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.ZeebeEntry;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Set;

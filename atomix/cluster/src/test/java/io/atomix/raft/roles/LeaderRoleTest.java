@@ -33,13 +33,12 @@ import io.atomix.raft.metrics.RaftReplicationMetrics;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogWriter;
 import io.atomix.raft.storage.log.entry.EntrySerializer;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.zeebe.ValidationResult;
 import io.atomix.raft.zeebe.ZeebeLogAppender.AppendListener;
 import io.atomix.raft.zeebe.util.TestAppender;
 import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
+import io.atomix.storage.journal.ZeebeEntry;
 import io.atomix.utils.concurrent.SingleThreadContext;
 import io.zeebe.snapshots.raft.ReceivableSnapshotStore;
 import java.io.IOException;
@@ -78,11 +77,11 @@ public class LeaderRoleTest {
 
     writer = mock(RaftLogWriter.class);
     when(writer.getNextIndex()).thenReturn(1L);
-    when(writer.append(any(RaftLogEntry.class)))
+    when(writer.append(any(ZeebeEntry.class)))
         .then(
             i -> {
-              final RaftLogEntry entry = i.getArgument(0);
-              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
+              final ZeebeEntry entry = i.getArgument(0);
+              return new Indexed<>(1, entry, 45);
             });
     when(context.getLogWriter()).thenReturn(writer);
 
@@ -134,13 +133,13 @@ public class LeaderRoleTest {
   public void shouldRetryAppendEntryOnIOException() throws InterruptedException {
     // given
 
-    when(writer.append(any(RaftLogEntry.class)))
+    when(writer.append(any(ZeebeEntry.class)))
         .thenThrow(new StorageException(new IOException()))
         .thenThrow(new StorageException(new IOException()))
         .then(
             i -> {
-              final RaftLogEntry entry = i.getArgument(0);
-              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
+              final ZeebeEntry entry = i.getArgument(0);
+              return new Indexed<>(1, entry, 45);
             });
 
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -168,13 +167,13 @@ public class LeaderRoleTest {
 
     // then
     latch.await(10, TimeUnit.SECONDS);
-    verify(writer, timeout(1000).atLeast(3)).append(any(RaftLogEntry.class));
+    verify(writer, timeout(1000).atLeast(3)).append(any(ZeebeEntry.class));
   }
 
   @Test
   public void shouldStopRetryAppendEntryAfterMaxRetries() throws InterruptedException {
     // given
-    when(writer.append(any(RaftLogEntry.class))).thenThrow(new StorageException(new IOException()));
+    when(writer.append(any(ZeebeEntry.class))).thenThrow(new StorageException(new IOException()));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -203,7 +202,7 @@ public class LeaderRoleTest {
 
     // then
     latch.await(10, TimeUnit.SECONDS);
-    verify(writer, timeout(1000).atLeast(5)).append(any(RaftLogEntry.class));
+    verify(writer, timeout(1000).atLeast(5)).append(any(ZeebeEntry.class));
     verify(context, timeout(1000)).transition(Role.FOLLOWER);
     assertTrue(catchedError.get() instanceof IOException);
   }
@@ -211,7 +210,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldStopAppendEntryOnOutOfDisk() throws InterruptedException {
     // given
-    when(writer.append(any(RaftLogEntry.class)))
+    when(writer.append(any(ZeebeEntry.class)))
         .thenThrow(new StorageException.OutOfDiskSpace("Boom file out"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
@@ -242,7 +241,7 @@ public class LeaderRoleTest {
     // then
     latch.await(10, TimeUnit.SECONDS);
     verify(context, timeout(1000)).transition(Role.FOLLOWER);
-    verify(writer, timeout(1000)).append(any(RaftLogEntry.class));
+    verify(writer, timeout(1000)).append(any(ZeebeEntry.class));
 
     assertTrue(catchedError.get() instanceof StorageException.OutOfDiskSpace);
   }
@@ -250,7 +249,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldStopAppendEntryOnToLargeEntry() throws InterruptedException {
     // given
-    when(writer.append(any(RaftLogEntry.class)))
+    when(writer.append(any(ZeebeEntry.class)))
         .thenThrow(new StorageException.TooLarge("Too large entry"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
@@ -280,7 +279,7 @@ public class LeaderRoleTest {
 
     // then
     latch.await(10, TimeUnit.SECONDS);
-    verify(writer, timeout(1000)).append(any(RaftLogEntry.class));
+    verify(writer, timeout(1000)).append(any(ZeebeEntry.class));
 
     assertTrue(catchedError.get() instanceof StorageException.TooLarge);
   }
@@ -288,7 +287,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldTransitionToFollowerWhenAppendEntryException() throws InterruptedException {
     // given
-    when(writer.append(any(RaftLogEntry.class))).thenThrow(new RuntimeException("expected"));
+    when(writer.append(any(ZeebeEntry.class))).thenThrow(new RuntimeException("expected"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -317,7 +316,7 @@ public class LeaderRoleTest {
 
     // then
     latch.await(10, TimeUnit.SECONDS);
-    verify(writer, timeout(1000)).append(any(RaftLogEntry.class));
+    verify(writer, timeout(1000)).append(any(ZeebeEntry.class));
     verify(context, timeout(1000)).transition(Role.FOLLOWER);
 
     assertTrue(catchedError.get() instanceof RuntimeException);
@@ -326,7 +325,7 @@ public class LeaderRoleTest {
   @Test
   public void shouldNotAppendFollowingEntryOnException() throws InterruptedException {
     // given
-    when(writer.append(any(RaftLogEntry.class))).thenThrow(new RuntimeException("expected"));
+    when(writer.append(any(ZeebeEntry.class))).thenThrow(new RuntimeException("expected"));
 
     final AtomicReference<Throwable> catchedError = new AtomicReference<>();
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -375,7 +374,7 @@ public class LeaderRoleTest {
     // then
     latch.await(10, TimeUnit.SECONDS);
     verify(context, timeout(1000)).transition(Role.FOLLOWER);
-    verify(writer, timeout(1000)).append(any(RaftLogEntry.class));
+    verify(writer, timeout(1000)).append(any(ZeebeEntry.class));
 
     assertTrue(catchedError.get() instanceof NoLeader);
     assertEquals(
@@ -386,13 +385,13 @@ public class LeaderRoleTest {
   public void shouldRetryAppendEntriesInOrder() throws InterruptedException {
     // given
 
-    when(writer.append(any(RaftLogEntry.class)))
+    when(writer.append(any(ZeebeEntry.class)))
         .thenThrow(new StorageException(new IOException()))
         .thenThrow(new StorageException(new IOException()))
         .then(
             i -> {
-              final RaftLogEntry entry = i.getArgument(0);
-              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
+              final ZeebeEntry entry = i.getArgument(0);
+              return new Indexed<>(1, entry, 45);
             });
 
     final ByteBuffer data = ByteBuffer.allocate(Integer.BYTES).putInt(0, 1);
@@ -423,7 +422,7 @@ public class LeaderRoleTest {
 
     // then
     latch.await(10, TimeUnit.SECONDS);
-    verify(writer, timeout(1000).atLeast(3)).append(any(RaftLogEntry.class));
+    verify(writer, timeout(1000).atLeast(3)).append(any(ZeebeEntry.class));
 
     assertEquals(2, entries.size());
     assertEquals(1, entries.get(0).highestPosition());
@@ -433,11 +432,11 @@ public class LeaderRoleTest {
   @Test
   public void shouldDetectInconsistencyWithLastEntry() throws InterruptedException {
     // given
-    when(writer.append(any(RaftLogEntry.class)))
+    when(writer.append(any(ZeebeEntry.class)))
         .then(
             i -> {
-              final RaftLogEntry entry = i.getArgument(0);
-              return serializer.asZeebeEntry(new Indexed<>(1, entry, 45));
+              final ZeebeEntry entry = i.getArgument(0);
+              return new Indexed<>(1, entry, 45);
             });
 
     final DirectBuffer data = new UnsafeBuffer(ByteBuffer.allocate(Integer.BYTES).putInt(0, 1));

@@ -25,7 +25,7 @@ public class SegmentedJournalReader implements JournalReader {
   private final SegmentedJournal journal;
   private final Mode mode;
   private JournalSegment currentSegment;
-  private Indexed<RaftLogEntry> previousEntry;
+  private Indexed<Entry> previousEntry;
   private JournalReader currentReader;
 
   SegmentedJournalReader(final SegmentedJournal journal, final long index, final Mode mode) {
@@ -78,8 +78,8 @@ public class SegmentedJournalReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getCurrentEntry() {
-    final Indexed<RaftLogEntry> currentEntry = currentReader.getCurrentEntry();
+  public Indexed<Entry> getCurrentEntry() {
+    final Indexed<Entry> currentEntry = currentReader.getCurrentEntry();
     if (currentEntry != null) {
       return currentEntry;
     }
@@ -103,7 +103,7 @@ public class SegmentedJournalReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> next() {
+  public Indexed<Entry> next() {
     if (!currentReader.hasNext()) {
       final JournalSegment nextSegment = journal.getNextSegment(currentSegment.index());
       if (nextSegment != null && nextSegment.index() == getNextIndex()) {

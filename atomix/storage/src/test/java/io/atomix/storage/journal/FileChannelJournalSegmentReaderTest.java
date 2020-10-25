@@ -21,7 +21,7 @@ import com.google.common.base.Stopwatch;
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.JournalReader.Mode;
 import io.atomix.storage.journal.index.SparseJournalIndex;
-import io.atomix.storage.protocol.EntryType;
+import io.zeebe.util.buffer.BufferUtil;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,13 +36,12 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 public class FileChannelJournalSegmentReaderTest {
-  private static final RaftLogEntry ENTRY =
-      new RaftLogEntry(1, 1, EntryType.INITIALIZE, new UnsafeBuffer());
+  private static final ZeebeEntry ENTRY = new ZeebeEntry(1, 1, 1, 1, BufferUtil.wrapString("foo"));
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private final TestJournalSerde serde = new TestJournalSerde();
-  private final int entrySize = serde.serializeRaftLogEntry(ENTRY) + Integer.BYTES + Integer.BYTES;
+  private final int entrySize = serde.computeEntryLength(ENTRY) + Integer.BYTES + Integer.BYTES;
   private File directory;
 
   @Before
@@ -62,10 +61,11 @@ public class FileChannelJournalSegmentReaderTest {
       final var expectedEntryCount = entriesPerSegment * 1000;
       for (int i = 0; i < expectedEntryCount; i++) {
         writer.append(
-            new RaftLogEntry(
+            new ZeebeEntry(
                 1,
                 1,
-                EntryType.ZEEBE,
+                1,
+                1,
                 new UnsafeBuffer(
                     ByteBuffer.allocate(Integer.BYTES)
                         .order(ByteOrder.LITTLE_ENDIAN)
@@ -73,7 +73,7 @@ public class FileChannelJournalSegmentReaderTest {
       }
 
       // when
-      final var entries = new ArrayList<RaftLogEntry>();
+      final var entries = new ArrayList<Entry>();
       final var watch = Stopwatch.createStarted();
       while (reader.hasNext()) {
         entries.add(reader.next().entry());
@@ -97,10 +97,11 @@ public class FileChannelJournalSegmentReaderTest {
       final var expectedEntryCount = entriesPerSegment * 3;
       for (int i = 0; i < expectedEntryCount; i++) {
         writer.append(
-            new RaftLogEntry(
+            new ZeebeEntry(
                 1,
                 1,
-                EntryType.ZEEBE,
+                1,
+                1,
                 new UnsafeBuffer(
                     ByteBuffer.allocate(Integer.BYTES)
                         .order(ByteOrder.LITTLE_ENDIAN)
@@ -108,13 +109,16 @@ public class FileChannelJournalSegmentReaderTest {
       }
 
       // when
-      final var entries = new ArrayList<RaftLogEntry>();
+      final var entries = new ArrayList<Entry>();
       while (reader.hasNext()) {
         entries.add(reader.next().entry());
       }
 
       // then
-      assertThat(entries.stream().map(e -> e.entry().getInt(0, ByteOrder.LITTLE_ENDIAN)))
+      assertThat(
+              entries.stream()
+                  .map(ZeebeEntry.class::cast)
+                  .map(e -> e.data().getInt(0, ByteOrder.LITTLE_ENDIAN)))
           .hasSize(expectedEntryCount)
           .isEqualTo(IntStream.range(0, expectedEntryCount).boxed().collect(Collectors.toList()));
     }
@@ -134,8 +138,8 @@ public class FileChannelJournalSegmentReaderTest {
       }
 
       writer.append(ENTRY);
-      final Indexed<RaftLogEntry> previousEntry = writer.append(ENTRY);
-      final Indexed<RaftLogEntry> currentEntry = writer.append(ENTRY);
+      final Indexed<ZeebeEntry> previousEntry = writer.append(ENTRY);
+      final Indexed<ZeebeEntry> currentEntry = writer.append(ENTRY);
 
       reader.reset(currentEntry.index());
       assertThat(reader.hasNext()).isTrue();

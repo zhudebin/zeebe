@@ -25,7 +25,9 @@ import io.atomix.raft.RaftError;
 import io.atomix.raft.cluster.RaftMember;
 import io.atomix.raft.protocol.RaftResponse;
 import io.atomix.raft.protocol.ReconfigureRequest;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
 import io.atomix.raft.storage.system.Configuration;
+import io.atomix.storage.protocol.Role;
 import io.atomix.utils.concurrent.Scheduled;
 import java.time.Instant;
 import java.util.Objects;
@@ -120,6 +122,11 @@ public final class DefaultRaftMember implements RaftMember, AutoCloseable {
    */
   void setType(final Type type) {
     setTypeInternal(type);
+  }
+
+  @Override
+  public Role role() {
+    return EntrySerializer.mapType(type);
   }
 
   /** Internal set type method to ensure that we not set deprecated BOOTSTRAP type. */

@@ -15,70 +15,124 @@
  */
 package io.atomix.storage.journal;
 
-import io.atomix.storage.protocol.EntryDecoder;
-import io.atomix.storage.protocol.EntryEncoder;
+import io.atomix.storage.protocol.ConfigurationEntryDecoder;
+import io.atomix.storage.protocol.InitialEntryDecoder;
 import io.atomix.storage.protocol.MessageHeaderDecoder;
 import io.atomix.storage.protocol.MessageHeaderEncoder;
+import io.atomix.storage.protocol.ZeebeEntryDecoder;
+import io.atomix.storage.protocol.ZeebeEntryEncoder;
 import java.nio.ByteBuffer;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
+import org.agrona.sbe.MessageEncoderFlyweight;
 
 public class TestJournalSerde implements JournalSerde {
 
   private final ExpandableDirectByteBuffer writeBuffer = new ExpandableDirectByteBuffer();
   private final MessageHeaderDecoder headerDecoder = new MessageHeaderDecoder();
   private final MessageHeaderEncoder headerEncoder = new MessageHeaderEncoder();
-  private final EntryEncoder rfEncoder = new EntryEncoder();
-  private final EntryDecoder rfDecoder = new EntryDecoder();
+  private final ZeebeEntryDecoder zeebeEntryDecoder = new ZeebeEntryDecoder();
+  private final ZeebeEntryEncoder zeebeEntryEncoder = new ZeebeEntryEncoder();
 
-  public int serializeRaftLogEntry(final RaftLogEntry entry) {
-    return serializeRaftLogEntry(writeBuffer, 0, entry);
+  @Override
+  public int computeEntryLength(final Entry entry) {
+    switch (entry.type()) {
+      case ZEEBE:
+        return computeZeebeEntryLength((ZeebeEntry) entry);
+      default:
+        throw new IllegalArgumentException("Unexpected entry type " + entry.type());
+    }
   }
 
   @Override
-  public int serializeRaftLogEntry(
-      final MutableDirectBuffer buffer, final int offset, final RaftLogEntry entry) {
-    headerEncoder
-        .wrap(buffer, offset)
-        .blockLength(rfEncoder.sbeBlockLength())
-        .templateId(rfEncoder.sbeTemplateId())
-        .schemaId(rfEncoder.sbeSchemaId())
-        .version(rfEncoder.sbeSchemaVersion());
+  public int serializeEntry(final MutableDirectBuffer buffer, final int offset, final Entry entry) {
+    int length = headerEncoder.encodedLength();
+    final int entryOffset = length + offset;
+    final MessageEncoderFlyweight bodyEncoder;
 
-    rfEncoder.wrap(buffer, offset + headerEncoder.encodedLength());
-    rfEncoder
+    headerEncoder.wrap(buffer, offset);
+    switch (entry.type()) {
+      case ZEEBE:
+        bodyEncoder = zeebeEntryEncoder;
+        length += serializeZeebeEntry(buffer, entryOffset, (ZeebeEntry) entry);
+        break;
+      default:
+        throw new IllegalArgumentException("Unexpected entry type " + entry.type());
+    }
+
+    headerEncoder
+        .schemaId(headerEncoder.sbeSchemaId())
+        .version(headerEncoder.sbeSchemaVersion())
+        .templateId(bodyEncoder.sbeTemplateId())
+        .blockLength(bodyEncoder.sbeBlockLength());
+    return length;
+  }
+
+  @Override
+  public Entry deserializeEntry(final DirectBuffer buffer, final int offset) {
+    headerDecoder.wrap(buffer, offset);
+    if (headerDecoder.schemaId() != MessageHeaderDecoder.SCHEMA_ID) {
+      throw new IllegalArgumentException(
+          "Expected schema ID to be "
+              + MessageHeaderDecoder.SCHEMA_ID
+              + " but got "
+              + headerDecoder.schemaId());
+    }
+
+    final int entryOffset = headerDecoder.encodedLength() + offset;
+    switch (headerDecoder.templateId()) {
+      case ZeebeEntryDecoder.TEMPLATE_ID:
+        return deserializeZeebeEntry(buffer, entryOffset);
+      default:
+        throw new IllegalArgumentException(
+            "Expected a template ID of "
+                + ZeebeEntryDecoder.TEMPLATE_ID
+                + ", "
+                + ConfigurationEntryDecoder.TEMPLATE_ID
+                + ", or "
+                + InitialEntryDecoder.TEMPLATE_ID
+                + ", but got "
+                + headerDecoder.templateId());
+    }
+  }
+
+  int computeZeebeEntryLength(final ZeebeEntry entry) {
+    return headerEncoder.encodedLength()
+        + zeebeEntryEncoder.sbeBlockLength()
+        + ZeebeEntryEncoder.dataHeaderLength()
+        + entry.data().capacity();
+  }
+
+  int serializeZeebeEntry(
+      final MutableDirectBuffer buffer, final int offset, final ZeebeEntry entry) {
+    final DirectBuffer dataBuffer = entry.data();
+    zeebeEntryEncoder
+        .wrap(buffer, offset)
         .term(entry.term())
         .timestamp(entry.timestamp())
-        .entryType(entry.type())
-        .putEntry(entry.entry(), 0, entry.entry().capacity());
+        .lowestPosition(entry.lowestPosition())
+        .highestPosition(entry.highestPosition())
+        .putData(dataBuffer, 0, dataBuffer.capacity());
 
-    return headerEncoder.encodedLength() + rfEncoder.encodedLength();
+    return zeebeEntryEncoder.sbeBlockLength()
+        + ZeebeEntryEncoder.dataHeaderLength()
+        + dataBuffer.capacity();
   }
 
-  @Override
-  public RaftLogEntry deserializeRaftLogEntry(final DirectBuffer buffer, final int offset) {
-    headerDecoder.wrap(buffer, offset);
-    rfDecoder.wrap(
-        buffer,
-        offset + headerDecoder.encodedLength(),
-        headerDecoder.blockLength(),
-        headerDecoder.version());
+  ZeebeEntry deserializeZeebeEntry(final DirectBuffer buffer, final int offset) {
+    zeebeEntryDecoder.wrap(buffer, offset, headerDecoder.blockLength(), headerDecoder.version());
 
     final UnsafeBuffer entryBuffer =
-        new UnsafeBuffer(ByteBuffer.allocateDirect(rfDecoder.entryLength()));
-    rfDecoder.getEntry(entryBuffer, 0, rfDecoder.entryLength());
+        new UnsafeBuffer(ByteBuffer.allocateDirect(zeebeEntryDecoder.dataLength()));
+    zeebeEntryDecoder.getData(entryBuffer, 0, entryBuffer.capacity());
 
-    return new RaftLogEntry(
-        rfDecoder.term(), rfDecoder.timestamp(), rfDecoder.entryType(), entryBuffer);
-  }
-
-  public RaftLogEntry deserializeRaftLogEntry() {
-    return deserializeRaftLogEntry(0);
-  }
-
-  public RaftLogEntry deserializeRaftLogEntry(final int offset) {
-    return deserializeRaftLogEntry(writeBuffer, offset);
+    return new ZeebeEntry(
+        zeebeEntryDecoder.term(),
+        zeebeEntryDecoder.timestamp(),
+        zeebeEntryDecoder.lowestPosition(),
+        zeebeEntryDecoder.highestPosition(),
+        entryBuffer);
   }
 }

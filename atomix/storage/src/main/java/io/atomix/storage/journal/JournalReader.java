@@ -23,7 +23,7 @@ import java.util.Iterator;
  *
  * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
-public interface JournalReader extends Iterator<Indexed<RaftLogEntry>>, AutoCloseable {
+public interface JournalReader extends Iterator<Indexed<Entry>>, AutoCloseable {
 
   /**
    * Returns true if there is nothing available to read regardless of the current reader position,
@@ -60,7 +60,7 @@ public interface JournalReader extends Iterator<Indexed<RaftLogEntry>>, AutoClos
    *
    * @return The last read entry.
    */
-  Indexed<RaftLogEntry> getCurrentEntry();
+  Indexed<Entry> getCurrentEntry();
 
   /**
    * Returns the next reader index.
@@ -83,7 +83,7 @@ public interface JournalReader extends Iterator<Indexed<RaftLogEntry>>, AutoClos
    * @return The next entry in the reader.
    */
   @Override
-  Indexed<RaftLogEntry> next();
+  Indexed<Entry> next();
 
   /** Resets the reader to the start. */
   void reset();

@@ -7,9 +7,9 @@
  */
 package io.zeebe.broker.system.partitions;
 
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
+import io.atomix.storage.journal.Entry;
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
+import io.atomix.storage.journal.ZeebeEntry;
 import java.util.Optional;
 
 /**
@@ -18,7 +18,7 @@ import java.util.Optional;
  */
 @FunctionalInterface
 public interface AtomixRecordEntrySupplier extends AutoCloseable {
-  Optional<Indexed<RaftLogEntry>> getIndexedEntry(long position);
+  Optional<Indexed<Entry>> getIndexedEntry(long position);
 
   @Override
   default void close() {}

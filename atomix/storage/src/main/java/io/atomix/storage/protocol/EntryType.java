@@ -13,15 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.atomix.storage.journal;
+package io.atomix.storage.protocol;
 
-import org.agrona.DirectBuffer;
-import org.agrona.MutableDirectBuffer;
-
-public interface JournalSerde {
-  int computeEntryLength(final Entry entry);
-
-  int serializeEntry(final MutableDirectBuffer buffer, final int offset, final Entry entry);
-
-  Entry deserializeEntry(final DirectBuffer buffer, final int offset);
+public enum EntryType {
+  INITIALIZE,
+  CONFIGURATION,
+  ZEEBE,
 }

@@ -32,7 +32,7 @@ public class DelegatingJournalWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getLastEntry() {
+  public Indexed<Entry> getLastEntry() {
     return delegate.getLastEntry();
   }
 
@@ -42,12 +42,12 @@ public class DelegatingJournalWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> append(final RaftLogEntry entry) {
+  public <E extends Entry> Indexed<E> append(final E entry) {
     return delegate.append(entry);
   }
 
   @Override
-  public void append(final Indexed<RaftLogEntry> entry) {
+  public <E extends Entry> void append(final Indexed<E> entry) {
     delegate.append(entry);
   }
 

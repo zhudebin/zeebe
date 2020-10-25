@@ -10,17 +10,16 @@ package io.zeebe.logstreams.storage.atomix;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import io.atomix.raft.storage.log.entry.ConfigurationEntry;
 import io.atomix.raft.storage.log.entry.EntrySerializer;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender.AppendListener;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.InitialEntry;
+import io.atomix.storage.journal.ZeebeEntry;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.logstreams.spi.LogStorageReader;
 import io.zeebe.logstreams.util.AtomixLogStorageRule;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 import org.agrona.DirectBuffer;
@@ -107,13 +106,8 @@ public final class AtomixLogStorageReaderTest {
 
     // when
     final var first = append(1, 4, allocateData(1));
-    final ConfigurationEntry configurationEntry =
-        new ConfigurationEntry(1, System.currentTimeMillis(), Collections.emptyList());
-    final var second =
-        storageRule
-            .getRaftLog()
-            .writer()
-            .append(entrySerializer.asRaftLogEntry(configurationEntry, writeBuffer, 0));
+    final InitialEntry initialEntry = new InitialEntry(1, System.currentTimeMillis());
+    final var second = storageRule.getRaftLog().writer().append(initialEntry);
     final var third = append(5, 8, allocateData(2));
 
     // then
@@ -133,12 +127,8 @@ public final class AtomixLogStorageReaderTest {
     // given
     final var reader = storageRule.get().newReader();
     final var expected = append(1, 4, allocateData(1));
-    final ConfigurationEntry configurationEntry =
-        new ConfigurationEntry(1, System.currentTimeMillis(), Collections.emptyList());
-    storageRule
-        .getRaftLog()
-        .writer()
-        .append(entrySerializer.asRaftLogEntry(configurationEntry, writeBuffer, 0));
+    final InitialEntry initialEntry = new InitialEntry(1, System.currentTimeMillis());
+    storageRule.getRaftLog().writer().append(initialEntry);
 
     // when
     final var address = reader.readLastBlock(buffer);
@@ -164,15 +154,10 @@ public final class AtomixLogStorageReaderTest {
   public void shouldReturnEmptyIfLogContainsNonZeebeEntries() {
     // given
     final var reader = storageRule.get().newReader();
-    final ConfigurationEntry configurationEntry =
-        new ConfigurationEntry(1, System.currentTimeMillis(), Collections.emptyList());
+    final InitialEntry initialEntry = new InitialEntry(1, System.currentTimeMillis());
 
     // when
-    final var entry =
-        storageRule
-            .getRaftLog()
-            .writer()
-            .append(entrySerializer.asRaftLogEntry(configurationEntry, writeBuffer, 0));
+    final var entry = storageRule.getRaftLog().writer().append(initialEntry);
     final var isEmpty = reader.isEmpty();
 
     // then
@@ -184,15 +169,10 @@ public final class AtomixLogStorageReaderTest {
   public void shouldNotReturnEmptyIfAtLeastOneZeebeEntryPresent() {
     // given
     final var reader = storageRule.get().newReader();
-    final ConfigurationEntry configurationEntry =
-        new ConfigurationEntry(1, System.currentTimeMillis(), Collections.emptyList());
+    final InitialEntry initialEntry = new InitialEntry(1, System.currentTimeMillis());
 
     // when
-    final var entry =
-        storageRule
-            .getRaftLog()
-            .writer()
-            .append(entrySerializer.asRaftLogEntry(configurationEntry, writeBuffer, 0));
+    final var entry = storageRule.getRaftLog().writer().append(initialEntry);
     final var expected = append(1, 4, allocateData(1));
 
     final var isEmpty = reader.isEmpty();

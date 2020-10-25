@@ -39,8 +39,8 @@ import io.atomix.raft.snapshot.impl.SnapshotChunkImpl;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogWriter;
 import io.atomix.storage.StorageException;
+import io.atomix.storage.journal.Entry;
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.utils.concurrent.ThreadContext;
 import io.zeebe.snapshots.raft.PersistedSnapshot;
 import io.zeebe.snapshots.raft.PersistedSnapshotListener;
@@ -471,7 +471,7 @@ public class PassiveRole extends InactiveRole {
     // log at the previous log index. prevLogTerm is 0 only when it is the first entry of the log.
     if (request.prevLogTerm() != 0) {
       // Get the last entry written to the log.
-      final Indexed<RaftLogEntry> lastEntry = writer.getLastEntry();
+      final Indexed<Entry> lastEntry = writer.getLastEntry();
 
       // If the local log is non-empty...
       if (lastEntry != null) {
@@ -531,7 +531,7 @@ public class PassiveRole extends InactiveRole {
       }
 
       // Read the previous entry and validate that the term matches the request previous log term.
-      final Indexed<RaftLogEntry> previousEntry = reader.next();
+      final Indexed<Entry> previousEntry = reader.next();
       if (request.prevLogTerm() != previousEntry.entry().term()) {
         log.debug(
             "Rejected {}: Previous entry term ({}) does not match local log's term for the same entry ({})",
@@ -580,11 +580,11 @@ public class PassiveRole extends InactiveRole {
       }
 
       // Iterate through entries and append them.
-      for (final RaftLogEntry entry : request.entries()) {
+      for (final Entry entry : request.entries()) {
         final long index = ++lastLogIndex;
 
         // Get the last entry written to the log by the writer.
-        final Indexed<RaftLogEntry> lastEntry = writer.getLastEntry();
+        final Indexed<Entry> lastEntry = writer.getLastEntry();
 
         final boolean failedToAppend = tryToAppend(future, writer, reader, entry, index, lastEntry);
         if (failedToAppend) {
@@ -620,9 +620,9 @@ public class PassiveRole extends InactiveRole {
       final CompletableFuture<AppendResponse> future,
       final RaftLogWriter writer,
       final RaftLogReader reader,
-      final RaftLogEntry entry,
+      final Entry entry,
       final long index,
-      final Indexed<RaftLogEntry> lastEntry) {
+      final Indexed<Entry> lastEntry) {
     boolean failedToAppend = false;
     if (lastEntry != null) {
       // If the last written entry index is greater than the next append entry index,
@@ -651,9 +651,9 @@ public class PassiveRole extends InactiveRole {
   private boolean appendEntry(
       final CompletableFuture<AppendResponse> future,
       final RaftLogWriter writer,
-      final RaftLogEntry entry,
+      final Entry entry,
       final long index,
-      final Indexed<RaftLogEntry> lastEntry) {
+      final Indexed<Entry> lastEntry) {
     // If the last entry index isn't the previous index, throw an exception because
     // something crazy happened!
     if (lastEntry.index() != index - 1) {
@@ -669,7 +669,7 @@ public class PassiveRole extends InactiveRole {
       final CompletableFuture<AppendResponse> future,
       final RaftLogWriter writer,
       final RaftLogReader reader,
-      final RaftLogEntry entry,
+      final Entry entry,
       final long index) {
     // Reset the reader to the current entry index.
     if (reader.getNextIndex() != index) {
@@ -683,7 +683,7 @@ public class PassiveRole extends InactiveRole {
     }
 
     // Read the existing entry from the log.
-    final Indexed<RaftLogEntry> existingEntry = reader.next();
+    final Indexed<Entry> existingEntry = reader.next();
 
     // If the existing entry term doesn't match the leader's term for the same entry,
     // truncate
@@ -703,11 +703,11 @@ public class PassiveRole extends InactiveRole {
    */
   private boolean appendEntry(
       final long index,
-      final RaftLogEntry entry,
+      final Entry entry,
       final RaftLogWriter writer,
       final CompletableFuture<AppendResponse> future) {
     try {
-      final Indexed<RaftLogEntry> indexed = writer.append(entry);
+      final Indexed<Entry> indexed = writer.append(entry);
       log.trace("Appended {}", indexed);
       raft.getReplicationMetrics().setAppendIndex(indexed.index());
     } catch (final StorageException.TooLarge e) {

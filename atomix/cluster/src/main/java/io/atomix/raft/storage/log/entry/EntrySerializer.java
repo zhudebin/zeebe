@@ -19,184 +19,242 @@ import io.atomix.cluster.MemberId;
 import io.atomix.raft.cluster.RaftMember;
 import io.atomix.raft.cluster.RaftMember.Type;
 import io.atomix.raft.cluster.impl.DefaultRaftMember;
-import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.ConfigurationEntry;
+import io.atomix.storage.journal.ConfigurationEntryMember;
+import io.atomix.storage.journal.Entry;
+import io.atomix.storage.journal.InitialEntry;
 import io.atomix.storage.journal.JournalSerde;
-import io.atomix.storage.journal.RaftLogEntry;
-import io.atomix.storage.protocol.ConfigurationDecoder;
-import io.atomix.storage.protocol.ConfigurationDecoder.RaftMembersDecoder;
-import io.atomix.storage.protocol.ConfigurationEncoder;
-import io.atomix.storage.protocol.ConfigurationEncoder.RaftMembersEncoder;
-import io.atomix.storage.protocol.EntryDecoder;
-import io.atomix.storage.protocol.EntryEncoder;
+import io.atomix.storage.journal.ZeebeEntry;
+import io.atomix.storage.protocol.ConfigurationEntryDecoder;
+import io.atomix.storage.protocol.ConfigurationEntryEncoder;
+import io.atomix.storage.protocol.ConfigurationEntryEncoder.RaftMembersEncoder;
+import io.atomix.storage.protocol.InitialEntryDecoder;
+import io.atomix.storage.protocol.InitialEntryEncoder;
 import io.atomix.storage.protocol.MessageHeaderDecoder;
 import io.atomix.storage.protocol.MessageHeaderEncoder;
 import io.atomix.storage.protocol.Role;
-import io.atomix.storage.protocol.ZeebeDecoder;
-import io.atomix.storage.protocol.ZeebeEncoder;
+import io.atomix.storage.protocol.ZeebeEntryDecoder;
+import io.atomix.storage.protocol.ZeebeEntryEncoder;
 import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
+import org.agrona.sbe.MessageEncoderFlyweight;
 
 public class EntrySerializer implements JournalSerde {
 
   private final MessageHeaderDecoder headerDecoder = new MessageHeaderDecoder();
   private final MessageHeaderEncoder headerEncoder = new MessageHeaderEncoder();
-  private final EntryEncoder rfEncoder = new EntryEncoder();
-  private final EntryDecoder rfDecoder = new EntryDecoder();
-  private final ZeebeEncoder zbEncoder = new ZeebeEncoder();
-  private final ZeebeDecoder zbDecoder = new ZeebeDecoder();
-  private final ConfigurationEncoder cfEncoder = new ConfigurationEncoder();
-  private final ConfigurationDecoder cfDecoder = new ConfigurationDecoder();
+  private final ZeebeEntryDecoder zeebeEntryDecoder = new ZeebeEntryDecoder();
+  private final ZeebeEntryEncoder zeebeEntryEncoder = new ZeebeEntryEncoder();
+  private final ConfigurationEntryEncoder configurationEntryEncoder =
+      new ConfigurationEntryEncoder();
+  private final ConfigurationEntryDecoder configurationEntryDecoder =
+      new ConfigurationEntryDecoder();
+  private final InitialEntryEncoder initialEntryEncoder = new InitialEntryEncoder();
+  private final InitialEntryDecoder initialEntryDecoder = new InitialEntryDecoder();
 
   @Override
-  public int serializeRaftLogEntry(
-      final MutableDirectBuffer buffer, final int offset, final RaftLogEntry entry) {
-    headerEncoder
-        .wrap(buffer, offset)
-        .blockLength(rfEncoder.sbeBlockLength())
-        .templateId(rfEncoder.sbeTemplateId())
-        .schemaId(rfEncoder.sbeSchemaId())
-        .version(rfEncoder.sbeSchemaVersion());
+  public int computeEntryLength(final Entry entry) {
+    switch (entry.type()) {
+      case ZEEBE:
+        return computeZeebeEntryLength((ZeebeEntry) entry);
+      case CONFIGURATION:
+        return computeConfigurationEntryLength(
+            (ConfigurationEntry<ConfigurationEntryMember>) entry);
+      case INITIALIZE:
+        return computeInitialEntryLength();
+      default:
+        throw new IllegalArgumentException("Unexpected entry type " + entry.type());
+    }
+  }
 
-    rfEncoder.wrap(buffer, offset + headerEncoder.encodedLength());
-    rfEncoder
+  @Override
+  public int serializeEntry(final MutableDirectBuffer buffer, final int offset, final Entry entry) {
+    int length = headerEncoder.encodedLength();
+    final int entryOffset = length + offset;
+    final MessageEncoderFlyweight bodyEncoder;
+
+    headerEncoder.wrap(buffer, offset);
+    switch (entry.type()) {
+      case ZEEBE:
+        bodyEncoder = zeebeEntryEncoder;
+        length += serializeZeebeEntry(buffer, entryOffset, (ZeebeEntry) entry);
+        break;
+      case CONFIGURATION:
+        bodyEncoder = configurationEntryEncoder;
+        length +=
+            serializeConfigurationEntry(
+                buffer, entryOffset, (ConfigurationEntry<ConfigurationEntryMember>) entry);
+        break;
+      case INITIALIZE:
+        bodyEncoder = initialEntryEncoder;
+        length += serializeInitialEntry(buffer, entryOffset, entry);
+        break;
+      default:
+        throw new IllegalArgumentException("Unexpected entry type " + entry.type());
+    }
+
+    headerEncoder
+        .schemaId(headerEncoder.sbeSchemaId())
+        .version(headerEncoder.sbeSchemaVersion())
+        .templateId(bodyEncoder.sbeTemplateId())
+        .blockLength(bodyEncoder.sbeBlockLength());
+    return length;
+  }
+
+  @Override
+  public Entry deserializeEntry(final DirectBuffer buffer, final int offset) {
+    headerDecoder.wrap(buffer, offset);
+    if (headerDecoder.schemaId() != MessageHeaderDecoder.SCHEMA_ID) {
+      throw new IllegalArgumentException(
+          "Expected schema ID to be "
+              + MessageHeaderDecoder.SCHEMA_ID
+              + " but got "
+              + headerDecoder.schemaId());
+    }
+
+    final int entryOffset = headerDecoder.encodedLength() + offset;
+    switch (headerDecoder.templateId()) {
+      case ZeebeEntryDecoder.TEMPLATE_ID:
+        return deserializeZeebeEntry(buffer, entryOffset);
+      case ConfigurationEntryDecoder.TEMPLATE_ID:
+        return deserializeConfigurationEntry(buffer, entryOffset);
+      case InitialEntryDecoder.TEMPLATE_ID:
+        return deserializeInitialEntry(buffer, entryOffset);
+      default:
+        throw new IllegalArgumentException(
+            "Expected a template ID of "
+                + ZeebeEntryDecoder.TEMPLATE_ID
+                + ", "
+                + ConfigurationEntryDecoder.TEMPLATE_ID
+                + ", or "
+                + InitialEntryDecoder.TEMPLATE_ID
+                + ", but got "
+                + headerDecoder.templateId());
+    }
+  }
+
+  int computeZeebeEntryLength(final ZeebeEntry entry) {
+    return headerEncoder.encodedLength()
+        + zeebeEntryEncoder.sbeBlockLength()
+        + ZeebeEntryEncoder.dataHeaderLength()
+        + entry.data().capacity();
+  }
+
+  int serializeZeebeEntry(
+      final MutableDirectBuffer buffer, final int offset, final ZeebeEntry entry) {
+    final DirectBuffer dataBuffer = entry.data();
+    zeebeEntryEncoder
+        .wrap(buffer, offset)
         .term(entry.term())
         .timestamp(entry.timestamp())
-        .entryType(entry.type())
-        .putEntry(entry.entry(), 0, entry.entry().capacity());
-
-    return headerEncoder.encodedLength() + rfEncoder.encodedLength();
-  }
-
-  @Override
-  public RaftLogEntry deserializeRaftLogEntry(final DirectBuffer buffer, final int offset) {
-    headerDecoder.wrap(buffer, offset);
-    rfDecoder.wrap(
-        buffer,
-        offset + headerDecoder.encodedLength(),
-        headerDecoder.blockLength(),
-        headerDecoder.version());
-
-    final UnsafeBuffer entryBuffer =
-        new UnsafeBuffer(ByteBuffer.allocateDirect(rfDecoder.entryLength()));
-    rfDecoder.getEntry(entryBuffer, 0, entryBuffer.capacity());
-
-    return new RaftLogEntry(
-        rfDecoder.term(), rfDecoder.timestamp(), rfDecoder.entryType(), entryBuffer);
-  }
-
-  public int serializeZeebeEntry(
-      final MutableDirectBuffer buffer, final int offset, final ZeebeEntry entry) {
-    headerEncoder
-        .wrap(buffer, offset)
-        .blockLength(zbEncoder.sbeBlockLength())
-        .templateId(zbEncoder.sbeTemplateId())
-        .schemaId(zbEncoder.sbeSchemaId())
-        .version(zbEncoder.sbeSchemaVersion());
-
-    zbEncoder.wrap(buffer, offset + headerEncoder.encodedLength());
-    zbEncoder
         .lowestPosition(entry.lowestPosition())
         .highestPosition(entry.highestPosition())
-        .putData(entry.data(), 0, entry.data().capacity());
+        .putData(dataBuffer, 0, dataBuffer.capacity());
 
-    return headerEncoder.encodedLength() + zbEncoder.encodedLength();
+    return zeebeEntryEncoder.sbeBlockLength()
+        + ZeebeEntryEncoder.dataHeaderLength()
+        + dataBuffer.capacity();
   }
 
-  public ZeebeEntry deserializeZeebeEntry(final RaftLogEntry entry, final int offset) {
-    headerDecoder.wrap(entry.entry(), offset);
-    zbDecoder.wrap(
-        entry.entry(),
-        offset + headerDecoder.encodedLength(),
-        headerDecoder.blockLength(),
-        headerDecoder.version());
+  ZeebeEntry deserializeZeebeEntry(final DirectBuffer buffer, final int offset) {
+    zeebeEntryDecoder.wrap(buffer, offset, headerDecoder.blockLength(), headerDecoder.version());
 
-    final long lowestPosition = zbDecoder.lowestPosition();
-    final long highestPosition = zbDecoder.highestPosition();
-    final UnsafeBuffer dataBuffer = new UnsafeBuffer();
-    zbDecoder.wrapData(dataBuffer);
+    final UnsafeBuffer entryBuffer =
+        new UnsafeBuffer(ByteBuffer.allocateDirect(zeebeEntryDecoder.dataLength()));
+    zeebeEntryDecoder.getData(entryBuffer, 0, entryBuffer.capacity());
 
     return new ZeebeEntry(
-        entry.term(), entry.timestamp(), lowestPosition, highestPosition, dataBuffer);
+        zeebeEntryDecoder.term(),
+        zeebeEntryDecoder.timestamp(),
+        zeebeEntryDecoder.lowestPosition(),
+        zeebeEntryDecoder.highestPosition(),
+        entryBuffer);
   }
 
-  public int serializeConfigurationEntry(
-      final MutableDirectBuffer buffer, final int offset, final ConfigurationEntry entry) {
-    headerEncoder
-        .wrap(buffer, offset)
-        .blockLength(cfEncoder.sbeBlockLength())
-        .templateId(cfEncoder.sbeTemplateId())
-        .schemaId(cfEncoder.sbeSchemaId())
-        .version(cfEncoder.sbeSchemaVersion());
+  int computeConfigurationEntryLength(final ConfigurationEntry<ConfigurationEntryMember> entry) {
+    int length =
+        headerEncoder.encodedLength()
+            + configurationEntryEncoder.sbeBlockLength()
+            + RaftMembersEncoder.sbeHeaderSize();
+    for (final ConfigurationEntryMember member : entry.members()) {
+      length +=
+          RaftMembersEncoder.sbeBlockLength()
+              + RaftMembersEncoder.memberIdHeaderLength()
+              + member.memberIdBuffer().capacity();
+    }
 
-    cfEncoder.wrap(buffer, offset + headerEncoder.encodedLength());
-    final RaftMembersEncoder rmEncoder = cfEncoder.raftMembersCount(entry.members().size());
+    return length;
+  }
 
-    for (final RaftMember member : entry.members()) {
-      rmEncoder
+  int serializeConfigurationEntry(
+      final MutableDirectBuffer buffer,
+      final int offset,
+      final ConfigurationEntry<ConfigurationEntryMember> entry) {
+    configurationEntryEncoder.wrap(buffer, offset).term(entry.term()).timestamp(entry.timestamp());
+    int length = configurationEntryEncoder.sbeBlockLength() + RaftMembersEncoder.sbeHeaderSize();
+    final RaftMembersEncoder raftMembersEncoder =
+        configurationEntryEncoder.raftMembersCount(entry.members().size());
+
+    for (final ConfigurationEntryMember member : entry.members()) {
+      final DirectBuffer memberIdBuffer = member.memberIdBuffer();
+      raftMembersEncoder
           .next()
           .hash(member.hash())
           .updated(member.getLastUpdated().toEpochMilli())
-          .memberId(member.memberId().id())
-          .role(mapType(member.getType()));
+          .role(member.role())
+          .putMemberId(memberIdBuffer, 0, memberIdBuffer.capacity());
+      length +=
+          RaftMembersEncoder.sbeBlockLength()
+              + RaftMembersEncoder.memberIdHeaderLength()
+              + member.memberIdBuffer().capacity();
     }
 
-    return headerEncoder.encodedLength() + cfEncoder.encodedLength();
+    return length;
   }
 
-  public ConfigurationEntry deserializeConfigurationEntry(
-      final RaftLogEntry entry, final int offset) {
-    final Set<RaftMember> members = new HashSet<>();
-    final DirectBuffer entryBuffer = entry.entry();
-    headerDecoder.wrap(entryBuffer, offset);
-    cfDecoder.wrap(
-        entryBuffer,
-        offset + headerDecoder.encodedLength(),
-        headerDecoder.blockLength(),
-        headerDecoder.version());
+  ConfigurationEntry<RaftMember> deserializeConfigurationEntry(
+      final DirectBuffer buffer, final int offset) {
+    configurationEntryDecoder.wrap(
+        buffer, offset, headerDecoder.blockLength(), headerDecoder.version());
 
-    final RaftMembersDecoder rmDecoder = cfDecoder.raftMembers();
-    while (rmDecoder.hasNext()) {
-      final RaftMembersDecoder memberDecoder = rmDecoder.next();
+    final List<RaftMember> members = new ArrayList<>();
+    final ConfigurationEntryDecoder.RaftMembersDecoder raftMembersDecoder =
+        configurationEntryDecoder.raftMembers();
+
+    while (raftMembersDecoder.hasNext()) {
+      final ConfigurationEntryDecoder.RaftMembersDecoder raftMemberDecoder =
+          raftMembersDecoder.next();
       members.add(
           new DefaultRaftMember(
-              MemberId.from(memberDecoder.memberId()),
-              mapRole(memberDecoder.role()),
-              Instant.ofEpochMilli(memberDecoder.updated())));
+              MemberId.from(raftMemberDecoder.memberId()),
+              mapRole(raftMemberDecoder.role()),
+              Instant.ofEpochMilli(raftMemberDecoder.updated())));
     }
 
-    return new ConfigurationEntry(entry.term(), entry.timestamp(), members);
+    return new io.atomix.storage.journal.ConfigurationEntry<>(
+        configurationEntryDecoder.term(), configurationEntryDecoder.timestamp(), members);
   }
 
-  public Indexed<ZeebeEntry> asZeebeEntry(final Indexed<RaftLogEntry> indexed) {
-    final RaftLogEntry entry = indexed.entry();
-    return new Indexed<>(
-        indexed.index(), deserializeZeebeEntry(entry, 0), entry.entry().capacity());
+  int computeInitialEntryLength() {
+    return headerEncoder.encodedLength() + initialEntryEncoder.sbeBlockLength();
   }
 
-  public Indexed<ConfigurationEntry> asConfigurationEntry(final Indexed<RaftLogEntry> indexed) {
-    final RaftLogEntry entry = indexed.entry();
-    return new Indexed<>(
-        indexed.index(), deserializeConfigurationEntry(entry, 0), entry.entry().capacity());
+  int serializeInitialEntry(final MutableDirectBuffer buffer, final int offset, final Entry entry) {
+    initialEntryEncoder.wrap(buffer, offset).term(entry.term()).timestamp(entry.timestamp());
+    return initialEntryEncoder.sbeBlockLength();
   }
 
-  public Indexed<InitializeEntry> asInitializeEntry(final Indexed<RaftLogEntry> indexed) {
-    final RaftLogEntry entry = indexed.entry();
-    return new Indexed<>(indexed.index(), new InitializeEntry(entry.term(), entry.timestamp()), 0);
+  InitialEntry deserializeInitialEntry(final DirectBuffer buffer, final int offset) {
+    initialEntryDecoder.wrap(buffer, offset, headerDecoder.blockLength(), headerDecoder.version());
+    return new InitialEntry(initialEntryDecoder.term(), initialEntryDecoder.timestamp());
   }
 
-  public <E extends EntryValue> RaftLogEntry asRaftLogEntry(
-      final E entry, final MutableDirectBuffer buffer, final int offset) {
-    final int length = entry.serialize(this, buffer, offset);
-    return new RaftLogEntry(
-        entry.term(), entry.timestamp(), entry.type(), new UnsafeBuffer(buffer, offset, length));
-  }
-
-  private Role mapType(final Type type) {
+  public static Role mapType(final Type type) {
     switch (type) {
       case INACTIVE:
         return Role.INACTIVE;

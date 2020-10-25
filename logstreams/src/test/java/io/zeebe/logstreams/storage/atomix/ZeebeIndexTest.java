@@ -9,12 +9,9 @@ package io.zeebe.logstreams.storage.atomix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.atomix.raft.storage.log.entry.EntrySerializer;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
-import io.atomix.storage.protocol.EntryType;
-import org.agrona.ExpandableDirectByteBuffer;
+import io.atomix.storage.journal.InitialEntry;
+import io.atomix.storage.journal.ZeebeEntry;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
 
@@ -58,12 +55,7 @@ public class ZeebeIndexTest {
 
     // when
     zeebeIndexAdapter.index(
-        new Indexed<>(
-            5,
-            new RaftLogEntry(
-                0, System.currentTimeMillis(), EntryType.INITIALIZE, new UnsafeBuffer()),
-            10),
-        10);
+        new Indexed<>(5, new InitialEntry(0, System.currentTimeMillis()), 10), 10);
 
     // then
     assertThat(zeebeIndexAdapter.lookupPosition(1)).isEqualTo(-1);
@@ -228,12 +220,9 @@ public class ZeebeIndexTest {
     assertThat(zeebeIndexAdapter.lookupPosition(46)).isEqualTo(10);
   }
 
-  private static Indexed<RaftLogEntry> asZeebeEntry(final long index, final long lowestPos) {
-    final ExpandableDirectByteBuffer writeBuffer = new ExpandableDirectByteBuffer();
-    final EntrySerializer entrySerializer = new EntrySerializer();
+  private static Indexed<ZeebeEntry> asZeebeEntry(final long index, final long lowestPos) {
     final ZeebeEntry zeebeEntry =
         new ZeebeEntry(0, System.currentTimeMillis(), lowestPos, lowestPos, new UnsafeBuffer());
-
-    return new Indexed<>(index, entrySerializer.asRaftLogEntry(zeebeEntry, writeBuffer, 0), 0);
+    return new Indexed<>(index, zeebeEntry, 0);
   }
 }

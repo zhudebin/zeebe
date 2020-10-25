@@ -43,6 +43,10 @@
       <artifactId>agrona</artifactId>
       <groupId>org.agrona</groupId>
     </dependency>
+    <dependency>
+      <groupId>io.zeebe</groupId>
+      <artifactId>zeebe-util</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>io.zeebe</groupId>

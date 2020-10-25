@@ -17,9 +17,12 @@
 package io.atomix.raft.cluster;
 
 import io.atomix.cluster.MemberId;
+import io.atomix.storage.journal.ConfigurationEntryMember;
+import io.zeebe.util.buffer.BufferUtil;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import org.agrona.DirectBuffer;
 
 /**
  * Represents a member of a Raft cluster.
@@ -28,7 +31,7 @@ import java.util.function.Consumer;
  * cluster. Each server in a {@link RaftCluster} has a view of the cluster state and can reference
  * and operate on specific members of the cluster via this API.
  */
-public interface RaftMember {
+public interface RaftMember extends ConfigurationEntryMember {
 
   /**
    * Returns the member node ID.
@@ -136,6 +139,11 @@ public interface RaftMember {
    * @return The member type.
    */
   Type getType();
+
+  @Override
+  default DirectBuffer memberIdBuffer() {
+    return BufferUtil.wrapString(memberId().id());
+  }
 
   /**
    * Indicates how the member participates in voting and replication.

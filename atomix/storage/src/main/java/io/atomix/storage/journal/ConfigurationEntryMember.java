@@ -15,13 +15,16 @@
  */
 package io.atomix.storage.journal;
 
+import io.atomix.storage.protocol.Role;
+import java.time.Instant;
 import org.agrona.DirectBuffer;
-import org.agrona.MutableDirectBuffer;
 
-public interface JournalSerde {
-  int computeEntryLength(final Entry entry);
+public interface ConfigurationEntryMember {
+  DirectBuffer memberIdBuffer();
 
-  int serializeEntry(final MutableDirectBuffer buffer, final int offset, final Entry entry);
+  int hash();
 
-  Entry deserializeEntry(final DirectBuffer buffer, final int offset);
+  Instant getLastUpdated();
+
+  Role role();
 }

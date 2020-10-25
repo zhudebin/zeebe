@@ -35,7 +35,7 @@ public interface JournalWriter extends AutoCloseable {
    *
    * @return The last entry written.
    */
-  Indexed<RaftLogEntry> getLastEntry();
+  Indexed<Entry> getLastEntry();
 
   /**
    * Returns the next index to be written.
@@ -50,14 +50,14 @@ public interface JournalWriter extends AutoCloseable {
    * @param entry The entry to append.
    * @return The appended indexed entry.
    */
-  Indexed<RaftLogEntry> append(RaftLogEntry entry);
+  <E extends Entry> Indexed<E> append(E entry);
 
   /**
    * Appends an indexed entry to the log.
    *
    * @param entry The indexed entry to append.
    */
-  void append(Indexed<RaftLogEntry> entry);
+  <E extends Entry> void append(Indexed<E> entry);
 
   /**
    * Commits entries up to the given index.

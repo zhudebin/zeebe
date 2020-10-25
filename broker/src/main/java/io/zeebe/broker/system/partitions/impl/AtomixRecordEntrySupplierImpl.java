@@ -8,8 +8,8 @@
 package io.zeebe.broker.system.partitions.impl;
 
 import io.atomix.raft.storage.log.RaftLogReader;
+import io.atomix.storage.journal.Entry;
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
 import io.zeebe.broker.system.partitions.AtomixRecordEntrySupplier;
 import io.zeebe.logstreams.storage.atomix.ZeebeIndexMapping;
 import java.util.Optional;
@@ -25,7 +25,7 @@ public final class AtomixRecordEntrySupplierImpl implements AtomixRecordEntrySup
   }
 
   @Override
-  public Optional<Indexed<RaftLogEntry>> getIndexedEntry(final long position) {
+  public Optional<Indexed<Entry>> getIndexedEntry(final long position) {
     final var index = indexMapping.lookupPosition(position);
     if (index == -1) {
       return Optional.empty();

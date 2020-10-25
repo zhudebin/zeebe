@@ -11,8 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.atomix.raft.storage.log.entry.EntrySerializer;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.ZeebeEntry;
 import io.zeebe.db.impl.DefaultColumnFamily;
 import io.zeebe.db.impl.rocksdb.ZeebeRocksDbFactory;
 import io.zeebe.logstreams.util.RocksDBWrapper;
@@ -29,7 +29,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.Optional;
-import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.collections.MutableLong;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
@@ -37,7 +36,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-@SuppressWarnings("unchecked")
 public final class StateControllerImplTest {
   @Rule public final TemporaryFolder tempFolderRule = new TemporaryFolder();
   @Rule public final AutoCloseableRule autoCloseableRule = new AutoCloseableRule();
@@ -66,9 +64,7 @@ public final class StateControllerImplTest {
             l -> {
               final ZeebeEntry zeebeEntry =
                   new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer());
-              final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
-              return Optional.of(
-                  new Indexed<>(l, entrySerializer.asRaftLogEntry(zeebeEntry, buffer, 0), 0));
+              return Optional.of(new Indexed<>(l, zeebeEntry, 0));
             },
             db -> exporterPosition.get());
 

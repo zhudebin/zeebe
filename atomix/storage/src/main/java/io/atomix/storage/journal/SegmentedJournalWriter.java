@@ -39,7 +39,7 @@ public class SegmentedJournalWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getLastEntry() {
+  public Indexed<Entry> getLastEntry() {
     return currentWriter.getLastEntry();
   }
 
@@ -49,10 +49,10 @@ public class SegmentedJournalWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> append(final RaftLogEntry entry) {
+  public <E extends Entry> Indexed<E> append(final E entry) {
     try {
       return currentWriter.append(entry);
-    } catch (final BufferOverflowException e) {
+    } catch (final BufferOverflowException | IndexOutOfBoundsException e) {
       if (currentSegment.index() == currentWriter.getNextIndex()) {
         throw e;
       }
@@ -64,10 +64,10 @@ public class SegmentedJournalWriter implements JournalWriter {
   }
 
   @Override
-  public void append(final Indexed<RaftLogEntry> entry) {
+  public <E extends Entry> void append(final Indexed<E> entry) {
     try {
       currentWriter.append(entry);
-    } catch (final BufferOverflowException e) {
+    } catch (final BufferOverflowException | IndexOutOfBoundsException e) {
       if (currentSegment.index() == currentWriter.getNextIndex()) {
         throw e;
       }

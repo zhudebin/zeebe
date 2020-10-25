@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.JournalReader.Mode;
 import io.atomix.storage.journal.index.SparseJournalIndex;
-import io.atomix.storage.protocol.EntryType;
+import io.zeebe.util.buffer.BufferUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,22 +51,21 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public abstract class AbstractJournalTest {
 
-  protected static final RaftLogEntry ENTRY =
-      new RaftLogEntry(1, 1, EntryType.NULL_VAL, new UnsafeBuffer());
+  private static final int MAX_ENTRY_DATA_SIZE = 80;
+  protected static final ZeebeEntry ENTRY =
+      new ZeebeEntry(1, 1, 1, 1, BufferUtil.wrapString("x".repeat(MAX_ENTRY_DATA_SIZE)));
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   protected final int entriesPerSegment;
-  protected final TestJournalSerde serde = new TestJournalSerde();
+  protected final JournalSerde serde = new TestJournalSerde();
   protected SegmentedJournal journal;
 
   private final int maxSegmentSize;
-  private final int cacheSize;
   private File folder;
 
   protected AbstractJournalTest(final int maxSegmentSize, final int cacheSize) {
     this.maxSegmentSize = maxSegmentSize;
-    this.cacheSize = cacheSize;
-    final int entryLength = (serde.serializeRaftLogEntry(ENTRY) + 8);
+    final int entryLength = (serde.computeEntryLength(ENTRY) + 8);
     entriesPerSegment = (maxSegmentSize - 64) / entryLength;
   }
 
@@ -78,7 +77,7 @@ public abstract class AbstractJournalTest {
     final TestJournalSerde serde = new TestJournalSerde();
     for (int i = 1; i <= 10; i++) {
       for (int j = 1; j <= 10; j++) {
-        runs.add(new Object[] {64 + (i * (serde.serializeRaftLogEntry(ENTRY) + 8) + j), j});
+        runs.add(new Object[] {64 + (i * (serde.computeEntryLength(ENTRY) + 8) + j), j});
       }
     }
     return runs;
@@ -86,13 +85,13 @@ public abstract class AbstractJournalTest {
 
   protected SegmentedJournal createJournal() throws IOException {
     final SparseJournalIndex index = new SparseJournalIndex(5);
-    return SegmentedJournal.<RaftLogEntry>builder()
+    return SegmentedJournal.builder()
         .withName("test")
         .withDirectory(folder)
         .withSerde(TestJournalSerde::new)
         .withStorageLevel(storageLevel())
         .withMaxSegmentSize(maxSegmentSize)
-        .withMaxEntrySize(48)
+        .withMaxEntrySize(serde.computeEntryLength(ENTRY))
         .withJournalIndexFactory(() -> index)
         .build();
   }
@@ -141,8 +140,7 @@ public abstract class AbstractJournalTest {
     final JournalReader reader = journal.openReader(1, Mode.COMMITS);
 
     // when
-    final Indexed<RaftLogEntry> indexed =
-        journal.writer().append(AbstractJournalTest.getTestEntry(1));
+    final Indexed<Entry> indexed = journal.writer().append(AbstractJournalTest.getTestEntry(1));
     journal.writer().commit(indexed.index());
     final boolean empty = reader.isEmpty();
 
@@ -167,7 +165,7 @@ public abstract class AbstractJournalTest {
     JournalReader reader = journal.openReader(1);
 
     // Append a couple entries.
-    Indexed<RaftLogEntry> indexed;
+    Indexed<Entry> indexed;
     assertEquals(1, writer.getNextIndex());
     indexed = writer.append(ENTRY);
     assertEquals(1, indexed.index());
@@ -180,7 +178,7 @@ public abstract class AbstractJournalTest {
     assertFalse(reader.hasNext());
 
     // Test reading an entry
-    Indexed<RaftLogEntry> entry1;
+    Indexed<Entry> entry1;
     reader.reset();
     entry1 = reader.next();
     assertEquals(1, entry1.index());
@@ -188,7 +186,7 @@ public abstract class AbstractJournalTest {
     assertEquals(1, reader.getCurrentIndex());
 
     // Test reading a second entry
-    Indexed<RaftLogEntry> entry2;
+    Indexed<Entry> entry2;
     assertTrue(reader.hasNext());
     assertEquals(2, reader.getNextIndex());
     entry2 = reader.next();
@@ -311,7 +309,7 @@ public abstract class AbstractJournalTest {
     assertEquals(i, writer.append(ENTRY).index());
 
     assertTrue(reader.hasNext());
-    Indexed<RaftLogEntry> entry = reader.next();
+    Indexed<Entry> entry = reader.next();
     assertEquals(i - 1, entry.index());
     assertTrue(reader.hasNext());
     entry = reader.next();
@@ -326,14 +324,12 @@ public abstract class AbstractJournalTest {
     for (int i = 1; i <= entriesPerSegment * 5; i++) {
       writer.append(ENTRY);
       assertTrue(reader.hasNext());
-      Indexed<RaftLogEntry> entry;
+      Indexed<Entry> entry;
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(0, entry.entry().entry().capacity());
       reader.reset(i);
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(0, entry.entry().entry().capacity());
 
       if (i > 6) {
         reader.reset(i - 5);
@@ -352,7 +348,6 @@ public abstract class AbstractJournalTest {
       assertTrue(reader.hasNext());
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(0, entry.entry().entry().capacity());
     }
   }
 
@@ -366,14 +361,12 @@ public abstract class AbstractJournalTest {
       assertFalse(reader.hasNext());
       writer.commit(i);
       assertTrue(reader.hasNext());
-      Indexed<RaftLogEntry> entry;
+      Indexed<Entry> entry;
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(0, entry.entry().entry().capacity());
       reader.reset(i);
       entry = reader.next();
       assertEquals(i, entry.index());
-      assertEquals(0, entry.entry().entry().capacity());
     }
   }
 
@@ -422,14 +415,14 @@ public abstract class AbstractJournalTest {
     // given
     final int totalWrites = 10;
     int commitPosition = 6;
-    final Map<Integer, RaftLogEntry> written = new HashMap<>();
+    final Map<Integer, Entry> written = new HashMap<>();
     try (final Journal journal = createJournal()) {
       final JournalWriter writer = journal.writer();
       final JournalReader reader = journal.openReader(1, Mode.COMMITS);
 
       int writerIndex;
       for (writerIndex = 1; writerIndex <= totalWrites - 2; writerIndex++) {
-        final RaftLogEntry entry = getTestEntry(1);
+        final Entry entry = getTestEntry(1);
         assertEquals(writerIndex, writer.append(entry).index());
         written.put(writerIndex, entry);
       }
@@ -439,7 +432,7 @@ public abstract class AbstractJournalTest {
       int readerIndex;
       for (readerIndex = 1; readerIndex <= commitPosition; readerIndex++) {
         assertTrue(reader.hasNext());
-        final Indexed<RaftLogEntry> entry = reader.next();
+        final Indexed<Entry> entry = reader.next();
         assertEquals(readerIndex, entry.index());
         assertEquals(entry.entry(), written.get(readerIndex));
       }
@@ -449,7 +442,7 @@ public abstract class AbstractJournalTest {
       writer.truncate(commitPosition + 1);
 
       for (writerIndex = commitPosition + 2; writerIndex <= totalWrites; writerIndex++) {
-        final RaftLogEntry entry = getTestEntry(1);
+        final Entry entry = getTestEntry(1);
         assertEquals(writerIndex, writer.append(entry).index());
         written.put(writerIndex, entry);
       }
@@ -459,17 +452,24 @@ public abstract class AbstractJournalTest {
 
       for (; readerIndex <= commitPosition; readerIndex++) {
         assertTrue("Expected to find entry at index " + readerIndex, reader.hasNext());
-        final Indexed<RaftLogEntry> entry = reader.next();
+        final Indexed<Entry> entry = reader.next();
         assertEquals(readerIndex, entry.index());
         assertEquals(entry.entry(), written.get(readerIndex));
       }
     }
   }
 
-  public static RaftLogEntry getTestEntry(final int size) {
-    final byte[] bytes = new byte[size];
-    ThreadLocalRandom.current().nextBytes(bytes);
-    return new RaftLogEntry(1, 1, EntryType.NULL_VAL, new UnsafeBuffer(bytes));
+  public static ZeebeEntry getTestEntry(final int size) {
+    final ThreadLocalRandom random = ThreadLocalRandom.current();
+    final byte[] bytes = new byte[Math.min(size, MAX_ENTRY_DATA_SIZE)];
+    random.nextBytes(bytes);
+
+    return new ZeebeEntry(
+        random.nextLong(),
+        random.nextLong(),
+        random.nextLong(),
+        random.nextLong(),
+        new UnsafeBuffer(bytes));
   }
 
   @Before

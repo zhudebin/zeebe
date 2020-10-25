@@ -1,12 +1,11 @@
 /*
- * Copyright 2015-present Open Networking Foundation
  * Copyright © 2020 camunda services GmbH (info@camunda.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,25 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.atomix.raft.storage.log.entry;
+package io.atomix.storage.journal;
 
 import io.atomix.storage.protocol.EntryType;
-import org.agrona.MutableDirectBuffer;
+import java.util.Objects;
 
-/**
- * Indicates a leader change has occurred.
- *
- * <p>The {@code InitializeEntry} is logged by a leader at the beginning of its term to indicate
- * that a leadership change has occurred. Importantly, initialize entries are logged with a {@link
- * #timestamp() timestamp} which can be used by server state machines to reset session timeouts
- * following leader changes. Initialize entries are always the first entry to be committed at the
- * start of a leader's term.
- */
-public class InitializeEntry implements EntryValue {
+public class InitialEntry implements Entry {
   private final long term;
   private final long timestamp;
 
-  public InitializeEntry(final long term, final long timestamp) {
+  public InitialEntry(final long term, final long timestamp) {
     this.term = term;
     this.timestamp = timestamp;
   }
@@ -53,8 +43,24 @@ public class InitializeEntry implements EntryValue {
   }
 
   @Override
-  public int serialize(
-      final EntrySerializer serializer, final MutableDirectBuffer dest, final int offset) {
-    return 0;
+  public int hashCode() {
+    return Objects.hash(term, timestamp);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final InitialEntry that = (InitialEntry) o;
+    return term == that.term && timestamp == that.timestamp;
+  }
+
+  @Override
+  public String toString() {
+    return "InitializeEntry{" + "term=" + term + ", timestamp=" + timestamp + '}';
   }
 }

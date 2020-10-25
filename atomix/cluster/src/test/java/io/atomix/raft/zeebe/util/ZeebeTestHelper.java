@@ -15,16 +15,16 @@
  */
 package io.atomix.raft.zeebe.util;
 
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.atomix.raft.RaftServer.Role;
 import io.atomix.raft.partition.impl.RaftPartitionServer;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.entry.EntrySerializer;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.storage.journal.JournalReader.Mode;
+import io.atomix.storage.journal.ZeebeEntry;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Optional;
@@ -94,17 +94,11 @@ public class ZeebeTestHelper {
     try (final RaftLogReader reader = partition.openReader(indexed.index(), Mode.COMMITS)) {
 
       if (reader.hasNext() && reader.getNextIndex() == indexed.index()) {
-        return isEntryEqualTo(entrySerializer.asZeebeEntry(reader.next()), indexed);
+        return reader.next().equals(indexed);
       }
     }
 
     return false;
-  }
-
-  public boolean isEntryEqualTo(
-      final Indexed<ZeebeEntry> indexed, final Indexed<ZeebeEntry> other) {
-    return indexed.entry().term() == other.entry().term()
-        && indexed.entry().data().equals(other.entry().data());
   }
 
   public void await(final BooleanSupplier predicate) {
@@ -115,7 +109,7 @@ public class ZeebeTestHelper {
       result = predicate.getAsBoolean();
     }
 
-    assertTrue(result);
+    assertThat(result).isTrue();
   }
 
   public void awaitContains(

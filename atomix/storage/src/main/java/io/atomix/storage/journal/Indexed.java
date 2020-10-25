@@ -50,6 +50,10 @@ public class Indexed<E> {
     return entry;
   }
 
+  public <T> Indexed<T> cast() {
+    return (Indexed<T>) this;
+  }
+
   /**
    * Returns the serialized entry size.
    *

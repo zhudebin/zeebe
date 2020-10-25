@@ -42,8 +42,8 @@ class MappedJournalSegmentReader implements JournalReader {
   private final JournalSegment segment;
   private final DirectBuffer readBuffer;
   private final Checksum checksum = new CRC32();
-  private Indexed<RaftLogEntry> currentEntry;
-  private Indexed<RaftLogEntry> nextEntry;
+  private Indexed<Entry> currentEntry;
+  private Indexed<Entry> nextEntry;
 
   MappedJournalSegmentReader(
       final JournalSegmentFile file,
@@ -83,7 +83,7 @@ class MappedJournalSegmentReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getCurrentEntry() {
+  public Indexed<Entry> getCurrentEntry() {
     return currentEntry;
   }
 
@@ -102,7 +102,7 @@ class MappedJournalSegmentReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> next() {
+  public Indexed<Entry> next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -189,7 +189,7 @@ class MappedJournalSegmentReader implements JournalReader {
 
       // If the stored checksum equals the computed checksum, return the entry.
       if (entryChecksum == computedChecksum) {
-        final RaftLogEntry entry = serde.deserializeRaftLogEntry(readBuffer, entryOffset);
+        final Entry entry = serde.deserializeEntry(readBuffer, entryOffset);
         buffer.position(entryOffset + entryLength);
         nextEntry = new Indexed<>(index, entry, entryLength);
       }

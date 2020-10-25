@@ -57,7 +57,7 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
   private final MutableDirectBuffer writeBuffer;
   private final long firstIndex;
   private final Checksum checksum = new CRC32();
-  private Indexed<RaftLogEntry> lastEntry;
+  private Indexed<Entry> lastEntry;
 
   FileChannelJournalSegmentWriter(
       final JournalSegmentFile file,
@@ -87,7 +87,7 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getLastEntry() {
+  public Indexed<Entry> getLastEntry() {
     return lastEntry;
   }
 
@@ -101,11 +101,11 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> append(final RaftLogEntry entry) {
+  public <E extends Entry> Indexed<E> append(final E entry) {
     // Store the entry index.
     final long index = getNextIndex();
     final int entryOffset = Integer.BYTES + Integer.BYTES;
-    final int length = serde.computeSerializedLength(entry);
+    final int length = serde.computeEntryLength(entry);
 
     // If the entry length exceeds the maximum entry size then throw an exception.
     if (length > maxEntrySize) {
@@ -130,7 +130,7 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
       }
 
       // the serialized length should be the same as we computed
-      final int serializedLength = serde.serializeRaftLogEntry(writeBuffer, entryOffset, entry);
+      final int serializedLength = serde.serializeEntry(writeBuffer, entryOffset, entry);
       assert length == serializedLength
           : "Expected length " + length + " to be equal to serializedLength " + serializedLength;
 
@@ -144,29 +144,13 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
       channel.write(memory.asReadOnlyBuffer().limit(entryOffset + length));
 
       // Update the last entry with the correct index/term/length.
-      final Indexed<RaftLogEntry> indexedEntry = new Indexed<>(index, entry, length);
-      lastEntry = indexedEntry;
+      final Indexed<E> indexedEntry = new Indexed<>(index, entry, length);
+      lastEntry = (Indexed<Entry>) indexedEntry;
       journalIndex.index(lastEntry, (int) position);
       return indexedEntry;
     } catch (final IOException e) {
       throw new StorageException(e);
     }
-  }
-
-  @Override
-  public void append(final Indexed<RaftLogEntry> entry) {
-    final long nextIndex = getNextIndex();
-
-    // If the entry's index is greater than the next index in the segment, skip some entries.
-    if (entry.index() > nextIndex) {
-      throw new IndexOutOfBoundsException("Entry index is not sequential");
-    }
-
-    // If the entry's index is less than the next index, truncate the segment.
-    if (entry.index() < nextIndex) {
-      truncate(entry.index() - 1);
-    }
-    append(entry.entry());
   }
 
   @Override
@@ -207,7 +191,7 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
 
         // If the stored checksum equals the computed checksum, return the entry.
         if (entryChecksum == checksum.getValue()) {
-          final RaftLogEntry entry = serde.deserializeRaftLogEntry(writeBuffer, memory.position());
+          final Entry entry = serde.deserializeEntry(writeBuffer, memory.position());
           memory.position(memory.position() + length);
           lastEntry = new Indexed<>(nextIndex, entry, length);
           journalIndex.index(lastEntry, (int) position);
@@ -296,6 +280,22 @@ class FileChannelJournalSegmentWriter implements JournalWriter {
     } catch (final IOException e) {
       throw new StorageException(e);
     }
+  }
+
+  @Override
+  public <E extends Entry> void append(final Indexed<E> entry) {
+    final long nextIndex = getNextIndex();
+
+    // If the entry's index is greater than the next index in the segment, skip some entries.
+    if (entry.index() > nextIndex) {
+      throw new IndexOutOfBoundsException("Entry index is not sequential");
+    }
+
+    // If the entry's index is less than the next index, truncate the segment.
+    if (entry.index() < nextIndex) {
+      truncate(entry.index() - 1);
+    }
+    append(entry.entry());
   }
 
   /**

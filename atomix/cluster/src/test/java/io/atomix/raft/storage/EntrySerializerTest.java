@@ -21,15 +21,15 @@ import io.atomix.cluster.MemberId;
 import io.atomix.raft.cluster.RaftMember;
 import io.atomix.raft.cluster.RaftMember.Type;
 import io.atomix.raft.cluster.impl.DefaultRaftMember;
-import io.atomix.raft.storage.log.entry.ConfigurationEntry;
 import io.atomix.raft.storage.log.entry.EntrySerializer;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
-import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
+import io.atomix.storage.journal.ConfigurationEntry;
+import io.atomix.storage.journal.Entry;
+import io.atomix.storage.journal.ZeebeEntry;
 import io.atomix.storage.protocol.EntryType;
 import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.util.Set;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
@@ -37,7 +37,8 @@ import org.junit.Test;
 public class EntrySerializerTest {
 
   private final EntrySerializer serializer = new EntrySerializer();
-  private final UnsafeBuffer raftLogEntryMemory = new UnsafeBuffer(ByteBuffer.allocateDirect(1024));
+  private final UnsafeBuffer serializationBuffer =
+      new UnsafeBuffer(ByteBuffer.allocateDirect(1024));
   private final UnsafeBuffer zbEntryMemory = new UnsafeBuffer(ByteBuffer.allocateDirect(1024));
 
   @Test
@@ -48,66 +49,38 @@ public class EntrySerializerTest {
     final long highestPosition = 456;
     final DirectBuffer record = new UnsafeBuffer(ByteBuffer.wrap("cenas".getBytes()));
 
-    // serialize ZeebeEntry
-    final ZeebeEntry zbEntry =
+    final ZeebeEntry entry =
         new ZeebeEntry(term, timestamp, lowestPosition, highestPosition, record);
-    final int zbEntryLength = serializer.serializeZeebeEntry(zbEntryMemory, 0, zbEntry);
+    final int entryLength = serializer.serializeEntry(serializationBuffer, 0, entry);
+    assertThat(entryLength).isEqualTo(serializer.computeEntryLength(entry));
 
-    // serialize RaftLogEntry
-    final RaftLogEntry entry =
-        new RaftLogEntry(
-            term, timestamp, EntryType.ZEEBE, new UnsafeBuffer(zbEntryMemory, 0, zbEntryLength));
-    final int rfEntryLength = serializer.serializeRaftLogEntry(raftLogEntryMemory, 0, entry);
+    final Entry deserializedEntry = serializer.deserializeEntry(serializationBuffer, 0);
+    assertThat(deserializedEntry.type()).isEqualTo(EntryType.ZEEBE);
 
-    // deserialize RaftLogEntry
-    final RaftLogEntry deserializedEntry =
-        serializer.deserializeRaftLogEntry(raftLogEntryMemory, 0);
-
-    final ZeebeEntry deserializedZeebeEntry =
-        serializer.deserializeZeebeEntry(deserializedEntry, 0);
-
-    assertThat(zbEntry.highestPosition()).isEqualTo(deserializedZeebeEntry.highestPosition());
-    assertThat(zbEntry.lowestPosition()).isEqualTo(deserializedZeebeEntry.lowestPosition());
-    assertThat(zbEntry.data()).isEqualTo(deserializedZeebeEntry.data());
-
-    final ZeebeEntry converted =
-        serializer.asZeebeEntry(new Indexed<>(1, entry, entry.entry().capacity())).entry();
-    assertThat(converted).isEqualTo(deserializedZeebeEntry);
+    final ZeebeEntry deserializedZeebeEntry = (ZeebeEntry) deserializedEntry;
+    assertThat(deserializedZeebeEntry).isEqualTo(entry);
   }
 
   @Test
   public void shouldSerializeConfigurationEntry() {
     final long term = 123;
     final long timestamp = 234;
-    final Set<RaftMember> members =
-        Set.of(
-            new DefaultRaftMember(MemberId.from("foo"), Type.ACTIVE, Instant.now()),
-            new DefaultRaftMember(MemberId.from("bar"), Type.PASSIVE, Instant.now()));
+    final List<RaftMember> members =
+        List.of(
+            new DefaultRaftMember(
+                MemberId.from("foo"), Type.ACTIVE, Instant.now().truncatedTo(ChronoUnit.MILLIS)),
+            new DefaultRaftMember(
+                MemberId.from("bar"), Type.PASSIVE, Instant.now().truncatedTo(ChronoUnit.MILLIS)));
 
-    // serialize config entry
-    final ConfigurationEntry cfEntry = new ConfigurationEntry(term, timestamp, members);
-    final int zbEntryLength = serializer.serializeConfigurationEntry(zbEntryMemory, 0, cfEntry);
+    final ConfigurationEntry<RaftMember> entry = new ConfigurationEntry<>(term, timestamp, members);
+    final int entryLength = serializer.serializeEntry(serializationBuffer, 0, entry);
+    assertThat(entryLength).isEqualTo(serializer.computeEntryLength(entry));
 
-    // serialize RaftLogEntry
-    final RaftLogEntry entry =
-        new RaftLogEntry(
-            term,
-            timestamp,
-            EntryType.CONFIGURATION,
-            new UnsafeBuffer(zbEntryMemory, 0, zbEntryLength));
-    final int rfEntryLength = serializer.serializeRaftLogEntry(raftLogEntryMemory, 0, entry);
+    final Entry deserializedEntry = serializer.deserializeEntry(serializationBuffer, 0);
+    assertThat(deserializedEntry.type()).isEqualTo(EntryType.CONFIGURATION);
 
-    // deserialize RaftLogEntry
-    final RaftLogEntry deserializedEntry =
-        serializer.deserializeRaftLogEntry(raftLogEntryMemory, 0);
-
-    final ConfigurationEntry deserializedConfigEntry =
-        serializer.deserializeConfigurationEntry(deserializedEntry, 0);
-
-    assertThat(cfEntry.members()).isEqualTo(deserializedConfigEntry.members());
-
-    final ConfigurationEntry converted =
-        serializer.asConfigurationEntry(new Indexed<>(1, entry, entry.entry().capacity())).entry();
-    assertThat(converted).isEqualTo(deserializedConfigEntry);
+    final ConfigurationEntry<RaftMember> deserializedConfigEntry =
+        (ConfigurationEntry<RaftMember>) deserializedEntry;
+    assertThat(deserializedConfigEntry).isEqualTo(entry);
   }
 }

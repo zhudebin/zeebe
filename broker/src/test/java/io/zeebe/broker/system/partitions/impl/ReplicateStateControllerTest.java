@@ -10,8 +10,8 @@ package io.zeebe.broker.system.partitions.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.atomix.raft.storage.log.entry.EntrySerializer;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.ZeebeEntry;
 import io.zeebe.broker.system.partitions.SnapshotReplication;
 import io.zeebe.db.impl.DefaultColumnFamily;
 import io.zeebe.db.impl.rocksdb.ZeebeRocksDbFactory;
@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.zip.CRC32;
-import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Before;
 import org.junit.Rule;
@@ -73,9 +72,7 @@ public final class ReplicateStateControllerTest {
             l -> {
               final ZeebeEntry zeebeEntry =
                   new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer());
-              final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
-              return Optional.of(
-                  new Indexed<>(l + 100, entrySerializer.asRaftLogEntry(zeebeEntry, buffer, 0), 0));
+              return Optional.of(new Indexed<>(l + 100, zeebeEntry, 0));
             },
             db -> Long.MAX_VALUE);
     senderStore.addSnapshotListener(replicatorSnapshotController);
@@ -91,9 +88,7 @@ public final class ReplicateStateControllerTest {
             l -> {
               final ZeebeEntry zeebeEntry =
                   new ZeebeEntry(1, System.currentTimeMillis(), 1, 10, new UnsafeBuffer());
-              final ExpandableDirectByteBuffer buffer = new ExpandableDirectByteBuffer();
-              return Optional.of(
-                  new Indexed<>(l + 100, entrySerializer.asRaftLogEntry(zeebeEntry, buffer, 0), 0));
+              return Optional.of(new Indexed<>(l + 100, zeebeEntry, 0));
             },
             db -> Long.MAX_VALUE);
     receiverStore.addSnapshotListener(receiverSnapshotController);

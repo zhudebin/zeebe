@@ -17,6 +17,8 @@ package io.atomix.raft.primitive;
 
 import io.atomix.cluster.MemberId;
 import io.atomix.raft.cluster.RaftMember;
+import io.atomix.raft.storage.log.entry.EntrySerializer;
+import io.atomix.storage.protocol.Role;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -81,5 +83,10 @@ public class TestMember implements RaftMember {
   @Override
   public Type getType() {
     return type;
+  }
+
+  @Override
+  public Role role() {
+    return EntrySerializer.mapType(type);
   }
 }

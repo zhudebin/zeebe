@@ -37,11 +37,11 @@ import io.atomix.raft.protocol.ReconfigureRequest;
 import io.atomix.raft.protocol.ReconfigureResponse;
 import io.atomix.raft.protocol.VoteRequest;
 import io.atomix.raft.protocol.VoteResponse;
-import io.atomix.raft.storage.log.entry.ConfigurationEntry;
-import io.atomix.raft.storage.log.entry.InitializeEntry;
-import io.atomix.raft.storage.log.entry.ZeebeEntry;
 import io.atomix.raft.storage.system.Configuration;
+import io.atomix.storage.journal.ConfigurationEntry;
+import io.atomix.storage.journal.InitialEntry;
 import io.atomix.storage.journal.RaftLogEntry;
+import io.atomix.storage.journal.ZeebeEntry;
 import io.atomix.storage.protocol.EntryType;
 import io.atomix.utils.serializer.FallbackNamespace;
 import io.atomix.utils.serializer.Namespace;
@@ -104,8 +104,8 @@ public final class RaftNamespaces {
           .register(Void.class) // SessionMetadata
           .register(Void.class) // CloseSessionEntry
           .register(Void.class) // CommandEntry
-          .register(ConfigurationEntry.class)
-          .register(InitializeEntry.class)
+          .register(ConfigurationEntry.class) // ConfigurationEntry
+          .register(InitialEntry.class) // InitializeEntry
           .register(Void.class) // KeepAliveEntry
           .register(Void.class) // MetadataEntry
           .register(Void.class) // OpenSessionEntry
@@ -126,7 +126,7 @@ public final class RaftNamespaces {
           .register(RaftMember.Type.class)
           .register(Instant.class)
           .register(Configuration.class)
-          .register(ZeebeEntry.class)
+          .register(ZeebeEntry.class) // ZeebeEntry
           .register(RaftLogEntry.class)
           .register(EntryType.class)
           .register(
@@ -160,8 +160,8 @@ public final class RaftNamespaces {
         .nextId(Namespaces.BEGIN_USER_CUSTOM_ID + 100)
         .register(Void.class) // CloseSessionEntry
         .register(Void.class) // CommandEntry
-        .register(ConfigurationEntry.class)
-        .register(InitializeEntry.class)
+        .register(ConfigurationEntry.class) // ConfigurationEntry
+        .register(InitialEntry.class) // InitializeEntry
         .register(Void.class) // KeepAliveEntry
         .register(Void.class) // MetadataEntry
         .register(Void.class) // OpenSessionEntry

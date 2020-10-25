@@ -46,8 +46,8 @@ class FileChannelJournalSegmentReader implements JournalReader {
   private final DirectBuffer readBuffer;
   private final JournalSegment segment;
   private final Checksum checksum = new CRC32();
-  private Indexed<RaftLogEntry> currentEntry;
-  private Indexed<RaftLogEntry> nextEntry;
+  private Indexed<Entry> currentEntry;
+  private Indexed<Entry> nextEntry;
 
   FileChannelJournalSegmentReader(
       final JournalSegmentFile file,
@@ -92,7 +92,7 @@ class FileChannelJournalSegmentReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getCurrentEntry() {
+  public Indexed<Entry> getCurrentEntry() {
     return currentEntry;
   }
 
@@ -111,7 +111,7 @@ class FileChannelJournalSegmentReader implements JournalReader {
   }
 
   @Override
-  public Indexed<RaftLogEntry> next() {
+  public Indexed<Entry> next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -225,7 +225,8 @@ class FileChannelJournalSegmentReader implements JournalReader {
     }
 
     final int offset = memory.position();
-    final RaftLogEntry raftLogEntry = serde.deserializeRaftLogEntry(readBuffer, offset);
+
+    final Entry raftLogEntry = serde.deserializeEntry(readBuffer, offset);
     memory.position(offset + length);
     nextEntry = new Indexed<>(index, raftLogEntry, length);
   }

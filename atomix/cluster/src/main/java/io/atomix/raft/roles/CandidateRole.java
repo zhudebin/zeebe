@@ -27,8 +27,8 @@ import io.atomix.raft.protocol.RaftResponse;
 import io.atomix.raft.protocol.VoteRequest;
 import io.atomix.raft.protocol.VoteResponse;
 import io.atomix.raft.utils.Quorum;
+import io.atomix.storage.journal.Entry;
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.utils.concurrent.Scheduled;
 import java.time.Duration;
 import java.util.HashSet;
@@ -154,7 +154,7 @@ public final class CandidateRole extends ActiveRole {
 
     // First, load the last log entry to get its term. We load the entry
     // by its index since the index is required by the protocol.
-    final Indexed<RaftLogEntry> lastEntry = raft.getLogWriter().getLastEntry();
+    final Indexed<Entry> lastEntry = raft.getLogWriter().getLastEntry();
 
     final long lastTerm;
     if (lastEntry != null) {

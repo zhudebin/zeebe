@@ -33,8 +33,8 @@ import io.atomix.raft.protocol.RaftRequest;
 import io.atomix.raft.protocol.RaftResponse;
 import io.atomix.raft.snapshot.impl.SnapshotChunkImpl;
 import io.atomix.raft.storage.log.RaftLogReader;
+import io.atomix.storage.journal.Entry;
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
 import io.atomix.utils.logging.ContextualLoggerFactory;
 import io.atomix.utils.logging.LoggerContext;
 import io.zeebe.snapshots.raft.PersistedSnapshot;
@@ -100,7 +100,7 @@ abstract class AbstractAppender implements AutoCloseable {
 
     // Read the previous entry from the reader.
     // The reader can be null for RESERVE members.
-    final Indexed<RaftLogEntry> prevEntry = reader != null ? reader.getCurrentEntry() : null;
+    final Indexed<Entry> prevEntry = reader != null ? reader.getCurrentEntry() : null;
 
     final DefaultRaftMember leader = raft.getLeader();
     return builderWithPreviousEntry(prevEntry)
@@ -111,7 +111,7 @@ abstract class AbstractAppender implements AutoCloseable {
         .build();
   }
 
-  private AppendRequest.Builder builderWithPreviousEntry(final Indexed<RaftLogEntry> prevEntry) {
+  private AppendRequest.Builder builderWithPreviousEntry(final Indexed<Entry> prevEntry) {
     long prevIndex = 0;
     long prevTerm = 0;
 
@@ -130,12 +130,11 @@ abstract class AbstractAppender implements AutoCloseable {
   }
 
   /** Builds a populated AppendEntries request. */
-  @SuppressWarnings("unchecked")
   protected AppendRequest buildAppendEntriesRequest(
       final RaftMemberContext member, final long lastIndex) {
     final RaftLogReader reader = member.getLogReader();
 
-    final Indexed<RaftLogEntry> prevEntry = reader.getCurrentEntry();
+    final Indexed<Entry> prevEntry = reader.getCurrentEntry();
 
     final DefaultRaftMember leader = raft.getLeader();
     final AppendRequest.Builder builder =
@@ -145,7 +144,7 @@ abstract class AbstractAppender implements AutoCloseable {
             .withCommitIndex(raft.getCommitIndex());
 
     // Build a list of entries to send to the member.
-    final List<RaftLogEntry> entries = new ArrayList<>();
+    final List<Entry> entries = new ArrayList<>();
 
     // Build a list of entries up to the MAX_BATCH_SIZE. Note that entries in the log may
     // be null if they've been compacted and the member to which we're sending entries is just
@@ -158,7 +157,7 @@ abstract class AbstractAppender implements AutoCloseable {
     // Iterate through the log until the last index or the end of the log is reached.
     while (reader.hasNext()) {
       // Otherwise, read the next entry and add it to the batch.
-      final Indexed<RaftLogEntry> entry = reader.next();
+      final Indexed<Entry> entry = reader.next();
       entries.add(entry.entry());
       size += entry.size();
       if (entry.index() == lastIndex || size >= maxBatchSizePerAppend) {
@@ -426,7 +425,6 @@ abstract class AbstractAppender implements AutoCloseable {
   }
 
   /** Handles an OK configuration response. */
-  @SuppressWarnings("unused")
   protected void handleConfigureResponseOk(
       final RaftMemberContext member,
       final ConfigureRequest request,
@@ -444,7 +442,6 @@ abstract class AbstractAppender implements AutoCloseable {
   }
 
   /** Handles an ERROR configuration response. */
-  @SuppressWarnings("unused")
   protected void handleConfigureResponseError(
       final RaftMemberContext member,
       final ConfigureRequest request,
@@ -564,7 +561,6 @@ abstract class AbstractAppender implements AutoCloseable {
   }
 
   /** Handles an OK install response. */
-  @SuppressWarnings("unused")
   protected void handleInstallResponseOk(
       final RaftMemberContext member,
       final InstallRequest request,
@@ -590,7 +586,6 @@ abstract class AbstractAppender implements AutoCloseable {
   }
 
   /** Handles an ERROR install response. */
-  @SuppressWarnings("unused")
   protected void handleInstallResponseError(
       final RaftMemberContext member,
       final InstallRequest request,

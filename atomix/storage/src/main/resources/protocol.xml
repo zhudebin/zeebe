@@ -22,25 +22,27 @@
     </enum>
   </types>
 
-  <sbe:message name="Entry" id="1">
+  <sbe:message name="InitialEntry" id="1">
     <field name="term" id="1" type="uint64"/>
-    <field name="entryType" id="2" type="EntryType"/>
-    <field name="timestamp" id="3" type="uint64"/>
-    <data name="entry" id="4" type="varDataEncoding"/>
+    <field name="timestamp" id="2" type="uint64"/>
   </sbe:message>
 
-  <sbe:message name="Zeebe" id="2">
-    <field name="lowestPosition" id="1" type="uint64"/>
-    <field name="highestPosition" id="2" type="uint64"/>
-    <data name="data" id="3" type="varDataEncoding"/>
+  <sbe:message name="ZeebeEntry" id="2">
+    <field name="term" id="1" type="uint64"/>
+    <field name="timestamp" id="2" type="uint64"/>
+    <field name="lowestPosition" id="3" type="uint64"/>
+    <field name="highestPosition" id="4" type="uint64"/>
+    <data name="data" id="5" type="varDataEncoding"/>
   </sbe:message>
 
-  <sbe:message name="Configuration" id="3">
-    <group name="raftMembers" id="1">
-      <field name="hash" id="2" type="int32"/>
-      <field name="role" id="3" type="Role"/>
-      <field name="updated" id="4" type="uint64"/>
-      <data name="memberId" id="5" type="varDataEncoding"/>
+  <sbe:message name="ConfigurationEntry" id="3">
+    <field name="term" id="1" type="uint64"/>
+    <field name="timestamp" id="2" type="uint64"/>
+    <group name="raftMembers" id="3">
+      <field name="hash" id="4" type="int32"/>
+      <field name="role" id="5" type="Role"/>
+      <field name="updated" id="6" type="uint64"/>
+      <data name="memberId" id="7" type="varDataEncoding"/>
     </group>
   </sbe:message>
 </sbe:messageSchema>

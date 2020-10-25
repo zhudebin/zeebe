@@ -17,7 +17,6 @@
 package io.atomix.storage.journal.index;
 
 import io.atomix.storage.journal.Indexed;
-import io.atomix.storage.journal.RaftLogEntry;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
@@ -33,7 +32,8 @@ public class SparseJournalIndex implements JournalIndex {
   }
 
   @Override
-  public void index(final Indexed<RaftLogEntry> indexedEntry, final int position) {
+  public <E extends io.atomix.storage.journal.Entry> void index(
+      final Indexed<E> indexedEntry, final int position) {
     final long index = indexedEntry.index();
     if (index % density == 0) {
       positions.put(index, position);

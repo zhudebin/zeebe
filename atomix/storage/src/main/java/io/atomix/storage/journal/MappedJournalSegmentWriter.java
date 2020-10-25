@@ -54,7 +54,7 @@ class MappedJournalSegmentWriter implements JournalWriter {
   private final JournalSerde serde;
   private final long firstIndex;
   private final Checksum checksum = new CRC32();
-  private Indexed<RaftLogEntry> lastEntry;
+  private Indexed<Entry> lastEntry;
   private boolean isOpen = true;
   private final MutableDirectBuffer writeBuffer;
 
@@ -87,7 +87,7 @@ class MappedJournalSegmentWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> getLastEntry() {
+  public Indexed<Entry> getLastEntry() {
     return lastEntry;
   }
 
@@ -101,14 +101,14 @@ class MappedJournalSegmentWriter implements JournalWriter {
   }
 
   @Override
-  public Indexed<RaftLogEntry> append(final RaftLogEntry entry) {
+  public <E extends Entry> Indexed<E> append(final E entry) {
     // Store the entry index.
     final long index = getNextIndex();
     final int offset = buffer.position();
     final int checksumOffset = offset + Integer.BYTES;
     final int entryOffset = checksumOffset + Integer.BYTES;
 
-    final int entryLength = serde.computeSerializedLength(entry);
+    final int entryLength = serde.computeEntryLength(entry);
     if ((entryLength + ENTRY_PREAMBLE_SIZE) > buffer.remaining()) {
       throw new BufferOverflowException();
     }
@@ -128,7 +128,7 @@ class MappedJournalSegmentWriter implements JournalWriter {
     writeBuffer.putInt(offset, entryLength, ByteOrder.LITTLE_ENDIAN);
 
     try {
-      final int serializedLength = serde.serializeRaftLogEntry(writeBuffer, entryOffset, entry);
+      final int serializedLength = serde.serializeEntry(writeBuffer, entryOffset, entry);
       assert entryLength == serializedLength
           : "Expected computed length "
               + entryLength
@@ -146,8 +146,8 @@ class MappedJournalSegmentWriter implements JournalWriter {
     writeBuffer.putInt(checksumOffset, entryChecksum, ByteOrder.LITTLE_ENDIAN);
 
     // Update the last entry with the correct index/term/length.
-    final Indexed<RaftLogEntry> indexedEntry = new Indexed<>(index, entry, entryLength);
-    lastEntry = indexedEntry;
+    final Indexed<E> indexedEntry = new Indexed<>(index, entry, entryLength);
+    lastEntry = (Indexed<Entry>) indexedEntry;
 
     // update position in the buffer for the next entry
     buffer.position(entryOffset + entryLength);
@@ -158,7 +158,7 @@ class MappedJournalSegmentWriter implements JournalWriter {
   }
 
   @Override
-  public void append(final Indexed<RaftLogEntry> entry) {
+  public <E extends Entry> void append(final Indexed<E> entry) {
     final long nextIndex = getNextIndex();
 
     // If the entry's index is greater than the next index in the segment, skip some entries.
@@ -205,7 +205,7 @@ class MappedJournalSegmentWriter implements JournalWriter {
 
         // If the stored checksum equals the computed checksum, return the entry.
         if (entryChecksum == computedChecksum) {
-          final RaftLogEntry entry = serde.deserializeRaftLogEntry(writeBuffer, entryOffset);
+          final Entry entry = serde.deserializeEntry(writeBuffer, entryOffset);
           lastEntry = new Indexed<>(nextIndex, entry, entryLength);
           journalIndex.index(lastEntry, offset);
           nextIndex++;

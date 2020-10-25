@@ -13,17 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.atomix.raft.storage.log.entry;
+package io.atomix.storage.journal;
 
 import io.atomix.storage.protocol.EntryType;
-import org.agrona.MutableDirectBuffer;
 
-public interface EntryValue {
+public interface Entry {
   long term();
 
   long timestamp();
 
   EntryType type();
-
-  int serialize(EntrySerializer serializer, MutableDirectBuffer dest, int offset);
 }
