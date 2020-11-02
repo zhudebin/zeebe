@@ -59,6 +59,7 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   private String certificatePath;
   private CredentialsProvider credentialsProvider;
   private Duration keepAlive = Duration.ofSeconds(45);
+  private ZeebeObjectMapper zeebeObjectMapper = new ZeebeObjectMapper();
 
   @Override
   public String getBrokerContactPoint() {
@@ -128,6 +129,10 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   @Override
   public List<ClientInterceptor> getInterceptors() {
     return interceptors;
+  }
+
+  public ZeebeObjectMapper getZeebeObjectMapper() {
+    return zeebeObjectMapper;
   }
 
   @Override
@@ -278,6 +283,12 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   @Override
   public ZeebeClientBuilder withInterceptors(final ClientInterceptor... interceptors) {
     this.interceptors.addAll(Arrays.asList(interceptors));
+    return this;
+  }
+
+  @Override
+  public ZeebeClientBuilder withZeebeObjectMapper(final ZeebeObjectMapper zeebeObjectMapper) {
+    this.zeebeObjectMapper = zeebeObjectMapper;
     return this;
   }
 

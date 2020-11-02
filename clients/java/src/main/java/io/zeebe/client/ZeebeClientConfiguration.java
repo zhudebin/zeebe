@@ -16,6 +16,7 @@
 package io.zeebe.client;
 
 import io.grpc.ClientInterceptor;
+import io.zeebe.client.impl.ZeebeObjectMapper;
 import java.time.Duration;
 import java.util.List;
 
@@ -65,4 +66,6 @@ public interface ZeebeClientConfiguration {
   Duration getKeepAlive();
 
   List<ClientInterceptor> getInterceptors();
+
+  ZeebeObjectMapper getZeebeObjectMapper();
 }

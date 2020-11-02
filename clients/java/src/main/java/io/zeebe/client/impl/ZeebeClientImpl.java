@@ -97,7 +97,7 @@ public final class ZeebeClientImpl implements ZeebeClient {
       final GatewayStub gatewayStub,
       final ScheduledExecutorService executorService) {
     this.config = config;
-    objectMapper = new ZeebeObjectMapper();
+    objectMapper = config.getZeebeObjectMapper();
     this.channel = channel;
     asyncStub = gatewayStub;
     this.executorService = executorService;
