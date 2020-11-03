@@ -18,12 +18,13 @@ package io.zeebe.client.impl.response;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.zeebe.client.api.response.ActivatedJob;
 import io.zeebe.client.impl.ZeebeObjectMapper;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.gateway.protocol.GatewayOuterClass;
 import java.util.Map;
 
 public final class ActivatedJobImpl implements ActivatedJob {
 
-  @JsonIgnore private final ZeebeObjectMapper objectMapper;
+  @JsonIgnore private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
 
   private final long key;
   private final String type;
@@ -39,13 +40,26 @@ public final class ActivatedJobImpl implements ActivatedJob {
   private final long deadline;
   private final String variables;
 
+  /**
+   * This constructor is deprecated. Saved for backward compatibility.
+   *
+   * @see #ActivatedJobImpl(ZeebeObjectMapperWrapper, GatewayOuterClass.ActivatedJob)
+   * @deprecated
+   */
+  @Deprecated
   public ActivatedJobImpl(
       final ZeebeObjectMapper objectMapper, final GatewayOuterClass.ActivatedJob job) {
-    this.objectMapper = objectMapper;
+    this(new ZeebeObjectMapperWrapper(objectMapper), job);
+  }
+
+  public ActivatedJobImpl(
+      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
+      final GatewayOuterClass.ActivatedJob job) {
+    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
 
     key = job.getKey();
     type = job.getType();
-    customHeaders = objectMapper.fromJsonAsStringMap(job.getCustomHeaders());
+    customHeaders = zeebeObjectMapperWrapper.fromJsonAsStringMap(job.getCustomHeaders());
     worker = job.getWorker();
     retries = job.getRetries();
     deadline = job.getDeadline();
@@ -125,17 +139,17 @@ public final class ActivatedJobImpl implements ActivatedJob {
 
   @Override
   public Map<String, Object> getVariablesAsMap() {
-    return objectMapper.fromJsonAsMap(variables);
+    return zeebeObjectMapperWrapper.fromJsonAsMap(variables);
   }
 
   @Override
   public <T> T getVariablesAsType(final Class<T> variableType) {
-    return objectMapper.fromJson(variables, variableType);
+    return zeebeObjectMapperWrapper.fromJson(variables, variableType);
   }
 
   @Override
   public String toJson() {
-    return objectMapper.toJson(this);
+    return zeebeObjectMapperWrapper.toJson(this);
   }
 
   @Override

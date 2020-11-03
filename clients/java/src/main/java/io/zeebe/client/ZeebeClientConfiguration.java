@@ -15,8 +15,8 @@
  */
 package io.zeebe.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ClientInterceptor;
-import io.zeebe.client.impl.ZeebeObjectMapper;
 import java.time.Duration;
 import java.util.List;
 
@@ -67,5 +67,5 @@ public interface ZeebeClientConfiguration {
 
   List<ClientInterceptor> getInterceptors();
 
-  ZeebeObjectMapper getZeebeObjectMapper();
+  ObjectMapper getZeebeObjectMapper();
 }

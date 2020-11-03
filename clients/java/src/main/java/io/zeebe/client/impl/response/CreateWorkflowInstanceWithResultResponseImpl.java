@@ -17,22 +17,37 @@ package io.zeebe.client.impl.response;
 
 import io.zeebe.client.api.response.WorkflowInstanceResult;
 import io.zeebe.client.impl.ZeebeObjectMapper;
-import io.zeebe.gateway.protocol.GatewayOuterClass;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
+import io.zeebe.gateway.protocol.GatewayOuterClass.CreateWorkflowInstanceWithResultResponse;
 import java.util.Map;
 
 public final class CreateWorkflowInstanceWithResultResponseImpl implements WorkflowInstanceResult {
 
-  private final ZeebeObjectMapper objectMapper;
+  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
   private final long workflowKey;
   private final String bpmnProcessId;
   private final int version;
   private final long workflowInstanceKey;
   private final String variables;
 
+  /**
+   * This constructor is deprecated. Saved for backward compatibility.
+   *
+   * @see #CreateWorkflowInstanceWithResultResponseImpl(ZeebeObjectMapperWrapper,
+   *     CreateWorkflowInstanceWithResultResponse)
+   * @deprecated
+   */
+  @Deprecated
   public CreateWorkflowInstanceWithResultResponseImpl(
       final ZeebeObjectMapper objectMapper,
-      final GatewayOuterClass.CreateWorkflowInstanceWithResultResponse response) {
-    this.objectMapper = objectMapper;
+      final CreateWorkflowInstanceWithResultResponse response) {
+    this(new ZeebeObjectMapperWrapper(objectMapper), response);
+  }
+
+  public CreateWorkflowInstanceWithResultResponseImpl(
+      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
+      final CreateWorkflowInstanceWithResultResponse response) {
+    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
     workflowKey = response.getWorkflowKey();
     bpmnProcessId = response.getBpmnProcessId();
     version = response.getVersion();
@@ -67,12 +82,12 @@ public final class CreateWorkflowInstanceWithResultResponseImpl implements Workf
 
   @Override
   public Map<String, Object> getVariablesAsMap() {
-    return objectMapper.fromJsonAsMap(variables);
+    return zeebeObjectMapperWrapper.fromJsonAsMap(variables);
   }
 
   @Override
   public <T> T getVariablesAsType(final Class<T> variableType) {
-    return objectMapper.fromJson(variables, variableType);
+    return zeebeObjectMapperWrapper.fromJson(variables, variableType);
   }
 
   @Override

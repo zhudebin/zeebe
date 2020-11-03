@@ -21,6 +21,7 @@ import io.zeebe.client.api.command.FailJobCommandStep1;
 import io.zeebe.client.api.command.ThrowErrorCommandStep1;
 import io.zeebe.client.api.worker.JobClient;
 import io.zeebe.client.impl.ZeebeObjectMapper;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.client.impl.command.CompleteJobCommandImpl;
 import io.zeebe.client.impl.command.FailJobCommandImpl;
 import io.zeebe.client.impl.command.ThrowErrorCommandImpl;
@@ -31,24 +32,43 @@ public final class JobClientImpl implements JobClient {
 
   private final GatewayStub asyncStub;
   private final ZeebeClientConfiguration config;
-  private final ZeebeObjectMapper objectMapper;
+  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
   private final Predicate<Throwable> retryPredicate;
 
+  /**
+   * This constructor is deprecated. Saved for backward compatibility.
+   *
+   * @see #JobClientImpl(GatewayStub, ZeebeClientConfiguration, ZeebeObjectMapperWrapper, Predicate)
+   * @deprecated
+   */
+  @Deprecated
   public JobClientImpl(
       final GatewayStub asyncStub,
       final ZeebeClientConfiguration config,
       final ZeebeObjectMapper objectMapper,
       final Predicate<Throwable> retryPredicate) {
+    this(asyncStub, config, new ZeebeObjectMapperWrapper(objectMapper), retryPredicate);
+  }
+
+  public JobClientImpl(
+      final GatewayStub asyncStub,
+      final ZeebeClientConfiguration config,
+      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
+      final Predicate<Throwable> retryPredicate) {
     this.asyncStub = asyncStub;
     this.config = config;
-    this.objectMapper = objectMapper;
+    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
     this.retryPredicate = retryPredicate;
   }
 
   @Override
   public CompleteJobCommandStep1 newCompleteCommand(final long jobKey) {
     return new CompleteJobCommandImpl(
-        asyncStub, objectMapper, jobKey, config.getDefaultRequestTimeout(), retryPredicate);
+        asyncStub,
+        zeebeObjectMapperWrapper,
+        jobKey,
+        config.getDefaultRequestTimeout(),
+        retryPredicate);
   }
 
   @Override

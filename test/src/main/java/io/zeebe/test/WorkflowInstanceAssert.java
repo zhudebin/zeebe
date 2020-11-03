@@ -7,8 +7,9 @@
  */
 package io.zeebe.test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.zeebe.client.api.response.WorkflowInstanceEvent;
-import io.zeebe.client.impl.ZeebeObjectMapper;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.protocol.record.Record;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.value.WorkflowInstanceRecordValue;
@@ -16,7 +17,6 @@ import io.zeebe.test.util.record.RecordingExporter;
 import io.zeebe.test.util.record.WorkflowInstanceRecordStream;
 import io.zeebe.test.util.record.WorkflowInstances;
 import io.zeebe.test.util.stream.StreamWrapperException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +28,9 @@ import org.assertj.core.api.AbstractAssert;
 
 public class WorkflowInstanceAssert
     extends AbstractAssert<WorkflowInstanceAssert, WorkflowInstanceEvent> {
-  private static final ZeebeObjectMapper OBJECT_MAPPER = new ZeebeObjectMapper();
+
+  private static final ZeebeObjectMapperWrapper ZEEBE_OBJECT_MAPPER_WRAPPER =
+      new ZeebeObjectMapperWrapper(new ObjectMapper());
 
   private static final List<WorkflowInstanceIntent> ELEMENT_PASSED_INTENTS =
       Arrays.asList(
@@ -164,12 +166,7 @@ public class WorkflowInstanceAssert
     }
 
     final Object value;
-    try {
-      value = OBJECT_MAPPER.readValue(variables.get(key), Object.class);
-    } catch (final IOException e) {
-      failWithMessage("Expected variable values to be JSON, but got <%s>", e.getMessage());
-      return this;
-    }
+    value = ZEEBE_OBJECT_MAPPER_WRAPPER.fromJson(variables.get(key), Object.class);
 
     if ((expectedValue == null && value != null)
         || (expectedValue != null && !expectedValue.equals(value))) {

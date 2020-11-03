@@ -25,6 +25,7 @@ import io.zeebe.client.api.command.FinalCommandStep;
 import io.zeebe.client.api.response.ActivateJobsResponse;
 import io.zeebe.client.impl.RetriableStreamingFutureImpl;
 import io.zeebe.client.impl.ZeebeObjectMapper;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.client.impl.response.ActivateJobsResponseImpl;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
 import io.zeebe.gateway.protocol.GatewayOuterClass;
@@ -41,18 +42,34 @@ public final class ActivateJobsCommandImpl
 
   private static final Duration DEADLINE_OFFSET = Duration.ofSeconds(10);
   private final GatewayStub asyncStub;
-  private final ZeebeObjectMapper objectMapper;
+  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
   private final Predicate<Throwable> retryPredicate;
   private final Builder builder;
   private Duration requestTimeout;
 
+  /**
+   * This constructor is deprecated. Saved for backward compatibility.
+   *
+   * @see #ActivateJobsCommandImpl(GatewayStub, ZeebeClientConfiguration, ZeebeObjectMapperWrapper,
+   *     Predicate)
+   * @deprecated
+   */
+  @Deprecated
   public ActivateJobsCommandImpl(
       final GatewayStub asyncStub,
       final ZeebeClientConfiguration config,
       final ZeebeObjectMapper objectMapper,
       final Predicate<Throwable> retryPredicate) {
+    this(asyncStub, config, new ZeebeObjectMapperWrapper(objectMapper), retryPredicate);
+  }
+
+  public ActivateJobsCommandImpl(
+      final GatewayStub asyncStub,
+      final ZeebeClientConfiguration config,
+      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
+      final Predicate<Throwable> retryPredicate) {
     this.asyncStub = asyncStub;
-    this.objectMapper = objectMapper;
+    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
     this.retryPredicate = retryPredicate;
     builder = ActivateJobsRequest.newBuilder();
     requestTimeout(config.getDefaultRequestTimeout());
@@ -106,7 +123,8 @@ public final class ActivateJobsCommandImpl
   public ZeebeFuture<ActivateJobsResponse> send() {
     final ActivateJobsRequest request = builder.build();
 
-    final ActivateJobsResponseImpl response = new ActivateJobsResponseImpl(objectMapper);
+    final ActivateJobsResponseImpl response =
+        new ActivateJobsResponseImpl(zeebeObjectMapperWrapper);
     final RetriableStreamingFutureImpl<ActivateJobsResponse, GatewayOuterClass.ActivateJobsResponse>
         future =
             new RetriableStreamingFutureImpl<>(

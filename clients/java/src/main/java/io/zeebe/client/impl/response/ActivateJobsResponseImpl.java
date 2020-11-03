@@ -18,22 +18,34 @@ package io.zeebe.client.impl.response;
 import io.zeebe.client.api.response.ActivateJobsResponse;
 import io.zeebe.client.api.response.ActivatedJob;
 import io.zeebe.client.impl.ZeebeObjectMapper;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class ActivateJobsResponseImpl implements ActivateJobsResponse {
 
-  private final ZeebeObjectMapper objectMapper;
+  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
   private final List<ActivatedJob> jobs = new ArrayList<>();
 
+  /**
+   * This constructor is deprecated. Saved for backward compatibility.
+   *
+   * @see #ActivateJobsResponseImpl(ZeebeObjectMapperWrapper)
+   * @deprecated
+   */
+  @Deprecated
   public ActivateJobsResponseImpl(final ZeebeObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
+    this(new ZeebeObjectMapperWrapper(objectMapper));
+  }
+
+  public ActivateJobsResponseImpl(final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper) {
+    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
   }
 
   public void addResponse(
       final io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsResponse activateJobsResponse) {
     activateJobsResponse.getJobsList().stream()
-        .map(r -> new ActivatedJobImpl(objectMapper, r))
+        .map(r -> new ActivatedJobImpl(zeebeObjectMapperWrapper, r))
         .forEach(jobs::add);
   }
 

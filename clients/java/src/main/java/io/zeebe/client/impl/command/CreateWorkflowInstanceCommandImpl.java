@@ -24,6 +24,7 @@ import io.zeebe.client.api.command.FinalCommandStep;
 import io.zeebe.client.api.response.WorkflowInstanceEvent;
 import io.zeebe.client.impl.RetriableClientFutureImpl;
 import io.zeebe.client.impl.ZeebeObjectMapper;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.client.impl.response.CreateWorkflowInstanceResponseImpl;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
 import io.zeebe.gateway.protocol.GatewayOuterClass;
@@ -40,35 +41,50 @@ public final class CreateWorkflowInstanceCommandImpl
         CreateWorkflowInstanceCommandStep2,
         CreateWorkflowInstanceCommandStep3 {
 
-  private final ZeebeObjectMapper objectMapper;
   private final GatewayStub asyncStub;
   private final Builder builder;
   private final Predicate<Throwable> retryPredicate;
+  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
   private Duration requestTimeout;
 
+  /**
+   * This constructor is deprecated. Saved for backward compatibility.
+   *
+   * @see #CreateWorkflowInstanceCommandImpl(GatewayStub, Duration, Predicate,
+   *     ZeebeObjectMapperWrapper)
+   * @deprecated
+   */
+  @Deprecated
   public CreateWorkflowInstanceCommandImpl(
       final GatewayStub asyncStub,
       final ZeebeObjectMapper objectMapper,
       final Duration requestTimeout,
       final Predicate<Throwable> retryPredicate) {
+    this(asyncStub, requestTimeout, retryPredicate, new ZeebeObjectMapperWrapper(objectMapper));
+  }
+
+  public CreateWorkflowInstanceCommandImpl(
+      final GatewayStub asyncStub,
+      final Duration requestTimeout,
+      final Predicate<Throwable> retryPredicate,
+      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper) {
     this.asyncStub = asyncStub;
-    this.objectMapper = objectMapper;
     this.requestTimeout = requestTimeout;
     this.retryPredicate = retryPredicate;
-
+    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
     builder = CreateWorkflowInstanceRequest.newBuilder();
   }
 
   @Override
   public CreateWorkflowInstanceCommandStep3 variables(final InputStream variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariables(objectMapper.validateJson("variables", variables));
+    return setVariables(zeebeObjectMapperWrapper.validateJson("variables", variables));
   }
 
   @Override
   public CreateWorkflowInstanceCommandStep3 variables(final String variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariables(objectMapper.validateJson("variables", variables));
+    return setVariables(zeebeObjectMapperWrapper.validateJson("variables", variables));
   }
 
   @Override
@@ -79,13 +95,13 @@ public final class CreateWorkflowInstanceCommandImpl
   @Override
   public CreateWorkflowInstanceCommandStep3 variables(final Object variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariables(objectMapper.toJson(variables));
+    return setVariables(zeebeObjectMapperWrapper.toJson(variables));
   }
 
   @Override
   public CreateWorkflowInstanceWithResultCommandStep1 withResult() {
     return new CreateWorkflowInstanceWithResultCommandImpl(
-        objectMapper, asyncStub, builder, retryPredicate, requestTimeout);
+        zeebeObjectMapperWrapper, asyncStub, builder, retryPredicate, requestTimeout);
   }
 
   @Override

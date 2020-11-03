@@ -21,6 +21,7 @@ import static io.zeebe.client.ClientProperties.DEFAULT_REQUEST_TIMEOUT;
 import static io.zeebe.client.ClientProperties.KEEP_ALIVE;
 import static io.zeebe.client.ClientProperties.USE_PLAINTEXT_CONNECTION;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ClientInterceptor;
 import io.zeebe.client.ClientProperties;
 import io.zeebe.client.CredentialsProvider;
@@ -59,7 +60,7 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   private String certificatePath;
   private CredentialsProvider credentialsProvider;
   private Duration keepAlive = Duration.ofSeconds(45);
-  private ZeebeObjectMapper zeebeObjectMapper = new ZeebeObjectMapper();
+  private ObjectMapper zeebeObjectMapper = new ObjectMapper();
 
   @Override
   public String getBrokerContactPoint() {
@@ -131,7 +132,7 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
     return interceptors;
   }
 
-  public ZeebeObjectMapper getZeebeObjectMapper() {
+  public ObjectMapper getZeebeObjectMapper() {
     return zeebeObjectMapper;
   }
 
@@ -287,7 +288,7 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   }
 
   @Override
-  public ZeebeClientBuilder withZeebeObjectMapper(final ZeebeObjectMapper zeebeObjectMapper) {
+  public ZeebeClientBuilder withZeebeObjectMapper(final ObjectMapper zeebeObjectMapper) {
     this.zeebeObjectMapper = zeebeObjectMapper;
     return this;
   }

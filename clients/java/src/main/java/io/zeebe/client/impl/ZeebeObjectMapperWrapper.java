@@ -24,14 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
-/**
- * This mapper is deprecated. Use {@link ZeebeObjectMapperWrapper} instead.
- *
- * @see ZeebeObjectMapperWrapper
- * @deprecated
- */
-@Deprecated
-public final class ZeebeObjectMapper extends ObjectMapper {
+public final class ZeebeObjectMapperWrapper {
 
   private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE =
       new TypeReference<Map<String, Object>>() {};
@@ -39,13 +32,16 @@ public final class ZeebeObjectMapper extends ObjectMapper {
   private static final TypeReference<Map<String, String>> STRING_MAP_TYPE_REFERENCE =
       new TypeReference<Map<String, String>>() {};
 
-  public ZeebeObjectMapper() {
-    configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  private final ObjectMapper objectMapper;
+
+  public ZeebeObjectMapperWrapper(final ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+    this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
   public <T> T fromJson(final String json, final Class<T> typeClass) {
     try {
-      return readValue(json, typeClass);
+      return this.objectMapper.readValue(json, typeClass);
     } catch (final IOException e) {
       throw new InternalClientException(
           String.format("Failed to deserialize json '%s' to class '%s'", json, typeClass), e);
@@ -54,7 +50,7 @@ public final class ZeebeObjectMapper extends ObjectMapper {
 
   public Map<String, Object> fromJsonAsMap(final String json) {
     try {
-      return readValue(json, MAP_TYPE_REFERENCE);
+      return this.objectMapper.readValue(json, MAP_TYPE_REFERENCE);
     } catch (final IOException e) {
       throw new InternalClientException(
           String.format("Failed to deserialize json '%s' to 'Map<String, Object>'", json), e);
@@ -63,7 +59,7 @@ public final class ZeebeObjectMapper extends ObjectMapper {
 
   public Map<String, String> fromJsonAsStringMap(final String json) {
     try {
-      return readValue(json, STRING_MAP_TYPE_REFERENCE);
+      return this.objectMapper.readValue(json, STRING_MAP_TYPE_REFERENCE);
     } catch (final IOException e) {
       throw new InternalClientException(
           String.format("Failed to deserialize json '%s' to 'Map<String, String>'", json), e);
@@ -72,7 +68,7 @@ public final class ZeebeObjectMapper extends ObjectMapper {
 
   public String toJson(final Object value) {
     try {
-      return writeValueAsString(value);
+      return this.objectMapper.writeValueAsString(value);
     } catch (final JsonProcessingException e) {
       throw new InternalClientException(
           String.format("Failed to serialize object '%s' to json", value), e);
@@ -81,7 +77,7 @@ public final class ZeebeObjectMapper extends ObjectMapper {
 
   public String validateJson(final String propertyName, final String jsonInput) {
     try {
-      return readTree(jsonInput).toString();
+      return this.objectMapper.readTree(jsonInput).toString();
     } catch (final IOException e) {
       throw new InternalClientException(
           String.format(
@@ -92,7 +88,7 @@ public final class ZeebeObjectMapper extends ObjectMapper {
 
   public String validateJson(final String propertyName, final InputStream jsonInput) {
     try {
-      return readTree(jsonInput).toString();
+      return this.objectMapper.readTree(jsonInput).toString();
     } catch (final IOException e) {
       throw new InternalClientException(
           String.format("Failed to validate json input stream for property '%s'", propertyName), e);

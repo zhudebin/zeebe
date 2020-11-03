@@ -25,6 +25,7 @@ import io.zeebe.client.api.command.PublishMessageCommandStep1.PublishMessageComm
 import io.zeebe.client.api.response.PublishMessageResponse;
 import io.zeebe.client.impl.RetriableClientFutureImpl;
 import io.zeebe.client.impl.ZeebeObjectMapper;
+import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.client.impl.response.PublishMessageResponseImpl;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
 import io.zeebe.gateway.protocol.GatewayOuterClass;
@@ -41,12 +42,28 @@ public final class PublishMessageCommandImpl extends CommandWithVariables<Publis
   private final PublishMessageRequest.Builder builder;
   private Duration requestTimeout;
 
+  /**
+   * This constructor is deprecated. Saved for backward compatibility.
+   *
+   * @see #PublishMessageCommandImpl(GatewayStub, ZeebeClientConfiguration, Predicate,
+   *     ZeebeObjectMapperWrapper)
+   * @deprecated
+   */
+  @Deprecated
   public PublishMessageCommandImpl(
       final GatewayStub asyncStub,
       final ZeebeClientConfiguration configuration,
       final ZeebeObjectMapper objectMapper,
       final Predicate<Throwable> retryPredicate) {
-    super(objectMapper);
+    this(asyncStub, configuration, retryPredicate, new ZeebeObjectMapperWrapper(objectMapper));
+  }
+
+  public PublishMessageCommandImpl(
+      final GatewayStub asyncStub,
+      final ZeebeClientConfiguration configuration,
+      final Predicate<Throwable> retryPredicate,
+      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper) {
+    super(zeebeObjectMapperWrapper);
     this.asyncStub = asyncStub;
     this.retryPredicate = retryPredicate;
     builder = PublishMessageRequest.newBuilder();
