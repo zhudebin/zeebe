@@ -15,8 +15,8 @@
  */
 package io.zeebe.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ClientInterceptor;
+import io.zeebe.client.api.JsonMapper;
 import io.zeebe.client.api.worker.JobWorkerBuilderStep1.JobWorkerBuilderStep3;
 import java.time.Duration;
 import java.util.Properties;
@@ -99,7 +99,7 @@ public interface ZeebeClientBuilder {
 
   ZeebeClientBuilder withInterceptors(ClientInterceptor... interceptor);
 
-  ZeebeClientBuilder withZeebeObjectMapper(ObjectMapper zeebeObjectMapper);
+  ZeebeClientBuilder withJsonMapper(JsonMapper jsonMapper);
 
   /** @return a new {@link ZeebeClient} with the provided configuration options. */
   ZeebeClient build();

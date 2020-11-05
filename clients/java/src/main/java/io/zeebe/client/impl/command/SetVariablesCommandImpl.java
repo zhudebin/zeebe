@@ -16,14 +16,13 @@
 package io.zeebe.client.impl.command;
 
 import io.grpc.stub.StreamObserver;
+import io.zeebe.client.api.JsonMapper;
 import io.zeebe.client.api.ZeebeFuture;
 import io.zeebe.client.api.command.FinalCommandStep;
 import io.zeebe.client.api.command.SetVariablesCommandStep1;
 import io.zeebe.client.api.command.SetVariablesCommandStep1.SetVariablesCommandStep2;
 import io.zeebe.client.api.response.SetVariablesResponse;
 import io.zeebe.client.impl.RetriableClientFutureImpl;
-import io.zeebe.client.impl.ZeebeObjectMapper;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.client.impl.response.SetVariablesResponseImpl;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
 import io.zeebe.gateway.protocol.GatewayOuterClass;
@@ -40,39 +39,18 @@ public final class SetVariablesCommandImpl
 
   private final GatewayStub asyncStub;
   private final Builder builder;
-  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
+  private final JsonMapper jsonMapper;
   private final Predicate<Throwable> retryPredicate;
   private Duration requestTimeout;
 
-  /**
-   * This constructor is deprecated. Saved for backward compatibility.
-   *
-   * @see #SetVariablesCommandImpl(GatewayStub, long, ZeebeObjectMapperWrapper, Duration, Predicate)
-   * @deprecated
-   */
-  @Deprecated
   public SetVariablesCommandImpl(
       final GatewayStub asyncStub,
-      final ZeebeObjectMapper objectMapper,
+      final JsonMapper jsonMapper,
       final long elementInstanceKey,
-      final Duration requestTimeout,
-      final Predicate<Throwable> retryPredicate) {
-    this(
-        asyncStub,
-        elementInstanceKey,
-        new ZeebeObjectMapperWrapper(objectMapper),
-        requestTimeout,
-        retryPredicate);
-  }
-
-  public SetVariablesCommandImpl(
-      final GatewayStub asyncStub,
-      final long elementInstanceKey,
-      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
       final Duration requestTimeout,
       final Predicate<Throwable> retryPredicate) {
     this.asyncStub = asyncStub;
-    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
+    this.jsonMapper = jsonMapper;
     this.requestTimeout = requestTimeout;
     this.retryPredicate = retryPredicate;
     builder = SetVariablesRequest.newBuilder();
@@ -117,13 +95,13 @@ public final class SetVariablesCommandImpl
   @Override
   public SetVariablesCommandStep2 variables(final InputStream variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariables(zeebeObjectMapperWrapper.validateJson("variables", variables));
+    return setVariables(jsonMapper.validateJson("variables", variables));
   }
 
   @Override
   public SetVariablesCommandStep2 variables(final String variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariables(zeebeObjectMapperWrapper.validateJson("variables", variables));
+    return setVariables(jsonMapper.validateJson("variables", variables));
   }
 
   @Override
@@ -134,7 +112,7 @@ public final class SetVariablesCommandImpl
   @Override
   public SetVariablesCommandStep2 variables(final Object variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariables(zeebeObjectMapperWrapper.toJson(variables));
+    return setVariables(jsonMapper.toJson(variables));
   }
 
   private SetVariablesCommandStep2 setVariables(final String jsonDocument) {

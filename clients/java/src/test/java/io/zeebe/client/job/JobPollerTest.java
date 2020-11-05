@@ -15,8 +15,7 @@
  */
 package io.zeebe.client.job;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
+import io.zeebe.client.impl.ZeebeObjectMapper;
 import io.zeebe.client.impl.worker.JobPoller;
 import io.zeebe.client.util.ClientTest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsRequest;
@@ -33,7 +32,7 @@ public final class JobPollerTest extends ClientTest {
         new JobPoller(
             rule.getGatewayStub(),
             ActivateJobsRequest.newBuilder(),
-            new ZeebeObjectMapperWrapper(new ObjectMapper()),
+            new ZeebeObjectMapper(),
             requestTimeout,
             (t) -> false);
 

@@ -17,6 +17,7 @@ package io.zeebe.client.impl.command;
 
 import io.grpc.stub.StreamObserver;
 import io.zeebe.client.ZeebeClientConfiguration;
+import io.zeebe.client.api.JsonMapper;
 import io.zeebe.client.api.ZeebeFuture;
 import io.zeebe.client.api.command.ActivateJobsCommandStep1;
 import io.zeebe.client.api.command.ActivateJobsCommandStep1.ActivateJobsCommandStep2;
@@ -24,8 +25,6 @@ import io.zeebe.client.api.command.ActivateJobsCommandStep1.ActivateJobsCommandS
 import io.zeebe.client.api.command.FinalCommandStep;
 import io.zeebe.client.api.response.ActivateJobsResponse;
 import io.zeebe.client.impl.RetriableStreamingFutureImpl;
-import io.zeebe.client.impl.ZeebeObjectMapper;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.client.impl.response.ActivateJobsResponseImpl;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
 import io.zeebe.gateway.protocol.GatewayOuterClass;
@@ -42,34 +41,18 @@ public final class ActivateJobsCommandImpl
 
   private static final Duration DEADLINE_OFFSET = Duration.ofSeconds(10);
   private final GatewayStub asyncStub;
-  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
+  private final JsonMapper jsonMapper;
   private final Predicate<Throwable> retryPredicate;
   private final Builder builder;
   private Duration requestTimeout;
 
-  /**
-   * This constructor is deprecated. Saved for backward compatibility.
-   *
-   * @see #ActivateJobsCommandImpl(GatewayStub, ZeebeClientConfiguration, ZeebeObjectMapperWrapper,
-   *     Predicate)
-   * @deprecated
-   */
-  @Deprecated
   public ActivateJobsCommandImpl(
       final GatewayStub asyncStub,
       final ZeebeClientConfiguration config,
-      final ZeebeObjectMapper objectMapper,
-      final Predicate<Throwable> retryPredicate) {
-    this(asyncStub, config, new ZeebeObjectMapperWrapper(objectMapper), retryPredicate);
-  }
-
-  public ActivateJobsCommandImpl(
-      final GatewayStub asyncStub,
-      final ZeebeClientConfiguration config,
-      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
+      final JsonMapper jsonMapper,
       final Predicate<Throwable> retryPredicate) {
     this.asyncStub = asyncStub;
-    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
+    this.jsonMapper = jsonMapper;
     this.retryPredicate = retryPredicate;
     builder = ActivateJobsRequest.newBuilder();
     requestTimeout(config.getDefaultRequestTimeout());
@@ -123,8 +106,7 @@ public final class ActivateJobsCommandImpl
   public ZeebeFuture<ActivateJobsResponse> send() {
     final ActivateJobsRequest request = builder.build();
 
-    final ActivateJobsResponseImpl response =
-        new ActivateJobsResponseImpl(zeebeObjectMapperWrapper);
+    final ActivateJobsResponseImpl response = new ActivateJobsResponseImpl(jsonMapper);
     final RetriableStreamingFutureImpl<ActivateJobsResponse, GatewayOuterClass.ActivateJobsResponse>
         future =
             new RetriableStreamingFutureImpl<>(

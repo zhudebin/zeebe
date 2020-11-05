@@ -18,10 +18,9 @@ package io.zeebe.client.impl.worker;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import io.zeebe.client.api.JsonMapper;
 import io.zeebe.client.api.response.ActivatedJob;
 import io.zeebe.client.impl.Loggers;
-import io.zeebe.client.impl.ZeebeObjectMapper;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.client.impl.response.ActivatedJobImpl;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
 import io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsRequest.Builder;
@@ -40,7 +39,7 @@ public final class JobPoller implements StreamObserver<ActivateJobsResponse> {
 
   private final GatewayStub gatewayStub;
   private final Builder requestBuilder;
-  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
+  private final JsonMapper jsonMapper;
   private final long requestTimeout;
   private final Predicate<Throwable> retryPredicate;
 
@@ -50,36 +49,15 @@ public final class JobPoller implements StreamObserver<ActivateJobsResponse> {
   private BooleanSupplier openSupplier;
   private StatusRuntimeException statusRuntimeException;
 
-  /**
-   * This constructor is deprecated. Saved for backward compatibility.
-   *
-   * @see #JobPoller(GatewayStub, Builder, ZeebeObjectMapperWrapper, Duration, Predicate)
-   * @deprecated
-   */
-  @Deprecated
   public JobPoller(
       final GatewayStub gatewayStub,
       final Builder requestBuilder,
-      final ZeebeObjectMapper objectMapper,
-      final Duration requestTimeout,
-      final Predicate<Throwable> retryPredicate) {
-    this(
-        gatewayStub,
-        requestBuilder,
-        new ZeebeObjectMapperWrapper(objectMapper),
-        requestTimeout,
-        retryPredicate);
-  }
-
-  public JobPoller(
-      final GatewayStub gatewayStub,
-      final Builder requestBuilder,
-      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
+      final JsonMapper jsonMapper,
       final Duration requestTimeout,
       final Predicate<Throwable> retryPredicate) {
     this.gatewayStub = gatewayStub;
     this.requestBuilder = requestBuilder;
-    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
+    this.jsonMapper = jsonMapper;
     this.requestTimeout = requestTimeout.toMillis();
     this.retryPredicate = retryPredicate;
   }
@@ -118,7 +96,7 @@ public final class JobPoller implements StreamObserver<ActivateJobsResponse> {
   public void onNext(final ActivateJobsResponse activateJobsResponse) {
     activatedJobs += activateJobsResponse.getJobsCount();
     activateJobsResponse.getJobsList().stream()
-        .map(job -> new ActivatedJobImpl(zeebeObjectMapperWrapper, job))
+        .map(job -> new ActivatedJobImpl(jsonMapper, job))
         .forEach(jobConsumer);
   }
 

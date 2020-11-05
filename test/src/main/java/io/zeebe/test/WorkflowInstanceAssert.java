@@ -7,9 +7,8 @@
  */
 package io.zeebe.test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.zeebe.client.api.response.WorkflowInstanceEvent;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
+import io.zeebe.client.impl.ZeebeObjectMapper;
 import io.zeebe.protocol.record.Record;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.value.WorkflowInstanceRecordValue;
@@ -28,9 +27,7 @@ import org.assertj.core.api.AbstractAssert;
 
 public class WorkflowInstanceAssert
     extends AbstractAssert<WorkflowInstanceAssert, WorkflowInstanceEvent> {
-
-  private static final ZeebeObjectMapperWrapper ZEEBE_OBJECT_MAPPER_WRAPPER =
-      new ZeebeObjectMapperWrapper(new ObjectMapper());
+  private static final ZeebeObjectMapper OBJECT_MAPPER = new ZeebeObjectMapper();
 
   private static final List<WorkflowInstanceIntent> ELEMENT_PASSED_INTENTS =
       Arrays.asList(
@@ -166,7 +163,7 @@ public class WorkflowInstanceAssert
     }
 
     final Object value;
-    value = ZEEBE_OBJECT_MAPPER_WRAPPER.fromJson(variables.get(key), Object.class);
+    value = OBJECT_MAPPER.fromJson(variables.get(key), Object.class);
 
     if ((expectedValue == null && value != null)
         || (expectedValue != null && !expectedValue.equals(value))) {

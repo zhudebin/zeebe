@@ -20,14 +20,13 @@ import static io.zeebe.client.impl.command.ArgumentUtil.ensureNotNull;
 import static io.zeebe.client.impl.command.ArgumentUtil.ensureNotNullNorEmpty;
 
 import io.zeebe.client.ZeebeClientConfiguration;
+import io.zeebe.client.api.JsonMapper;
 import io.zeebe.client.api.worker.JobClient;
 import io.zeebe.client.api.worker.JobHandler;
 import io.zeebe.client.api.worker.JobWorker;
 import io.zeebe.client.api.worker.JobWorkerBuilderStep1;
 import io.zeebe.client.api.worker.JobWorkerBuilderStep1.JobWorkerBuilderStep2;
 import io.zeebe.client.api.worker.JobWorkerBuilderStep1.JobWorkerBuilderStep3;
-import io.zeebe.client.impl.ZeebeObjectMapper;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
 import io.zeebe.gateway.protocol.GatewayGrpc.GatewayStub;
 import io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsRequest.Builder;
@@ -45,7 +44,7 @@ public final class JobWorkerBuilderImpl
 
   private final GatewayStub gatewayStub;
   private final JobClient jobClient;
-  private final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
+  private final JsonMapper jsonMapper;
   private final ScheduledExecutorService executorService;
   private final List<Closeable> closeables;
   private final Predicate<Throwable> retryPredicate;
@@ -58,43 +57,17 @@ public final class JobWorkerBuilderImpl
   private Duration requestTimeout;
   private List<String> fetchVariables;
 
-  /**
-   * This constructor is deprecated. Saved for backward compatibility.
-   *
-   * @see #JobWorkerBuilderImpl(ZeebeClientConfiguration, GatewayStub, JobClient,
-   *     ZeebeObjectMapperWrapper, ScheduledExecutorService, List, Predicate)
-   * @deprecated
-   */
-  @Deprecated
   public JobWorkerBuilderImpl(
       final ZeebeClientConfiguration configuration,
       final GatewayStub gatewayStub,
       final JobClient jobClient,
-      final ZeebeObjectMapper objectMapper,
-      final ScheduledExecutorService executorService,
-      final List<Closeable> closeables,
-      final Predicate<Throwable> retryPredicate) {
-    this(
-        configuration,
-        gatewayStub,
-        jobClient,
-        new ZeebeObjectMapperWrapper(objectMapper),
-        executorService,
-        closeables,
-        retryPredicate);
-  }
-
-  public JobWorkerBuilderImpl(
-      final ZeebeClientConfiguration configuration,
-      final GatewayStub gatewayStub,
-      final JobClient jobClient,
-      final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper,
+      final JsonMapper jsonMapper,
       final ScheduledExecutorService executorService,
       final List<Closeable> closeables,
       final Predicate<Throwable> retryPredicate) {
     this.gatewayStub = gatewayStub;
     this.jobClient = jobClient;
-    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
+    this.jsonMapper = jsonMapper;
     this.executorService = executorService;
     this.closeables = closeables;
 
@@ -187,8 +160,7 @@ public final class JobWorkerBuilderImpl
 
     final JobRunnableFactory jobRunnableFactory = new JobRunnableFactory(jobClient, handler);
     final JobPoller jobPoller =
-        new JobPoller(
-            gatewayStub, requestBuilder, zeebeObjectMapperWrapper, deadline, retryPredicate);
+        new JobPoller(gatewayStub, requestBuilder, jsonMapper, deadline, retryPredicate);
 
     final JobWorkerImpl jobWorker =
         new JobWorkerImpl(

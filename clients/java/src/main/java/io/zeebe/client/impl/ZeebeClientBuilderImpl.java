@@ -28,6 +28,7 @@ import io.zeebe.client.CredentialsProvider;
 import io.zeebe.client.ZeebeClient;
 import io.zeebe.client.ZeebeClientBuilder;
 import io.zeebe.client.ZeebeClientConfiguration;
+import io.zeebe.client.api.JsonMapper;
 import io.zeebe.client.impl.oauth.OAuthCredentialsProviderBuilder;
 import io.zeebe.client.impl.util.Environment;
 import java.time.Duration;
@@ -61,6 +62,7 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   private CredentialsProvider credentialsProvider;
   private Duration keepAlive = Duration.ofSeconds(45);
   private ObjectMapper zeebeObjectMapper = new ObjectMapper();
+  private JsonMapper jsonMapper = new ZeebeObjectMapper();
 
   @Override
   public String getBrokerContactPoint() {
@@ -132,8 +134,8 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
     return interceptors;
   }
 
-  public ObjectMapper getZeebeObjectMapper() {
-    return zeebeObjectMapper;
+  public JsonMapper getJsonMapper() {
+    return jsonMapper;
   }
 
   @Override
@@ -288,8 +290,8 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   }
 
   @Override
-  public ZeebeClientBuilder withZeebeObjectMapper(final ObjectMapper zeebeObjectMapper) {
-    this.zeebeObjectMapper = zeebeObjectMapper;
+  public ZeebeClientBuilder withJsonMapper(final JsonMapper jsonMapper) {
+    this.jsonMapper = jsonMapper;
     return this;
   }
 

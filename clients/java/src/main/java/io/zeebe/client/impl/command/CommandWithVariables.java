@@ -15,40 +15,26 @@
  */
 package io.zeebe.client.impl.command;
 
-import io.zeebe.client.impl.ZeebeObjectMapper;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
+import io.zeebe.client.api.JsonMapper;
 import java.io.InputStream;
 import java.util.Map;
 
 public abstract class CommandWithVariables<T> {
 
-  protected final ZeebeObjectMapper objectMapper;
-  protected final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper;
+  protected final JsonMapper objectMapper;
 
-  /**
-   * This constructor is deprecated. Saved for backward compatibility.
-   *
-   * @see #CommandWithVariables(ZeebeObjectMapperWrapper)
-   * @deprecated
-   */
-  @Deprecated
-  public CommandWithVariables(final ZeebeObjectMapper objectMapper) {
-    this(new ZeebeObjectMapperWrapper(objectMapper));
-  }
-
-  public CommandWithVariables(final ZeebeObjectMapperWrapper zeebeObjectMapperWrapper) {
-    this.zeebeObjectMapperWrapper = zeebeObjectMapperWrapper;
-    this.objectMapper = new ZeebeObjectMapper();
+  public CommandWithVariables(final JsonMapper jsonMapper) {
+    this.objectMapper = jsonMapper;
   }
 
   public T variables(final InputStream variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariablesInternal(zeebeObjectMapperWrapper.validateJson("variables", variables));
+    return setVariablesInternal(objectMapper.validateJson("variables", variables));
   }
 
   public T variables(final String variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariablesInternal(zeebeObjectMapperWrapper.validateJson("variables", variables));
+    return setVariablesInternal(objectMapper.validateJson("variables", variables));
   }
 
   public T variables(final Map<String, Object> variables) {
@@ -58,7 +44,7 @@ public abstract class CommandWithVariables<T> {
 
   public T variables(final Object variables) {
     ArgumentUtil.ensureNotNull("variables", variables);
-    return setVariablesInternal(zeebeObjectMapperWrapper.toJson(variables));
+    return setVariablesInternal(objectMapper.toJson(variables));
   }
 
   protected abstract T setVariablesInternal(String variables);

@@ -19,10 +19,9 @@ import static io.zeebe.client.util.JsonUtil.fromJsonAsMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.zeebe.client.api.command.ClientException;
 import io.zeebe.client.api.response.ActivateJobsResponse;
-import io.zeebe.client.impl.ZeebeObjectMapperWrapper;
+import io.zeebe.client.impl.ZeebeObjectMapper;
 import io.zeebe.client.impl.response.ActivatedJobImpl;
 import io.zeebe.client.util.ClientTest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.ActivateJobsRequest;
@@ -234,7 +233,7 @@ public final class ActivateJobsTest extends ClientTest {
     // given
     final ActivatedJobImpl activatedJob =
         new ActivatedJobImpl(
-            new ZeebeObjectMapperWrapper(new ObjectMapper()),
+            new ZeebeObjectMapper(),
             ActivatedJob.newBuilder()
                 .setCustomHeaders("{}")
                 .setVariables("{\"a\": 1, \"b\": 2}")
