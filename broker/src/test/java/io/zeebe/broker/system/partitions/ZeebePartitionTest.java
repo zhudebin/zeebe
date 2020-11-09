@@ -19,6 +19,7 @@ import io.zeebe.util.health.CriticalComponentsHealthMonitor;
 import io.zeebe.util.sched.future.ActorFuture;
 import io.zeebe.util.sched.future.CompletableActorFuture;
 import io.zeebe.util.sched.testing.ControlledActorSchedulerRule;
+import java.util.Collections;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,7 +50,7 @@ public class ZeebePartitionTest {
   @Test
   public void shouldInstallLeaderPartition() {
     // given
-    final ZeebePartition partition = new ZeebePartition(ctx, transition);
+    final ZeebePartition partition = new ZeebePartition(ctx, transition, Collections.emptyList());
     schedulerRule.submitActor(partition);
 
     // when
