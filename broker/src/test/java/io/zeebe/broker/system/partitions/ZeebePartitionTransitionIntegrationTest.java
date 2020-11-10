@@ -19,7 +19,6 @@ import io.zeebe.util.health.CriticalComponentsHealthMonitor;
 import io.zeebe.util.sched.future.ActorFuture;
 import io.zeebe.util.sched.future.CompletableActorFuture;
 import io.zeebe.util.sched.testing.ActorSchedulerRule;
-import java.util.Collections;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Rule;
@@ -56,7 +55,7 @@ public class ZeebePartitionTransitionIntegrationTest {
   @Test
   public void shouldTransitionToAndCloseInSequence() {
     // given
-    final ZeebePartition partition = new ZeebePartition(ctx, transition, Collections.emptyList());
+    final ZeebePartition partition = new ZeebePartition(ctx, transition);
     schedulerRule.submitActor(partition);
     partition.onNewRole(Role.LEADER, 1);
     partition.onNewRole(Role.FOLLOWER, 1);

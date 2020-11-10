@@ -407,14 +407,10 @@ public final class Broker implements AutoCloseable {
                     buildExporterRepository(brokerCfg));
             final PartitionTransitionImpl transitionBehavior =
                 new PartitionTransitionImpl(context, LEADER_STEPS, FOLLOWER_STEPS);
-            final ZeebePartition zeebePartition =
-                new ZeebePartition(
-                    context,
-                    transitionBehavior,
-                    List.of(
-                        new PartitionHealthBroadcaster(
-                            partitionId, topologyManager::onHealthChanged)));
+            final ZeebePartition zeebePartition = new ZeebePartition(context, transitionBehavior);
             scheduleActor(zeebePartition);
+            zeebePartition.addFailureListener(
+                new PartitionHealthBroadcaster(partitionId, topologyManager::onHealthChanged));
             healthCheckService.registerMonitoredPartition(
                 owningPartition.id().id(), zeebePartition);
             diskSpaceUsageListeners.add(zeebePartition);

@@ -7,7 +7,9 @@
  */
 package io.zeebe.broker.system.partitions;
 
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,10 +18,10 @@ import io.atomix.primitive.partition.PartitionId;
 import io.atomix.raft.RaftServer.Role;
 import io.atomix.raft.partition.RaftPartition;
 import io.zeebe.util.health.CriticalComponentsHealthMonitor;
+import io.zeebe.util.health.FailureListener;
 import io.zeebe.util.sched.future.ActorFuture;
 import io.zeebe.util.sched.future.CompletableActorFuture;
 import io.zeebe.util.sched.testing.ControlledActorSchedulerRule;
-import java.util.Collections;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -50,7 +52,7 @@ public class ZeebePartitionTest {
   @Test
   public void shouldInstallLeaderPartition() {
     // given
-    final ZeebePartition partition = new ZeebePartition(ctx, transition, Collections.emptyList());
+    final ZeebePartition partition = new ZeebePartition(ctx, transition);
     schedulerRule.submitActor(partition);
 
     // when
@@ -59,6 +61,41 @@ public class ZeebePartitionTest {
 
     // then
     verify(transition).toLeader();
+  }
+
+  @Test
+  public void shouldCallOnFailureOnAddFailureListenerAndUnhealthy() {
+    // given
+    final ZeebePartition partition = new ZeebePartition(ctx, transition);
+    schedulerRule.submitActor(partition);
+    final FailureListener failureListener = mock(FailureListener.class);
+    doNothing().when(failureListener).onFailure();
+
+    // when
+    partition.addFailureListener(failureListener);
+    schedulerRule.workUntilDone();
+
+    // then
+    verify(failureListener, only()).onFailure();
+  }
+
+  @Test
+  public void shouldCallOnRecoveredOnAddFailureListenerAndHealthy() {
+    // given
+    final ZeebePartition partition = new ZeebePartition(ctx, transition);
+    schedulerRule.submitActor(partition);
+    final FailureListener failureListener = mock(FailureListener.class);
+    doNothing().when(failureListener).onRecovered();
+    // make partition healthy
+    partition.onNewRole(Role.LEADER, 1);
+    schedulerRule.workUntilDone();
+
+    // when
+    partition.addFailureListener(failureListener);
+    schedulerRule.workUntilDone();
+
+    // then
+    verify(failureListener, only()).onRecovered();
   }
 
   private static class NoopTransition implements PartitionTransition {

@@ -37,7 +37,7 @@ public final class ZeebePartition extends Actor
   private Role raftRole;
 
   private final String actorName;
-  private final List<FailureListener> failureListeners = new ArrayList<>();
+  private final List<FailureListener> failureListeners;
   private final HealthMetrics healthMetrics;
   private final RaftPartitionHealth raftPartitionHealth;
   private final ZeebePartitionHealth zeebePartitionHealth;
@@ -48,10 +48,7 @@ public final class ZeebePartition extends Actor
   private CompletableActorFuture<Void> closeFuture;
   private ActorFuture<Void> currentTransitionFuture;
 
-  public ZeebePartition(
-      final PartitionContext context,
-      final PartitionTransition transition,
-      List<FailureListener> failureListeners) {
+  public ZeebePartition(final PartitionContext context, final PartitionTransition transition) {
     this.context = context;
     this.transition = transition;
 
@@ -65,7 +62,7 @@ public final class ZeebePartition extends Actor
     zeebePartitionHealth = new ZeebePartitionHealth(context.getPartitionId());
     healthMetrics = new HealthMetrics(context.getPartitionId());
     healthMetrics.setUnhealthy();
-    this.failureListeners.addAll(failureListeners);
+    failureListeners = new ArrayList<>();
   }
 
   /**
@@ -294,7 +291,15 @@ public final class ZeebePartition extends Actor
 
   @Override
   public void addFailureListener(final FailureListener failureListener) {
-    actor.run(() -> this.failureListeners.add(failureListener));
+    actor.run(
+        () -> {
+          this.failureListeners.add(failureListener);
+          if (this.zeebePartitionHealth.getHealthStatus() == HealthStatus.HEALTHY) {
+            failureListener.onRecovered();
+          } else {
+            failureListener.onFailure();
+          }
+        });
   }
 
   @Override
