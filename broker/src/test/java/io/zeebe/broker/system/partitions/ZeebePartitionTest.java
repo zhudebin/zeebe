@@ -19,6 +19,7 @@ import io.atomix.raft.RaftServer.Role;
 import io.atomix.raft.partition.RaftPartition;
 import io.zeebe.util.health.CriticalComponentsHealthMonitor;
 import io.zeebe.util.health.FailureListener;
+import io.zeebe.util.health.HealthStatus;
 import io.zeebe.util.sched.future.ActorFuture;
 import io.zeebe.util.sched.future.CompletableActorFuture;
 import io.zeebe.util.sched.testing.ControlledActorSchedulerRule;
@@ -32,6 +33,7 @@ public class ZeebePartitionTest {
 
   private PartitionContext ctx;
   private PartitionTransition transition;
+  private CriticalComponentsHealthMonitor healthMonitor;
 
   @Before
   public void setup() {
@@ -42,8 +44,7 @@ public class ZeebePartitionTest {
     when(raftPartition.id()).thenReturn(new PartitionId("", 0));
     when(raftPartition.getRole()).thenReturn(Role.INACTIVE);
 
-    final CriticalComponentsHealthMonitor healthMonitor =
-        mock(CriticalComponentsHealthMonitor.class);
+    healthMonitor = mock(CriticalComponentsHealthMonitor.class);
 
     when(ctx.getRaftPartition()).thenReturn(raftPartition);
     when(ctx.getComponentHealthMonitor()).thenReturn(healthMonitor);
@@ -66,6 +67,7 @@ public class ZeebePartitionTest {
   @Test
   public void shouldCallOnFailureOnAddFailureListenerAndUnhealthy() {
     // given
+    when(healthMonitor.getHealthStatus()).thenReturn(HealthStatus.UNHEALTHY);
     final ZeebePartition partition = new ZeebePartition(ctx, transition);
     schedulerRule.submitActor(partition);
     final FailureListener failureListener = mock(FailureListener.class);
@@ -87,7 +89,7 @@ public class ZeebePartitionTest {
     final FailureListener failureListener = mock(FailureListener.class);
     doNothing().when(failureListener).onRecovered();
     // make partition healthy
-    partition.onNewRole(Role.LEADER, 1);
+    when(healthMonitor.getHealthStatus()).thenReturn(HealthStatus.HEALTHY);
     schedulerRule.workUntilDone();
 
     // when

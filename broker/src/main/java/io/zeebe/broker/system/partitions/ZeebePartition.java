@@ -294,7 +294,7 @@ public final class ZeebePartition extends Actor
     actor.run(
         () -> {
           this.failureListeners.add(failureListener);
-          if (this.zeebePartitionHealth.getHealthStatus() == HealthStatus.HEALTHY) {
+          if (this.getHealthStatus() == HealthStatus.HEALTHY) {
             failureListener.onRecovered();
           } else {
             failureListener.onFailure();
