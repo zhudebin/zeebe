@@ -36,8 +36,12 @@ import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.ObjectHashSet;
 import org.agrona.concurrent.UnsafeBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class JobBatchActivateProcessor implements TypedRecordProcessor<JobBatchRecord> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(JobBatchActivateProcessor.class);
 
   private final JobState jobState;
   private final VariablesState variablesState;
@@ -79,8 +83,7 @@ public final class JobBatchActivateProcessor implements TypedRecordProcessor<Job
   private boolean isValid(final JobBatchRecord record) {
     return record.getMaxJobsToActivate() > 0
         && record.getTimeout() > 0
-        && record.getTypeBuffer().capacity() > 0
-        && record.getWorkerBuffer().capacity() > 0;
+        && record.getTypeBuffer().capacity() > 0;
   }
 
   private void activateJobs(
@@ -129,6 +132,9 @@ public final class JobBatchActivateProcessor implements TypedRecordProcessor<Job
         (key, jobRecord) -> {
           int remainingAmount = amount.get();
           final long deadline = record.getTimestamp() + value.getTimeout();
+          if (value.getWorkerBuffer().capacity() == 0) {
+            LOGGER.trace(String.format("A job worker for a record: %s is anonymous.", value));
+          }
           jobRecord.setDeadline(deadline).setWorker(value.getWorkerBuffer());
 
           // fetch and set variables, required here to already have the full size of the job record
@@ -215,9 +221,6 @@ public final class JobBatchActivateProcessor implements TypedRecordProcessor<Job
     } else if (value.getTypeBuffer().capacity() < 1) {
       rejectionType = RejectionType.INVALID_ARGUMENT;
       rejectionReason = String.format(format, "type", "present", "blank");
-    } else if (value.getWorkerBuffer().capacity() < 1) {
-      rejectionType = RejectionType.INVALID_ARGUMENT;
-      rejectionReason = String.format(format, "worker", "present", "blank");
     } else {
       throw new IllegalStateException(
           "Expected to reject an invalid activate job batch command, but it appears to be valid");
