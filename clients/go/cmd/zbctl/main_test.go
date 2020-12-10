@@ -137,16 +137,16 @@ func TestZbctlWithInsecureGateway(t *testing.T) {
 		})
 }
 
-func (suite *integrationTestSuite) TestCommonCommands() {
+func (s *integrationTestSuite) TestCommonCommands() {
 	for _, test := range tests {
-		suite.T().Run(test.name, func(t *testing.T) {
+		s.T().Run(test.name, func(t *testing.T) {
 			for _, cmd := range test.setupCmds {
-				if _, err := suite.runCommand(cmd); err != nil {
+				if _, err := s.runCommand(cmd); err != nil {
 					t.Fatal(fmt.Errorf("failed while executing set up command '%s': %w", cmd, err))
 				}
 			}
 
-			cmdOut, err := suite.runCommand(test.cmd, test.envVars...)
+			cmdOut, err := s.runCommand(test.cmd, test.envVars...)
 			if errors.Is(err, context.DeadlineExceeded) {
 				t.Fatal(fmt.Errorf("timed out while executing command '%s': %w", test.cmd, err))
 			}
@@ -194,11 +194,11 @@ func cmpIgnoreNums(x, y string) bool {
 }
 
 // runCommand runs the zbctl command and returns the combined output from stdout and stderr
-func (suite *integrationTestSuite) runCommand(command string, envVars ...string) ([]byte, error) {
+func (s *integrationTestSuite) runCommand(command string, envVars ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	args := append(strings.Fields(command), "--address", suite.GatewayAddress)
+	args := append(strings.Fields(command), "--address", s.GatewayAddress)
 	cmd := exec.CommandContext(ctx, fmt.Sprintf("./dist/%s", zbctl), args...)
 
 	cmd.Env = append(cmd.Env, envVars...)
