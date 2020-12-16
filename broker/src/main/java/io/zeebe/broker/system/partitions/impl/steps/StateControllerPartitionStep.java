@@ -16,13 +16,15 @@ import io.zeebe.broker.system.partitions.impl.StateControllerImpl;
 import io.zeebe.engine.state.DefaultZeebeDbFactory;
 import io.zeebe.util.sched.future.ActorFuture;
 import io.zeebe.util.sched.future.CompletableActorFuture;
+import java.nio.file.Path;
 
 public class StateControllerPartitionStep implements PartitionStep {
 
   @Override
   public ActorFuture<Void> open(final PartitionContext context) {
     final var runtimeDirectory =
-        context.getRaftPartition().dataDirectory().toPath().resolve("runtime");
+        Path.of("/state", "raft-partition-partition-" + (context.getPartitionId()), "runtime");
+    //        context.getRaftPartition().dataDirectory().toPath().resolve("runtime");
     final var databaseCfg = context.getBrokerCfg().getData().getRocksdb();
 
     final var stateController =

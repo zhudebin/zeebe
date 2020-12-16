@@ -165,7 +165,7 @@ public class RaftPartitionServer implements Managed<RaftPartitionServer> {
         config
             .getStorageConfig()
             .getPersistedSnapshotStoreFactory()
-            .createReceivableSnapshotStore(partition.dataDirectory().toPath(), partition.name());
+            .createReceivableSnapshotStore(Path.of("/state", partition.name()), partition.name());
 
     return RaftServer.builder(localMemberId)
         .withName(partition.name())
