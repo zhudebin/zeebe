@@ -135,17 +135,11 @@ spec:
           defaultMode: 0744
       - name: exporters
         emptyDir: {}
+      - name: data2
+        emptyDir: {}
   volumeClaimTemplates:
   - metadata:
       name: data
-    spec:
-      accessModes: [ReadWriteOnce]
-      storageClassName: ssd
-      resources:
-        requests:
-          storage: "128Gi"
-  - metadata:
-      name: data2
     spec:
       accessModes: [ReadWriteOnce]
       storageClassName: ssd
