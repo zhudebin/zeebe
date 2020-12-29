@@ -136,7 +136,12 @@ class TransactionalColumnFamily<
   @Override
   public void whileEqualPrefix(
       final DbKey keyPrefix, final KeyValuePairVisitor<KeyType, ValueType> visitor) {
-    whileEqualPrefix(context, keyPrefix, visitor);
+    transactionDb.whileEqualPrefix(
+        context,
+        new DbCompositeKey<>(this.keyPrefix, keyPrefix),
+        prefixedKeyInstance,
+        valueInstance,
+        KeyValuePairVisitor.prefixed(visitor));
   }
 
   @Override
@@ -164,26 +169,16 @@ class TransactionalColumnFamily<
   @Override
   public boolean isEmpty(final DbContext context) {
     final MutableBoolean isEmpty = new MutableBoolean(true);
-    whileEqualPrefix(
+    transactionDb.whileEqualPrefix(
         context,
         keyPrefix,
+        prefixedKeyInstance,
+        valueInstance,
         (k, v) -> {
           isEmpty.set(false);
           return false;
         });
 
     return isEmpty.get();
-  }
-
-  private void whileEqualPrefix(
-      final DbContext context,
-      final DbKey keyPrefix,
-      final KeyValuePairVisitor<KeyType, ValueType> visitor) {
-    transactionDb.whileEqualPrefix(
-        context,
-        new DbCompositeKey<>(this.keyPrefix, keyPrefix),
-        prefixedKeyInstance,
-        valueInstance,
-        KeyValuePairVisitor.prefixed(visitor));
   }
 }
