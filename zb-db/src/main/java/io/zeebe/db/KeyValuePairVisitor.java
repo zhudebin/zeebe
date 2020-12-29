@@ -7,6 +7,8 @@
  */
 package io.zeebe.db;
 
+import io.zeebe.db.impl.DbCompositeKey;
+
 /**
  * Represents an function that accepts a zeebe key value pair and produces an primitive boolean as
  * result.
@@ -26,4 +28,10 @@ public interface KeyValuePairVisitor<KeyType extends DbKey, ValueType extends Db
    * @return true if the visiting should continue, false otherwise
    */
   boolean visit(KeyType key, ValueType value);
+
+  static <KeyType extends DbKey, ValueType extends DbValue>
+      KeyValuePairVisitor<DbCompositeKey<DbKey, KeyType>, ValueType> prefixed(
+          KeyValuePairVisitor<KeyType, ValueType> visitor) {
+    return (prefixedKey, value) -> visitor.visit(prefixedKey.getSecond(), value);
+  }
 }

@@ -7,20 +7,32 @@
  */
 package io.zeebe.db.impl.rocksdb;
 
+import io.zeebe.db.DbKey;
 import io.zeebe.db.ZeebeDbFactory;
+import io.zeebe.db.impl.DbShort;
 import io.zeebe.db.impl.rocksdb.transaction.ZeebeTransactionDb;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.stream.Collectors;
-import org.rocksdb.ColumnFamilyDescriptor;
+import org.agrona.CloseHelper;
+import org.rocksdb.BlockBasedTableConfig;
+import org.rocksdb.BloomFilter;
 import org.rocksdb.ColumnFamilyOptions;
+import org.rocksdb.CompactionPriority;
+import org.rocksdb.CompactionStyle;
+import org.rocksdb.CompressionType;
 import org.rocksdb.DBOptions;
+import org.rocksdb.LRUCache;
+import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.Statistics;
+import org.rocksdb.StatsLevel;
 
 public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamilyType>>
     implements ZeebeDbFactory<ColumnFamilyType> {
@@ -55,60 +67,64 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
 
   @Override
   public ZeebeTransactionDb<ColumnFamilyType> createDb(final File pathName) {
-    return open(
-        pathName,
-        Arrays.stream(columnFamilyTypeClass.getEnumConstants())
-            .map(c -> c.name().toLowerCase().getBytes())
-            .collect(Collectors.toList()));
+    return open(pathName, columnFamilyTypeClass.getEnumConstants());
   }
 
   private ZeebeTransactionDb<ColumnFamilyType> open(
-      final File dbDirectory, final List<byte[]> columnFamilyNames) {
+      final File dbDirectory, final ColumnFamilyType[] columnFamilies) {
+    final List<AutoCloseable> closeables = new ArrayList<>();
 
-    final ZeebeTransactionDb<ColumnFamilyType> db;
     try {
-      final List<AutoCloseable> closeables = new ArrayList<>();
-
       // column family options have to be closed as last
       final ColumnFamilyOptions columnFamilyOptions = createColumnFamilyOptions();
       closeables.add(columnFamilyOptions);
 
-      final List<ColumnFamilyDescriptor> columnFamilyDescriptors =
-          createFamilyDescriptors(columnFamilyNames, columnFamilyOptions);
+      final Statistics statistics = new Statistics();
+      closeables.add(statistics);
+      statistics.setStatsLevel(StatsLevel.ALL);
+
       final DBOptions dbOptions =
           new DBOptions()
               .setCreateMissingColumnFamilies(true)
               .setErrorIfExists(false)
               .setCreateIfMissing(true)
-              .setParanoidChecks(true);
+              .setParanoidChecks(true)
+              .setAvoidFlushDuringRecovery(true)
+              .setMaxManifestFileSize(256 * 1024 * 1024L)
+              .setStatsDumpPeriodSec(10)
+              .setStatistics(statistics)
+              .setAdviseRandomOnOpen(false)
+              .setBytesPerSync(1048576L);
       closeables.add(dbOptions);
 
-      db =
-          ZeebeTransactionDb.openTransactionalDb(
-              dbOptions,
-              dbDirectory.getAbsolutePath(),
-              columnFamilyDescriptors,
-              closeables,
-              columnFamilyTypeClass);
+      final Options options = new Options(dbOptions, columnFamilyOptions);
+      closeables.add(options);
 
+      // TODO: enforce the key type here to be the same as the instance we pass
+      final DbKey prefixKeyInstance = new DbShort();
+      final Map<ColumnFamilyType, DbKey> columnPrefixMap = computeColumnPrefixMap(columnFamilies);
+
+      return ZeebeTransactionDb.openTransactionalDb(
+          options, dbDirectory.getAbsolutePath(), columnPrefixMap, prefixKeyInstance, closeables);
     } catch (final RocksDBException e) {
+      CloseHelper.quietCloseAll(closeables);
       throw new RuntimeException("Unexpected error occurred trying to open the database", e);
     }
-    return db;
   }
 
-  private List<ColumnFamilyDescriptor> createFamilyDescriptors(
-      final List<byte[]> columnFamilyNames, final ColumnFamilyOptions columnFamilyOptions) {
-    final List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
-
-    if (columnFamilyNames != null && !columnFamilyNames.isEmpty()) {
-      for (final byte[] name : columnFamilyNames) {
-        final ColumnFamilyDescriptor columnFamilyDescriptor =
-            new ColumnFamilyDescriptor(name, columnFamilyOptions);
-        columnFamilyDescriptors.add(columnFamilyDescriptor);
-      }
-    }
-    return columnFamilyDescriptors;
+  private EnumMap<ColumnFamilyType, DbKey> computeColumnPrefixMap(
+      final ColumnFamilyType[] columnFamilies) {
+    return Arrays.stream(columnFamilies)
+        .reduce(
+            new EnumMap<>(columnFamilyTypeClass),
+            (acc, cfType) -> {
+              acc.put(cfType, new DbShort((short) cfType.ordinal()));
+              return acc;
+            },
+            (left, right) -> {
+              left.putAll(right);
+              return left;
+            });
   }
 
   /** @return Options which are used on all column families */
@@ -133,6 +149,31 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
                   + "See RocksDB's cf_options.h and options_helper.cc for available keys and values.",
               columnFamilyOptionProps, userProvidedColumnFamilyOptions));
     }
-    return columnFamilyOptions;
+
+    return columnFamilyOptions
+        .setMinWriteBufferNumberToMerge(2)
+        .setMaxWriteBufferNumberToMaintain(12)
+        .setMaxWriteBufferNumber(12)
+        .setWriteBufferSize(32 * 1024 * 1024L)
+        .setLevelCompactionDynamicLevelBytes(true)
+        .setCompactionPriority(CompactionPriority.MinOverlappingRatio)
+        .setCompressionType(CompressionType.NO_COMPRESSION)
+        .setCompactionStyle(CompactionStyle.LEVEL)
+        .setTargetFileSizeBase(8 * 1024 * 1024L)
+        .setLevel0FileNumCompactionTrigger(8)
+        .setLevel0SlowdownWritesTrigger(17)
+        .setLevel0StopWritesTrigger(24)
+        .setNumLevels(4)
+        .setMaxBytesForLevelBase(32 * 1024 * 1024L)
+        .setMemtablePrefixBloomSizeRatio(0.25)
+        .useFixedLengthPrefixExtractor(Short.BYTES)
+        .setTableFormatConfig(
+            new BlockBasedTableConfig()
+                .setBlockCache(new LRUCache(178956970L))
+                .setWholeKeyFiltering(false)
+                .setFilterPolicy(new BloomFilter(10, false))
+                .setBlockSize(16 * 1024L)
+                .setCacheIndexAndFilterBlocks(true)
+                .setPinL0FilterAndIndexBlocksInCache(true));
   }
 }

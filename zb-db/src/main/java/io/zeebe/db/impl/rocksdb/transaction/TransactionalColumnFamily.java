@@ -12,9 +12,11 @@ import io.zeebe.db.DbContext;
 import io.zeebe.db.DbKey;
 import io.zeebe.db.DbValue;
 import io.zeebe.db.KeyValuePairVisitor;
+import io.zeebe.db.impl.DbCompositeKey;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.agrona.DirectBuffer;
+import org.agrona.collections.MutableBoolean;
 
 class TransactionalColumnFamily<
         ColumnFamilyNames extends Enum<ColumnFamilyNames>,
@@ -23,24 +25,25 @@ class TransactionalColumnFamily<
     implements ColumnFamily<KeyType, ValueType> {
 
   private final ZeebeTransactionDb<ColumnFamilyNames> transactionDb;
-  private final long handle;
+  private final DbKey keyPrefix;
 
   private final DbContext context;
 
   private final ValueType valueInstance;
-  private final KeyType keyInstance;
+  private final DbCompositeKey<DbKey, KeyType> prefixedKeyInstance;
 
   TransactionalColumnFamily(
       final ZeebeTransactionDb<ColumnFamilyNames> transactionDb,
-      final ColumnFamilyNames columnFamily,
+      final DbKey keyPrefix,
       final DbContext context,
       final KeyType keyInstance,
       final ValueType valueInstance) {
     this.transactionDb = transactionDb;
-    handle = this.transactionDb.getColumnFamilyHandle(columnFamily);
+    this.keyPrefix = keyPrefix;
     this.context = context;
-    this.keyInstance = keyInstance;
     this.valueInstance = valueInstance;
+
+    prefixedKeyInstance = new DbCompositeKey<>(keyPrefix, keyInstance);
   }
 
   @Override
@@ -50,19 +53,19 @@ class TransactionalColumnFamily<
 
   @Override
   public void put(final DbContext context, final KeyType key, final ValueType value) {
-    transactionDb.put(handle, context, key, value);
+    transactionDb.put(context, new DbCompositeKey<>(keyPrefix, key), value);
   }
 
   @Override
   public ValueType get(final KeyType key) {
-    return get(context, key);
+    return get(context, key, valueInstance);
   }
 
   @Override
   public ValueType get(final DbContext context, final KeyType key, final ValueType value) {
-    final DirectBuffer valueBuffer = transactionDb.get(handle, context, key);
+    final DbCompositeKey<DbKey, KeyType> prefixedKey = new DbCompositeKey<>(keyPrefix, key);
+    final DirectBuffer valueBuffer = transactionDb.get(context, prefixedKey);
     if (valueBuffer != null) {
-
       value.wrap(valueBuffer, 0, valueBuffer.capacity());
       return value;
     }
@@ -71,17 +74,36 @@ class TransactionalColumnFamily<
 
   @Override
   public void forEach(final Consumer<ValueType> consumer) {
-    forEach(context, consumer);
+    transactionDb.whileEqualPrefix(
+        context,
+        keyPrefix,
+        prefixedKeyInstance,
+        valueInstance,
+        (ignored, value) -> {
+          consumer.accept(value);
+        });
   }
 
   @Override
   public void forEach(final BiConsumer<KeyType, ValueType> consumer) {
-    forEach(context, consumer);
+    transactionDb.whileEqualPrefix(
+        context,
+        keyPrefix,
+        prefixedKeyInstance,
+        valueInstance,
+        (key, value) -> {
+          consumer.accept(key.getSecond(), value);
+        });
   }
 
   @Override
   public void whileTrue(final KeyValuePairVisitor<KeyType, ValueType> visitor) {
-    whileTrue(context, visitor);
+    transactionDb.whileEqualPrefix(
+        context,
+        keyPrefix,
+        prefixedKeyInstance,
+        valueInstance,
+        KeyValuePairVisitor.prefixed(visitor));
   }
 
   @Override
@@ -90,13 +112,25 @@ class TransactionalColumnFamily<
       final KeyValuePairVisitor<KeyType, ValueType> visitor,
       final KeyType key,
       final ValueType value) {
-    transactionDb.whileTrue(handle, context, key, value, visitor);
+    final DbCompositeKey<DbKey, KeyType> prefixedKey = new DbCompositeKey<>(keyPrefix, key);
+    transactionDb.whileEqualPrefix(
+        context, keyPrefix, prefixedKey, value, KeyValuePairVisitor.prefixed(visitor));
   }
 
   @Override
   public void whileEqualPrefix(
       final DbKey keyPrefix, final BiConsumer<KeyType, ValueType> visitor) {
-    whileEqualPrefix(context, keyPrefix, visitor);
+    final DbCompositeKey<DbKey, DbKey> prefixedKey =
+        new DbCompositeKey<>(this.keyPrefix, keyPrefix);
+
+    transactionDb.whileEqualPrefix(
+        context,
+        prefixedKey,
+        prefixedKeyInstance,
+        valueInstance,
+        (key, value) -> {
+          visitor.accept(key.getSecond(), value);
+        });
   }
 
   @Override
@@ -112,12 +146,14 @@ class TransactionalColumnFamily<
 
   @Override
   public void delete(final DbContext context, final KeyType key) {
-    transactionDb.delete(handle, context, key);
+    final DbCompositeKey<DbKey, KeyType> prefixedKey = new DbCompositeKey<>(keyPrefix, key);
+    transactionDb.delete(context, prefixedKey);
   }
 
   @Override
   public boolean exists(final KeyType key) {
-    return exists(context, key);
+    final DbCompositeKey<DbKey, KeyType> prefixedKey = new DbCompositeKey<>(keyPrefix, key);
+    return transactionDb.exists(context, prefixedKey);
   }
 
   @Override
@@ -127,41 +163,27 @@ class TransactionalColumnFamily<
 
   @Override
   public boolean isEmpty(final DbContext context) {
-    return transactionDb.isEmpty(handle, context);
+    final MutableBoolean isEmpty = new MutableBoolean(true);
+    whileEqualPrefix(
+        context,
+        keyPrefix,
+        (k, v) -> {
+          isEmpty.set(false);
+          return false;
+        });
+
+    return isEmpty.get();
   }
 
-  public ValueType get(final DbContext context, final KeyType key) {
-    return get(context, key, valueInstance);
-  }
-
-  public void forEach(final DbContext context, final Consumer<ValueType> consumer) {
-    transactionDb.foreach(handle, context, valueInstance, consumer);
-  }
-
-  public void forEach(final DbContext context, final BiConsumer<KeyType, ValueType> consumer) {
-    transactionDb.foreach(handle, context, keyInstance, valueInstance, consumer);
-  }
-
-  public void whileTrue(
-      final DbContext context, final KeyValuePairVisitor<KeyType, ValueType> visitor) {
-    whileTrue(context, visitor, keyInstance, valueInstance);
-  }
-
-  public void whileEqualPrefix(
-      final DbContext context,
-      final DbKey keyPrefix,
-      final BiConsumer<KeyType, ValueType> visitor) {
-    transactionDb.whileEqualPrefix(handle, context, keyPrefix, keyInstance, valueInstance, visitor);
-  }
-
-  public void whileEqualPrefix(
+  private void whileEqualPrefix(
       final DbContext context,
       final DbKey keyPrefix,
       final KeyValuePairVisitor<KeyType, ValueType> visitor) {
-    transactionDb.whileEqualPrefix(handle, context, keyPrefix, keyInstance, valueInstance, visitor);
-  }
-
-  public boolean exists(final DbContext context, final KeyType key) {
-    return transactionDb.exists(handle, context, key);
+    transactionDb.whileEqualPrefix(
+        context,
+        new DbCompositeKey<>(this.keyPrefix, keyPrefix),
+        prefixedKeyInstance,
+        valueInstance,
+        KeyValuePairVisitor.prefixed(visitor));
   }
 }
