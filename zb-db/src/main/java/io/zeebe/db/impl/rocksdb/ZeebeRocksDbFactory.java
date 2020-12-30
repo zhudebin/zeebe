@@ -94,17 +94,15 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
               .setErrorIfExists(false)
               .setCreateIfMissing(true)
               .setParanoidChecks(true)
+              // 1 flush, 1 compaction
+              .setMaxBackgroundJobs(2)
               // we only use the default CF
               .setCreateMissingColumnFamilies(false)
               // may not be necessary when WAL is disabled, but nevertheless recommended to avoid
               // many small SST files
               .setAvoidFlushDuringRecovery(true)
-              // for use cases making heavy use of iterations and buffered I/O (i.e. OS page cache),
-              // use the read-ahead option and turn off the random access hint, which may help on
-              // hard drives and/or remote storage (but not on local SSDs)
-              .setAdviseRandomOnOpen(false)
-              // fsync is called asynchronously once we have at least 1Mb
-              .setBytesPerSync(1048576L)
+              // fsync is called asynchronously once we have at least 4Mb
+              .setBytesPerSync(4 * 1024 * 1024L)
               // limit the size of the manifest (logs all operations), otherwise it will grow
               // unbounded
               .setMaxManifestFileSize(256 * 1024 * 1024L)
@@ -146,7 +144,7 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
   /** @return Options which are used on all column families */
   public ColumnFamilyOptions createColumnFamilyOptions(final List<AutoCloseable> closeables) {
     // given
-    final long totalMemoryBudget = 512 * 1024 * 1024L; // make this configurable
+    final long totalMemoryBudget = 640 * 1024 * 1024L; // make this configurable
     // recommended by RocksDB, but we could tweak it; keep in mind we're also caching the indexes
     // and filters into the block cache, so we don't need to account for more memory there
     final long blockCacheMemory = totalMemoryBudget / 3;
@@ -154,8 +152,8 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
     // although only a single one is writable. once we have too many memtables, writes will stop.
     // since prefix iteration is our bread n butter, we will build an additional filter for each
     // memtable which takes a bit of memory which must be accounted for from the memtable's memory
-    final int maxConcurrentMemtableCount = 10;
-    final double memtablePrefixFilterMemory = 0.25;
+    final int maxConcurrentMemtableCount = 16;
+    final double memtablePrefixFilterMemory = 0.15;
     final long memtableMemory =
         Math.round(
             ((totalMemoryBudget - blockCacheMemory) / (double) maxConcurrentMemtableCount)
