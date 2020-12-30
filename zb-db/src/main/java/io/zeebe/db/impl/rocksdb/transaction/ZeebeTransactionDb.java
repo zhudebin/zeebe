@@ -55,7 +55,6 @@ public class ZeebeTransactionDb<ColumnFamilyNames extends Enum<ColumnFamilyNames
 
   private final Map<ColumnFamilyNames, DbKey> columnPrefixMap;
   private final DbKey prefixKeyInstance;
-  private final DbNil prefixValueInstance = DbNil.INSTANCE;
 
   protected ZeebeTransactionDb(
       final OptimisticTransactionDB optimisticTransactionDB,
@@ -72,7 +71,13 @@ public class ZeebeTransactionDb<ColumnFamilyNames extends Enum<ColumnFamilyNames
     this.closables = closables;
 
     prefixReadOptions =
-        new ReadOptions().setPrefixSameAsStart(true).setTotalOrderSeek(false).setReadaheadSize(0);
+        new ReadOptions()
+            .setPrefixSameAsStart(true)
+            .setTotalOrderSeek(false)
+            // setting a positive value to readahead is only useful when using network storage with
+            // high latency, at the cost of making iterators expensiver (memory and computation
+            // wise)
+            .setReadaheadSize(0);
     closables.add(prefixReadOptions);
     defaultReadOptions = new ReadOptions();
     closables.add(defaultReadOptions);
@@ -103,7 +108,7 @@ public class ZeebeTransactionDb<ColumnFamilyNames extends Enum<ColumnFamilyNames
     try {
       return RocksDbInternal.nativeHandle.getLong(object);
     } catch (final IllegalAccessException e) {
-      throw new RuntimeException(
+      throw new ZeebeDbException(
           "Unexpected error occurred trying to access private nativeHandle_ field", e);
     }
   }
@@ -164,7 +169,7 @@ public class ZeebeTransactionDb<ColumnFamilyNames extends Enum<ColumnFamilyNames
         context,
         keyPrefix,
         prefixKeyInstance,
-        prefixValueInstance,
+        DbNil.INSTANCE,
         (ignoredKey, ignoredValue) -> {
           isEmpty.set(false);
           return false;

@@ -14,6 +14,7 @@ import io.zeebe.db.ZeebeDbFactory;
 import io.zeebe.db.impl.DefaultColumnFamily;
 import io.zeebe.util.ByteValue;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Properties;
 import org.junit.Rule;
 import org.junit.Test;
@@ -78,8 +79,8 @@ public final class ZeebeRocksDbFactoryTest {
             ZeebeRocksDbFactory.newFactory(DefaultColumnFamily.class, customProperties);
 
     // when
-    final var defaults = factoryWithDefaults.createColumnFamilyOptions();
-    final var customOptions = factoryWithCustomOptions.createColumnFamilyOptions();
+    final var defaults = factoryWithDefaults.createColumnFamilyOptions(new ArrayList<>());
+    final var customOptions = factoryWithCustomOptions.createColumnFamilyOptions(new ArrayList<>());
 
     // then
     assertThat(defaults)
