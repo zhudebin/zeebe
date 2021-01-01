@@ -13,7 +13,7 @@ final class Instrumentation {
   // RocksDB methods tend to be very fast, in the order of micro seconds or < 5ms, therefore the
   // default buckets are too big to see anything
   private static final double[] BUCKETS =
-      new double[] {0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2};
+      new double[] {0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1};
   private static final String NAMESPACE = "zeebe";
 
   static final Histogram PUT =
