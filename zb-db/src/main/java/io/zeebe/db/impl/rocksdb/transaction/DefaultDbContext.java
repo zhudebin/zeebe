@@ -21,6 +21,7 @@ import java.util.Queue;
 import java.util.function.Consumer;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableArrayBuffer;
+import org.agrona.ExpandableDirectByteBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ReadOptions;
@@ -40,13 +41,13 @@ public final class DefaultDbContext implements DbContext {
   private final DirectBuffer keyViewBuffer = new UnsafeBuffer(0, 0);
   private final DirectBuffer valueViewBuffer = new UnsafeBuffer(0, 0);
 
-  private final Queue<ExpandableArrayBuffer> prefixKeyBuffers;
+  private final Queue<ExpandableDirectByteBuffer> prefixKeyBuffers;
 
   DefaultDbContext(final ZeebeTransaction transaction) {
     this.transaction = transaction;
     prefixKeyBuffers = new ArrayDeque<>();
-    prefixKeyBuffers.add(new ExpandableArrayBuffer());
-    prefixKeyBuffers.add(new ExpandableArrayBuffer());
+    prefixKeyBuffers.add(new ExpandableDirectByteBuffer());
+    prefixKeyBuffers.add(new ExpandableDirectByteBuffer());
   }
 
   @Override
@@ -108,12 +109,13 @@ public final class DefaultDbContext implements DbContext {
   }
 
   @Override
-  public void withPrefixKeyBuffer(final Consumer<ExpandableArrayBuffer> prefixKeyBufferConsumer) {
+  public void withPrefixKeyBuffer(
+      final Consumer<ExpandableDirectByteBuffer> prefixKeyBufferConsumer) {
     if (prefixKeyBuffers.peek() == null) {
       throw new IllegalStateException(
           "Currently nested prefix iterations are not supported! This will cause unexpected behavior.");
     }
-    final ExpandableArrayBuffer prefixKeyBuffer = prefixKeyBuffers.remove();
+    final ExpandableDirectByteBuffer prefixKeyBuffer = prefixKeyBuffers.remove();
     try {
       prefixKeyBufferConsumer.accept(prefixKeyBuffer);
     } finally {
@@ -169,6 +171,6 @@ public final class DefaultDbContext implements DbContext {
 
   private boolean isRocksDbExceptionRecoverable(final RocksDBException rdbex) {
     final Status status = rdbex.getStatus();
-    return RECOVERABLE_ERROR_CODES.contains(status.getCode());
+    return status != null && RECOVERABLE_ERROR_CODES.contains(status.getCode());
   }
 }

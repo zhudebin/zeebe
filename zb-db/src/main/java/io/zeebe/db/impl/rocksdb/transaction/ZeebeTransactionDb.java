@@ -7,6 +7,7 @@
  */
 package io.zeebe.db.impl.rocksdb.transaction;
 
+import static io.zeebe.db.impl.rocksdb.transaction.RocksDbInternal.getNativeHandle;
 import static io.zeebe.util.buffer.BufferUtil.startsWith;
 
 import io.zeebe.db.ColumnFamily;
@@ -17,9 +18,9 @@ import io.zeebe.db.KeyValuePairVisitor;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.db.ZeebeDbException;
 import io.zeebe.db.impl.DbNil;
-import io.zeebe.db.impl.rocksdb.InstrumentedColumnFamily;
 import io.zeebe.db.impl.rocksdb.Loggers;
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,6 @@ import org.rocksdb.Options;
 import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
-import org.rocksdb.RocksObject;
 import org.rocksdb.Transaction;
 import org.rocksdb.WriteOptions;
 import org.slf4j.Logger;
@@ -102,15 +102,6 @@ public class ZeebeTransactionDb<ColumnFamilyNames extends Enum<ColumnFamilyNames
     final var cfHandle = getNativeHandle(handle);
     return new ZeebeTransactionDb<>(
         optimisticTransactionDB, cfHandle, handle, columnPrefixMap, prefixKeyInstance, closables);
-  }
-
-  private static long getNativeHandle(final RocksObject object) {
-    try {
-      return RocksDbInternal.nativeHandle.getLong(object);
-    } catch (final IllegalAccessException e) {
-      throw new ZeebeDbException(
-          "Unexpected error occurred trying to access private nativeHandle_ field", e);
-    }
   }
 
   @Override
@@ -295,26 +286,19 @@ public class ZeebeTransactionDb<ColumnFamilyNames extends Enum<ColumnFamilyNames
                 context,
                 transaction -> {
                   try (final RocksIterator iterator = newIterator(context, prefixReadOptions)) {
-                    prefix.write(prefixKeyBuffer, 0);
                     final int prefixLength = prefix.getLength();
+                    final ByteBuffer seekBuffer =
+                        prefixKeyBuffer.byteBuffer().asReadOnlyBuffer().limit(prefixLength);
+                    prefix.write(prefixKeyBuffer, 0);
 
                     boolean shouldVisitNext = true;
 
-                    for (RocksDbInternal.seek(
-                            iterator,
-                            getNativeHandle(iterator),
-                            prefixKeyBuffer.byteArray(),
-                            prefixLength);
+                    for (Instrumentation.SEEK.time(() -> iterator.seek(seekBuffer));
                         iterator.isValid() && shouldVisitNext;
                         iterator.next()) {
                       final byte[] keyBytes = iterator.key();
                       if (!startsWith(
-                          prefixKeyBuffer.byteArray(),
-                          0,
-                          prefix.getLength(),
-                          keyBytes,
-                          0,
-                          keyBytes.length)) {
+                          prefixKeyBuffer, 0, prefix.getLength(), keyBytes, 0, keyBytes.length)) {
                         break;
                       }
 

@@ -212,4 +212,35 @@ public final class BufferUtil {
 
     return true;
   }
+
+  /**
+   * Performs byte wise comparison of a given byte array and a prefix.
+   *
+   * @param prefix the prefix to look for
+   * @param prefixOffset offset in the prefix array
+   * @param prefixLength length of the prefix
+   * @param content the array to check against
+   * @param contentOffset the offset in the content array
+   * @param contentLength the length of the content to check
+   * @return true if array starts with the all bytes contained in prefix
+   */
+  public static boolean startsWith(
+      final DirectBuffer prefix,
+      final int prefixOffset,
+      final int prefixLength,
+      final byte[] content,
+      int contentOffset,
+      final int contentLength) {
+    if (contentLength < prefixLength) {
+      return false;
+    }
+
+    for (int i = prefixOffset; i < prefixLength; i++, contentOffset++) {
+      if (content[contentOffset] != prefix.getByte(i)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

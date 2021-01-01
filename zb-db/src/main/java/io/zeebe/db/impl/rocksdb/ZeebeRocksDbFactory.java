@@ -29,6 +29,8 @@ import org.rocksdb.CompactionPriority;
 import org.rocksdb.CompactionStyle;
 import org.rocksdb.CompressionType;
 import org.rocksdb.DBOptions;
+import org.rocksdb.DataBlockIndexType;
+import org.rocksdb.Env;
 import org.rocksdb.Filter;
 import org.rocksdb.IndexType;
 import org.rocksdb.LRUCache;
@@ -38,6 +40,7 @@ import org.rocksdb.RocksDBException;
 import org.rocksdb.Statistics;
 import org.rocksdb.StatsLevel;
 import org.rocksdb.TableFormatConfig;
+import org.rocksdb.TimedEnv;
 
 public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamilyType>>
     implements ZeebeDbFactory<ColumnFamilyType> {
@@ -80,6 +83,10 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
     final List<AutoCloseable> closeables = new ArrayList<>();
 
     try {
+      // TimedEnv is useful when profiling as it will time each FS operations and report them in the
+      // statistics dump; use the default one when not profiling
+      final Env env = new TimedEnv(Env.getDefault()).setBackgroundThreads(1);
+
       // column family options have to be closed as last
       final ColumnFamilyOptions columnFamilyOptions = createColumnFamilyOptions(closeables);
       closeables.add(columnFamilyOptions);
@@ -106,6 +113,8 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
               // limit the size of the manifest (logs all operations), otherwise it will grow
               // unbounded
               .setMaxManifestFileSize(256 * 1024 * 1024L)
+              // speeds up opening the DB
+              .setSkipStatsUpdateOnDbOpen(true)
               // can be disabled when not profiling
               .setStatsDumpPeriodSec(20)
               .setStatistics(statistics);
@@ -144,7 +153,7 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
   /** @return Options which are used on all column families */
   public ColumnFamilyOptions createColumnFamilyOptions(final List<AutoCloseable> closeables) {
     // given
-    final long totalMemoryBudget = 640 * 1024 * 1024L; // make this configurable
+    final long totalMemoryBudget = 512 * 1024 * 1024L; // make this configurable
     // recommended by RocksDB, but we could tweak it; keep in mind we're also caching the indexes
     // and filters into the block cache, so we don't need to account for more memory there
     final long blockCacheMemory = totalMemoryBudget / 3;
@@ -152,7 +161,7 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
     // although only a single one is writable. once we have too many memtables, writes will stop.
     // since prefix iteration is our bread n butter, we will build an additional filter for each
     // memtable which takes a bit of memory which must be accounted for from the memtable's memory
-    final int maxConcurrentMemtableCount = 16;
+    final int maxConcurrentMemtableCount = 6;
     final double memtablePrefixFilterMemory = 0.15;
     final long memtableMemory =
         Math.round(
@@ -180,7 +189,9 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
               columnFamilyOptionProps, userProvidedColumnFamilyOptions));
     }
 
-    final Cache cache = new LRUCache(blockCacheMemory);
+    // you can use the perf context to check if we're often blocked on the block cache mutex, in
+    // which case we want to increase the number of shards (shard count == 2^shardBits)
+    final Cache cache = new LRUCache(blockCacheMemory, 8, false, 0.15);
     closeables.add(cache);
 
     final Filter filter = new BloomFilter(10, false);
@@ -197,9 +208,12 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
             // cache
             .setCacheIndexAndFilterBlocks(true)
             .setPinL0FilterAndIndexBlocksInCache(true)
+            .setCacheIndexAndFilterBlocksWithHighPriority(true)
             // default is binary search, but all of our scans are prefix based which is a good use
             // case for efficient hashing
-            .setIndexType(IndexType.kHashSearch);
+            .setIndexType(IndexType.kHashSearch)
+            .setDataBlockIndexType(DataBlockIndexType.kDataBlockBinaryAndHash)
+            .setDataBlockHashTableUtilRatio(0.5);
 
     // TODO: allow settings to be overwritable
     return columnFamilyOptions
@@ -207,10 +221,10 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
         // a filter for each memtable, allowing us to skip them if possible
         .useFixedLengthPrefixExtractor(Short.BYTES)
         .setMemtablePrefixBloomSizeRatio(memtablePrefixFilterMemory)
-        // memtable
-        // merge at least 2 memtables per L0 file, otherwise all memtables are flushed as individual
+        // memtables
+        // merge at least 3 memtables per L0 file, otherwise all memtables are flushed as individual
         // files
-        .setMinWriteBufferNumberToMerge(Math.min(2, maxConcurrentMemtableCount))
+        .setMinWriteBufferNumberToMerge(Math.min(3, maxConcurrentMemtableCount))
         .setMaxWriteBufferNumberToMaintain(maxConcurrentMemtableCount)
         .setMaxWriteBufferNumber(maxConcurrentMemtableCount)
         .setWriteBufferSize(memtableMemory)
@@ -218,8 +232,6 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
         .setLevelCompactionDynamicLevelBytes(true)
         .setCompactionPriority(CompactionPriority.OldestSmallestSeqFirst)
         .setCompactionStyle(CompactionStyle.LEVEL)
-        // aim for ~8mb SST files
-        .setTargetFileSizeBase(8 * 1024 * 1024L)
         // L-0 means immediately flushed memtables
         .setLevel0FileNumCompactionTrigger(maxConcurrentMemtableCount)
         .setLevel0SlowdownWritesTrigger(
@@ -228,7 +240,7 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
         // configure 4 levels: L1 = 32mb, L2 = 320mb, L3 = 3.2Gb, L4 >= 3.2Gb
         // level 1 and 2 are uncompressed, level 3 and above are compressed using a CPU-cheap
         // compression algo. compressed blocks are stored in the OS page cache, and uncompressed in
-        // the LRUCache created above
+        // the LRUCache created above. note L0 is always uncompressed
         .setNumLevels(4)
         .setMaxBytesForLevelBase(32 * 1024 * 1024L)
         .setMaxBytesForLevelMultiplier(10)
@@ -238,6 +250,12 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
                 CompressionType.NO_COMPRESSION,
                 CompressionType.LZ4_COMPRESSION,
                 CompressionType.LZ4_COMPRESSION))
+        // defines the desired SST file size (but not guaranteed, it is usually lower)
+        // L0 => 8Mb, L1 => 16Mb, L2 => 32Mb, L3 => 64Mb
+        // as levels get bigger, we want to have a good balance between the number of files and the
+        // individual file sizes
+        .setTargetFileSizeBase(8 * 1024 * 1024L)
+        .setTargetFileSizeMultiplier(2)
         // misc
         .setTableFormatConfig(tableConfig);
   }

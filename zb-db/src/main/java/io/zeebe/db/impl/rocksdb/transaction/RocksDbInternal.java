@@ -16,13 +16,12 @@ import static org.rocksdb.Status.Code.Ok;
 import static org.rocksdb.Status.Code.TimedOut;
 import static org.rocksdb.Status.Code.TryAgain;
 
+import io.zeebe.db.ZeebeDbException;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.EnumSet;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
 import org.rocksdb.RocksObject;
 import org.rocksdb.Status;
 import org.rocksdb.Status.Code;
@@ -37,8 +36,6 @@ public final class RocksDbInternal {
   static Method putWithHandle;
   static Method getWithHandle;
   static Method removeWithHandle;
-
-  static Method seekMethod;
 
   static {
     RocksDB.loadLibrary();
@@ -56,8 +53,6 @@ public final class RocksDbInternal {
     putWithHandle();
     getWithHandle();
     removeWithHandle();
-
-    seekWithHandle();
   }
 
   private static void nativeHandles() throws NoSuchFieldException {
@@ -103,21 +98,12 @@ public final class RocksDbInternal {
     removeWithHandle.setAccessible(true);
   }
 
-  private static void seekWithHandle() throws NoSuchMethodException {
-    seekMethod =
-        RocksIterator.class.getDeclaredMethod("seek0", long.class, byte[].class, int.class);
-    seekMethod.setAccessible(true);
-  }
-
-  public static void seek(
-      final RocksIterator iterator,
-      final long nativeHandle,
-      final byte[] target,
-      final int targetLength) {
+  static long getNativeHandle(final RocksObject object) {
     try {
-      seekMethod.invoke(iterator, nativeHandle, target, targetLength);
-    } catch (final IllegalAccessException | InvocationTargetException e) {
-      throw new RuntimeException("Unexpected error occurred trying to seek with RocksIterator", e);
+      return nativeHandle.getLong(object);
+    } catch (final IllegalAccessException e) {
+      throw new ZeebeDbException(
+          "Unexpected error occurred trying to access private nativeHandle_ field", e);
     }
   }
 

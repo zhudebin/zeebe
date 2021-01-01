@@ -9,6 +9,7 @@ package io.zeebe.db.impl.rocksdb.transaction;
 
 import static io.zeebe.db.impl.rocksdb.transaction.RocksDbInternal.isRocksDbExceptionRecoverable;
 
+import io.prometheus.client.Histogram.Timer;
 import io.zeebe.db.TransactionOperation;
 import io.zeebe.db.ZeebeDbException;
 import io.zeebe.db.ZeebeDbTransaction;
@@ -88,7 +89,7 @@ public class ZeebeTransaction implements ZeebeDbTransaction, AutoCloseable {
 
   @Override
   public void commit() throws RocksDBException {
-    try {
+    try (final Timer timer = Instrumentation.COMMIT.startTimer()) {
       commitInternal();
     } catch (final RocksDBException rdbex) {
       final String errorMessage = "Unexpected error occurred during RocksDB transaction commit.";
@@ -101,7 +102,7 @@ public class ZeebeTransaction implements ZeebeDbTransaction, AutoCloseable {
 
   @Override
   public void rollback() throws RocksDBException {
-    try {
+    try (final Timer timer = Instrumentation.ROLLBACK.startTimer()) {
       rollbackInternal();
     } catch (final RocksDBException rdbex) {
       final String errorMessage = "Unexpected error occurred during RocksDB transaction rollback.";
@@ -122,6 +123,7 @@ public class ZeebeTransaction implements ZeebeDbTransaction, AutoCloseable {
     transaction.rollback();
   }
 
+  @Override
   public void close() {
     transaction.close();
   }
