@@ -200,9 +200,12 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
     final TableFormatConfig tableConfig =
         new BlockBasedTableConfig()
             .setBlockCache(cache)
-            .setFilterPolicy(filter)
             // increasing block size means reducing memory usage, but increasing read iops
             .setBlockSize(32 * 1024L)
+            // full and partitioned filters use a more efficient bloom filter implementation when
+            // using format 5
+            .setFormatVersion(5)
+            .setFilterPolicy(filter)
             // caching and pinning indexes and filters is important to keep reads/seeks fast when we
             // have many memtables, and pinning them ensures they are never evicted from the block
             // cache
@@ -213,9 +216,18 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
             // case for efficient hashing
             .setIndexType(IndexType.kHashSearch)
             .setDataBlockIndexType(DataBlockIndexType.kDataBlockBinaryAndHash)
-            .setDataBlockHashTableUtilRatio(0.5);
+            // RocksDB dev benchmarks show improvements when this is between 0.5 and 1, so let's
+            // start with the middle and optimize later from there
+            .setDataBlockHashTableUtilRatio(0.75)
+            // while we mostly care about the prefixes, these are covered below by the
+            // setMemtablePrefixBloomSizeRatio which will create a separate index for prefixes, so
+            // keeping the whole keys in the prefixes is still useful for efficient gets. think of
+            // it as a two-tiered index
+            .setWholeKeyFiltering(true);
 
     // TODO: allow settings to be overwritable
+    // TODO: enable full file checksums if possible (see
+    //       https://github.com/facebook/rocksdb/wiki/Full-File-Checksum)
     return columnFamilyOptions
         // prefix seek must be fast, so allocate an extra 10% of a single memtable budget to create
         // a filter for each memtable, allowing us to skip them if possible
