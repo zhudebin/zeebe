@@ -13,6 +13,7 @@ import io.zeebe.db.ZeebeDbFactory;
 import io.zeebe.db.impl.DbShort;
 import io.zeebe.db.impl.rocksdb.transaction.ZeebeTransactionDb;
 import java.io.File;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -115,6 +116,10 @@ public final class ZeebeRocksDbFactory<ColumnFamilyType extends Enum<ColumnFamil
               .setMaxManifestFileSize(256 * 1024 * 1024L)
               // speeds up opening the DB
               .setSkipStatsUpdateOnDbOpen(true)
+              // keep 1 hour of logs - completely arbitrary. we should keep what we think would be
+              // a good balance between useful for performance and small for replication
+              .setLogFileTimeToRoll(Duration.ofMinutes(30).toSeconds())
+              .setKeepLogFileNum(2)
               // can be disabled when not profiling
               .setStatsDumpPeriodSec(20)
               .setStatistics(statistics);
