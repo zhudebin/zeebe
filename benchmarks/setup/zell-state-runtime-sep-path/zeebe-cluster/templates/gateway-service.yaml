@@ -3,10 +3,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: "zell-state-path-zeebe-gateway"
+  name: "zell-state-runtime-sep-path-zeebe-gateway"
   labels:
     app.kubernetes.io/name: zeebe-cluster
-    app.kubernetes.io/instance: zell-state-path
+    app.kubernetes.io/instance: zell-state-runtime-sep-path
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: gateway
   annotations:
@@ -14,7 +14,7 @@ metadata:
 spec:
   selector:
       app.kubernetes.io/name: zeebe-cluster
-      app.kubernetes.io/instance: zell-state-path
+      app.kubernetes.io/instance: zell-state-runtime-sep-path
       app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/component: gateway
   ports:

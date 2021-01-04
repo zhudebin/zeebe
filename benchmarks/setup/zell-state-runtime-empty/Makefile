@@ -3,7 +3,7 @@ all: zeebe starter timer simpleStarter worker
 
 .PHONY: zeebe
 zeebe:
-	-helm install zell-state-path zeebe/zeebe-cluster -f zeebe-values.yaml --skip-crds
+	-helm install zell-state-runtime-empty zeebe/zeebe-cluster -f zeebe-values.yaml --skip-crds
 	-kubectl apply -f curator-cronjob.yaml
 	-kubectl apply -f curator-configmap.yaml
 
@@ -11,11 +11,11 @@ zeebe:
 # To apply the templates use k apply -f zeebe-cluster/templates/
 .PHONY: zeebe-template
 zeebe-template:
-	-helm template zell-state-path zeebe/zeebe-cluster -f zeebe-values.yaml --skip-crds --output-dir .
+	-helm template zell-state-runtime-empty zeebe/zeebe-cluster -f zeebe-values.yaml --skip-crds --output-dir .
 
 .PHONY: update
 update:
-	-helm upgrade zell-state-path zeebe/zeebe-cluster -f zeebe-values.yaml
+	-helm upgrade zell-state-runtime-empty zeebe/zeebe-cluster -f zeebe-values.yaml
 
 .PHONY: starter
 starter:
@@ -39,10 +39,10 @@ clean: clean-starter clean-timer clean-simpleStarter clean-worker clean-zeebe
 
 .PHONY: clean-zeebe
 clean-zeebe:
-	-helm uninstall zell-state-path
+	-helm uninstall zell-state-runtime-empty
 	-kubectl delete -f curator-cronjob.yaml
 	-kubectl delete -f curator-configmap.yaml
-	-kubectl delete pvc -l app.kubernetes.io/instance=zell-state-path
+	-kubectl delete pvc -l app.kubernetes.io/instance=zell-state-runtime-empty
 	-kubectl delete pvc -l app=elasticsearch-master
 
 .PHONY: clean-starter

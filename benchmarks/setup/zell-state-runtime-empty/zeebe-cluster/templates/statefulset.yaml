@@ -3,10 +3,10 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: "zell-state-path-zeebe"
+  name: "zell-state-runtime-empty-zeebe"
   labels:
     app.kubernetes.io/name: zeebe-cluster
-    app.kubernetes.io/instance: zell-state-path
+    app.kubernetes.io/instance: zell-state-runtime-empty
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: broker
     app: zeebe
@@ -16,10 +16,10 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: zeebe-cluster
-      app.kubernetes.io/instance: zell-state-path
+      app.kubernetes.io/instance: zell-state-runtime-empty
       app.kubernetes.io/managed-by: Helm
       app.kubernetes.io/component: broker
-  serviceName: "zell-state-path-zeebe"
+  serviceName: "zell-state-runtime-empty-zeebe"
   updateStrategy:
     type: RollingUpdate
   podManagementPolicy: Parallel
@@ -27,7 +27,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: zeebe-cluster
-        app.kubernetes.io/instance: zell-state-path
+        app.kubernetes.io/instance: zell-state-runtime-empty
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/component: broker
       annotations:
@@ -35,11 +35,11 @@ spec:
       initContainers:
       containers:
       - name: zeebe-cluster
-        image: "gcr.io/zeebe-io/zeebe:zell-state-path"
+        image: "camunda/zeebe:SNAPSHOT"
         imagePullPolicy: Always
         env:
         - name: ZEEBE_BROKER_CLUSTER_CLUSTERNAME
-          value: zell-state-path-zeebe
+          value: zell-state-runtime-empty-zeebe
         - name: ZEEBE_LOG_LEVEL
           value: "info"
         - name: ZEEBE_BROKER_CLUSTER_PARTITIONSCOUNT
@@ -120,10 +120,12 @@ spec:
           subPath: startup.sh
         - name: data
           mountPath: /usr/local/zeebe/data
-        - name: data2
-          mountPath: /state
         - name: exporters
           mountPath: /exporters
+        - name: state-data
+          mountPath: /state
+        - name: runtime-data
+          mountPath: /runtime
         securityContext:
           capabilities:
               add:
@@ -131,15 +133,23 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: zell-state-path-zeebe-cluster
+          name: zell-state-runtime-empty-zeebe-cluster
           defaultMode: 0744
       - name: exporters
         emptyDir: {}
-      - name: data2
+      - name: runtime-data
         emptyDir: {}
   volumeClaimTemplates:
   - metadata:
       name: data
+    spec:
+      accessModes: [ReadWriteOnce]
+      storageClassName: ssd
+      resources:
+        requests:
+          storage: "128Gi"
+  - metadata:
+      name: state-data
     spec:
       accessModes: [ReadWriteOnce]
       storageClassName: ssd

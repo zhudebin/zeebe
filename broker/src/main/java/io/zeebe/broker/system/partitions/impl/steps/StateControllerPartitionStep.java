@@ -23,7 +23,8 @@ public class StateControllerPartitionStep implements PartitionStep {
   @Override
   public ActorFuture<Void> open(final PartitionContext context) {
     final var runtimeDirectory =
-        Path.of("/state", "raft-partition-partition-" + (context.getPartitionId()), "runtime");
+        Path.of("/runtime", "raft-partition-partition-" + (context.getPartitionId()), "runtime");
+    runtimeDirectory.toFile().mkdirs();
     //        context.getRaftPartition().dataDirectory().toPath().resolve("runtime");
     final var databaseCfg = context.getBrokerCfg().getData().getRocksdb();
 

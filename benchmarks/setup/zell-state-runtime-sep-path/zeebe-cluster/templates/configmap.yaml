@@ -2,10 +2,10 @@
 # Source: zeebe-cluster/templates/configmap.yaml
 kind: ConfigMap
 metadata:
-  name: zell-state-path-zeebe-cluster
+  name: zell-state-runtime-sep-path-zeebe-cluster
   labels:
     app.kubernetes.io/name: zeebe-cluster
-    app.kubernetes.io/instance: zell-state-path
+    app.kubernetes.io/instance: zell-state-runtime-sep-path
     app.kubernetes.io/managed-by: Helm
 apiVersion: v1
 data:

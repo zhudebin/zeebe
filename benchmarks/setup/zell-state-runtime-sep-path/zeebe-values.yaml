@@ -1,6 +1,6 @@
 image:
   repository: gcr.io/zeebe-io/zeebe
-  tag: zell-state-path
+  tag: zell-state-runtime-sep-path
   pullPolicy: Always
 
 # ZEEBE CFG

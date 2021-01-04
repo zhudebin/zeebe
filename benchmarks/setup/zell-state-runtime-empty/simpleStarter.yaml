@@ -21,7 +21,7 @@ spec:
         env:
           - name: JAVA_OPTIONS
             value: >-
-              -Dapp.brokerUrl=zell-state-path-zeebe-gateway:26500
+              -Dapp.brokerUrl=zell-state-runtime-empty-zeebe-gateway:26500
               -Dapp.starter.rate=300
               -Dzeebe.client.requestTimeout=62000
               -XX:+HeapDumpOnOutOfMemoryError
@@ -42,7 +42,7 @@ kind: Service
 metadata:
   labels:
     app: zeebe
-    app.kubernetes.io/instance: zell-state-path
+    app.kubernetes.io/instance: zell-state-runtime-empty
     app.kubernetes.io/name: zeebe-cluster
   name: simple
 spec:

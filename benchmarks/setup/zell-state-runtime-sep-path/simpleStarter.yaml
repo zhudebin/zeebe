@@ -1,40 +1,40 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: worker
+  name: simple
   labels:
-    app: worker
+    app: simple
 spec:
   selector:
     matchLabels:
-      app: worker
-  replicas: 12
+      app: simple
+  replicas: 1
   template:
     metadata:
       labels:
-        app: worker
+        app: simple
     spec:
       containers:
-      - name: worker
-        image: gcr.io/zeebe-io/worker:zeebe
+      - name: simple
+        image: gcr.io/zeebe-io/starter:zeebe
         imagePullPolicy: Always
         env:
           - name: JAVA_OPTIONS
             value: >-
-              -Dapp.brokerUrl=zell-state-path-zeebe-gateway:26500
+              -Dapp.brokerUrl=zell-state-runtime-sep-path-zeebe-gateway:26500
+              -Dapp.starter.rate=300
               -Dzeebe.client.requestTimeout=62000
-              -Dapp.worker.capacity=120
-              -Dapp.worker.pollingDelay=1ms
-              -Dapp.worker.completionDelay=50ms
               -XX:+HeapDumpOnOutOfMemoryError
+              -Dapp.starter.bpmnXmlPath=bpmn/simpleProcess.bpmn
+              -Dapp.starter.processId=simpleProcess
           - name: LOG_LEVEL
             value: "warn"
         resources:
           limits:
-            cpu: 4
+            cpu: 2
             memory: 2Gi
           requests:
-            cpu: 1
+            cpu: 2
             memory: 512Mi
 ---
 apiVersion: v1
@@ -42,9 +42,9 @@ kind: Service
 metadata:
   labels:
     app: zeebe
-    app.kubernetes.io/instance: zell-state-path
+    app.kubernetes.io/instance: zell-state-runtime-sep-path
     app.kubernetes.io/name: zeebe-cluster
-  name: worker
+  name: simple
 spec:
   clusterIP: None
   ports:
@@ -54,7 +54,7 @@ spec:
     targetPort: 9600
   publishNotReadyAddresses: true
   selector:
-    app: worker
+    app: simple
   sessionAffinity: None
   type: ClusterIP
 status:

@@ -6,7 +6,7 @@ metadata:
   name: elasticsearch-master
   labels:
     heritage: "Helm"
-    release: "zell-state-path"
+    release: "zell-state-runtime-empty"
     chart: "elasticsearch"
     app: "elasticsearch-master"
   annotations:
@@ -35,7 +35,7 @@ spec:
       name: "elasticsearch-master"
       labels:
         heritage: "Helm"
-        release: "zell-state-path"
+        release: "zell-state-runtime-empty"
         chart: "elasticsearch"
         app: "elasticsearch-master"
         app: "elasticsearch-master"
