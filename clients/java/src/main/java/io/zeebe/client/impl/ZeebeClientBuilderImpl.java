@@ -21,7 +21,6 @@ import static io.zeebe.client.ClientProperties.DEFAULT_REQUEST_TIMEOUT;
 import static io.zeebe.client.ClientProperties.KEEP_ALIVE;
 import static io.zeebe.client.ClientProperties.USE_PLAINTEXT_CONNECTION;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ClientInterceptor;
 import io.zeebe.client.ClientProperties;
 import io.zeebe.client.CredentialsProvider;
@@ -61,7 +60,6 @@ public final class ZeebeClientBuilderImpl implements ZeebeClientBuilder, ZeebeCl
   private String certificatePath;
   private CredentialsProvider credentialsProvider;
   private Duration keepAlive = Duration.ofSeconds(45);
-  private ObjectMapper zeebeObjectMapper = new ObjectMapper();
   private JsonMapper jsonMapper = new ZeebeObjectMapper();
 
   @Override
