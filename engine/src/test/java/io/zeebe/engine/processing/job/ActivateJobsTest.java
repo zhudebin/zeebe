@@ -112,17 +112,9 @@ public final class ActivateJobsTest {
   }
 
   @Test
-  public void shouldNotRejectEmptyWorker() {
+  public void shouldAcceptEmptyWorker() {
     // given
     ENGINE.deployment().withXmlResource(PROCESS_ID, MODEL_SUPPLIER.apply(taskType)).deploy();
-    final long firstInstanceKey = createWorkflowInstances(3, "{'foo':'bar'}").get(0);
-
-    final long expectedJobKey =
-        jobRecords(JobIntent.CREATED)
-            .withType(taskType)
-            .filter(r -> r.getValue().getWorkflowInstanceKey() == firstInstanceKey)
-            .getFirst()
-            .getKey();
 
     final Duration timeout = Duration.ofMinutes(12);
 
@@ -135,26 +127,8 @@ public final class ActivateJobsTest {
             .withMaxJobsToActivate(1)
             .activate();
 
-    final List<JobRecordValue> jobs = batchRecord.getValue().getJobs();
-    final List<Long> jobKeys = batchRecord.getValue().getJobKeys();
-
     // then
     assertThat(batchRecord.getIntent()).isEqualTo(JobBatchIntent.ACTIVATED);
-
-    assertThat(jobKeys).hasSize(1);
-    assertThat(jobs).hasSize(1);
-    assertThat(jobKeys.get(0)).isEqualTo(expectedJobKey);
-    assertThat(jobs.get(0)).hasRetries(3).hasWorker("").hasType(taskType);
-
-    assertThat(jobs.get(0).getVariables()).containsExactly(entry("foo", "bar"));
-
-    final Record<JobRecordValue> jobRecord =
-        jobRecords(JobIntent.ACTIVATED)
-            .withWorkflowInstanceKey(firstInstanceKey)
-            .withType(taskType)
-            .getFirst();
-    assertThat(jobRecord).hasKey(expectedJobKey);
-    assertThat(jobRecord.getValue()).hasRetries(3).hasWorker("");
   }
 
   @Test
