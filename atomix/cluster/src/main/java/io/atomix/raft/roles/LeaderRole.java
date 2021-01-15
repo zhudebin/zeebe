@@ -55,6 +55,7 @@ import io.atomix.storage.StorageException;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.utils.concurrent.Futures;
 import io.atomix.utils.concurrent.Scheduled;
+import io.zeebe.journal.JournalRecord;
 import io.zeebe.snapshots.raft.PersistedSnapshotListener;
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -326,8 +327,8 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
   private ZeebeEntry findLastZeebeEntry() {
     long index = raft.getLogWriter().getLastIndex();
     while (index > 0) {
-      raft.getLogReader().reset(index);
-      final Indexed<RaftLogEntry> lastEntry = raft.getLogReader().next();
+      raft.getLogReader().seek(index);
+      final JournalRecord lastEntry = raft.getLogReader().next();
 
       if (lastEntry != null && lastEntry.type() == ZeebeEntry.class) {
         return ((ZeebeEntry) lastEntry.entry());

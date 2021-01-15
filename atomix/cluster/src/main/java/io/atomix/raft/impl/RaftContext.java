@@ -47,7 +47,8 @@ import io.atomix.raft.roles.PassiveRole;
 import io.atomix.raft.roles.PromotableRole;
 import io.atomix.raft.roles.RaftRole;
 import io.atomix.raft.storage.RaftStorage;
-import io.atomix.raft.storage.log.RaftLog;
+import io.atomix.raft.storage.log.RaftJournal;
+import io.atomix.raft.storage.log.RaftJournalReader;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogWriter;
 import io.atomix.raft.storage.system.MetaStore;
@@ -57,6 +58,7 @@ import io.atomix.utils.concurrent.ComposableFuture;
 import io.atomix.utils.concurrent.ThreadContext;
 import io.atomix.utils.logging.ContextualLoggerFactory;
 import io.atomix.utils.logging.LoggerContext;
+import io.zeebe.journal.impl.FileBasedJournal;
 import io.zeebe.snapshots.raft.ReceivableSnapshotStore;
 import java.time.Duration;
 import java.util.Objects;
@@ -93,9 +95,8 @@ public class RaftContext implements AutoCloseable {
   private final RaftRoleMetrics raftRoleMetrics;
   private final RaftReplicationMetrics replicationMetrics;
   private final MetaStore meta;
-  private final RaftLog raftLog;
-  private final RaftLogWriter logWriter;
-  private final RaftLogReader logReader;
+  private final RaftJournal raftLog;
+  private final RaftJournalReader logReader;
   private final ReceivableSnapshotStore persistedSnapshotStore;
   private final LogCompactor logCompactor;
   private volatile State state = State.ACTIVE;
@@ -113,6 +114,7 @@ public class RaftContext implements AutoCloseable {
   private final int maxAppendsPerFollower;
   // Used for randomizing election timeout
   private final Random random;
+  private final FileBasedJournal journal;
 
   public RaftContext(
       final String name,
@@ -152,9 +154,9 @@ public class RaftContext implements AutoCloseable {
     lastVotedFor = meta.loadVote();
 
     // Construct the core log, reader, writer, and compactor.
-    raftLog = storage.openLog();
-    logWriter = raftLog.writer();
-    logReader = raftLog.openReader(1, RaftLogReader.Mode.ALL);
+    journal = new FileBasedJournal();
+    raftLog = new RaftJournal(journal); // TEMP
+    logReader = raftLog.openReader(RaftLogReader.Mode.ALL);
 
     // Open the snapshot store.
     persistedSnapshotStore = storage.getPersistedSnapshotStore();
@@ -170,7 +172,7 @@ public class RaftContext implements AutoCloseable {
 
     raftRoleMetrics = new RaftRoleMetrics(name);
     replicationMetrics = new RaftReplicationMetrics(name);
-    replicationMetrics.setAppendIndex(logWriter.getLastIndex());
+    replicationMetrics.setAppendIndex(journal.getLastIndex());
     started = true;
   }
 
@@ -348,10 +350,10 @@ public class RaftContext implements AutoCloseable {
     final long previousCommitIndex = this.commitIndex;
     if (commitIndex > previousCommitIndex) {
       this.commitIndex = commitIndex;
-      logWriter.commit(Math.min(commitIndex, logWriter.getLastIndex()));
+      raftLog.commit(Math.min(commitIndex, journal.getLastIndex()));
       if (raftLog.shouldFlushExplicitly() && isLeader()) {
         // leader counts itself in quorum, so in order to commit the leader must persist
-        logWriter.flush();
+        journal.flush();
       }
       final long configurationIndex = cluster.getConfiguration().index();
       if (configurationIndex > previousCommitIndex && configurationIndex <= commitIndex) {
@@ -765,7 +767,7 @@ public class RaftContext implements AutoCloseable {
    *
    * @return The server log.
    */
-  public RaftLog getLog() {
+  public RaftJournal getLog() {
     return raftLog;
   }
 
@@ -774,7 +776,7 @@ public class RaftContext implements AutoCloseable {
    *
    * @return The log reader.
    */
-  public RaftLogReader getLogReader() {
+  public RaftJournalReader getLogReader() {
     return logReader;
   }
 
