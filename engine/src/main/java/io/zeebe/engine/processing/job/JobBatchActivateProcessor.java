@@ -36,12 +36,8 @@ import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.collections.ObjectHashSet;
 import org.agrona.concurrent.UnsafeBuffer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public final class JobBatchActivateProcessor implements TypedRecordProcessor<JobBatchRecord> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(JobBatchActivateProcessor.class);
 
   private final JobState jobState;
   private final VariablesState variablesState;
@@ -132,9 +128,6 @@ public final class JobBatchActivateProcessor implements TypedRecordProcessor<Job
         (key, jobRecord) -> {
           int remainingAmount = amount.get();
           final long deadline = record.getTimestamp() + value.getTimeout();
-          if (value.getWorkerBuffer().capacity() == 0) {
-            LOGGER.trace(String.format("A job worker for a record: %s is anonymous.", value));
-          }
           jobRecord.setDeadline(deadline).setWorker(value.getWorkerBuffer());
 
           // fetch and set variables, required here to already have the full size of the job record
