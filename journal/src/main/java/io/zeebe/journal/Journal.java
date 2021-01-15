@@ -15,6 +15,8 @@ public interface Journal {
   // Not guaranteed to delete. But more like marking that it is safe to delete. The entries may be deleted immediately or later.
   boolean deleteUntil(long indexExclusive);
 
+  boolean clearAndReset(long nextIndex);
+
   long getLastIndex();
 
   long getFirstIndex();
@@ -25,4 +27,5 @@ public interface Journal {
 
   JournalReader openReader();
 
+  void close();
 }

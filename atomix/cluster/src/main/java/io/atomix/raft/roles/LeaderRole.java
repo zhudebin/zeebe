@@ -46,16 +46,14 @@ import io.atomix.raft.protocol.VoteRequest;
 import io.atomix.raft.protocol.VoteResponse;
 import io.atomix.raft.storage.log.entry.ConfigurationEntry;
 import io.atomix.raft.storage.log.entry.InitializeEntry;
-import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.storage.system.Configuration;
 import io.atomix.raft.zeebe.ValidationResult;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.StorageException;
-import io.atomix.storage.journal.Indexed;
 import io.atomix.utils.concurrent.Futures;
 import io.atomix.utils.concurrent.Scheduled;
-import io.zeebe.journal.JournalRecord;
+import io.zeebe.journal.raft.RaftEntry;
 import io.zeebe.snapshots.raft.PersistedSnapshotListener;
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -325,10 +323,10 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
   }
 
   private ZeebeEntry findLastZeebeEntry() {
-    long index = raft.getLogWriter().getLastIndex();
+    long index = raft.getLog().getLastIndex();
     while (index > 0) {
       raft.getLogReader().seek(index);
-      final JournalRecord lastEntry = raft.getLogReader().next();
+      final var lastEntry = raft.getLogReader().next().entry();
 
       if (lastEntry != null && lastEntry.type() == ZeebeEntry.class) {
         return ((ZeebeEntry) lastEntry.entry());
@@ -494,7 +492,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
 
     final CompletableFuture<TransferResponse> future = new CompletableFuture<>();
     appender
-        .appendEntries(raft.getLogWriter().getLastIndex())
+        .appendEntries(raft.getLog().getLastIndex())
         .whenComplete(
             (result, error) -> {
               if (isRunning()) {
@@ -555,7 +553,7 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
                   .withStatus(RaftResponse.Status.OK)
                   .withTerm(raft.getTerm())
                   .withSucceeded(false)
-                  .withLastLogIndex(raft.getLogWriter().getLastIndex())
+                  .withLastLogIndex(raft.getLog().getLastIndex())
                   .withLastSnapshotIndex(raft.getPersistedSnapshotStore().getCurrentSnapshotIndex())
                   .build()));
     } else {
@@ -611,8 +609,8 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
    * @param <E> the entry type
    * @return a completable future to be completed once the entry has been appended
    */
-  private <E extends RaftLogEntry> CompletableFuture<Indexed<E>> append(final E entry) {
-    CompletableFuture<Indexed<E>> resultingFuture = null;
+  private CompletableFuture<Long> append(final RaftEntry entry) {
+    CompletableFuture<Long> resultingFuture = null;
     int retries = 0;
 
     do {
@@ -641,14 +639,14 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
     return resultingFuture;
   }
 
-  private <E extends RaftLogEntry> CompletableFuture<Indexed<E>> tryToAppend(final E entry) {
-    CompletableFuture<Indexed<E>> resultingFuture = null;
+  private CompletableFuture<Long> tryToAppend(final RaftEntry entry) {
+    CompletableFuture<Long> resultingFuture = null;
 
     try {
-      final Indexed<E> indexedEntry = raft.getLogWriter().append(entry);
-      raft.getReplicationMetrics().setAppendIndex(indexedEntry.index());
-      log.trace("Appended {}", indexedEntry);
-      resultingFuture = CompletableFuture.completedFuture(indexedEntry);
+      raft.getLog().append(entry);
+      raft.getReplicationMetrics().setAppendIndex(raft.getLog().getLastIndex());
+     // log.trace("Appended {}", indexedEntry);
+      resultingFuture = CompletableFuture.completedFuture(raft.getLog().getLastIndex());
     } catch (final StorageException.TooLarge e) {
 
       // the entry was to large, we can't handle this case
@@ -703,9 +701,9 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
       raft.transition(Role.FOLLOWER);
     }
 
-    append(entry)
+    append((RaftEntry) entry) // TODO: Fix
         .whenComplete(
-            (indexed, error) -> {
+            (index, error) -> {
               if (error != null) {
                 appendListener.onWriteError(Throwables.getRootCause(error));
                 if (!(error instanceof StorageException)) {
@@ -714,20 +712,19 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
                   raft.transition(Role.FOLLOWER);
                 }
               } else {
-                if (indexed.type().equals(ZeebeEntry.class)) {
-                  lastZbEntry = indexed.entry();
+                  lastZbEntry = entry;
                 }
 
-                appendListener.onWrite(indexed);
+                appendListener.onWrite(index);
                 replicate(indexed, appendListener);
               }
             });
   }
 
-  private void replicate(final Indexed<ZeebeEntry> indexed, final AppendListener appendListener) {
+  private void replicate(final long index, final AppendListener appendListener) {
     raft.checkThread();
     appender
-        .appendEntries(indexed.index())
+        .appendEntries(index)
         .whenCompleteAsync(
             (commitIndex, commitError) -> {
               if (!isRunning()) {
@@ -738,12 +735,12 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
               // up to date with the latest entries so it can handle configuration and initial
               // entries properly on fail over
               if (commitError == null) {
-                appendListener.onCommit(indexed);
-                raft.notifyCommitListeners(indexed.index());
+                appendListener.onCommit(index);
+                raft.notifyCommitListeners(index);
               } else {
-                appendListener.onCommitError(indexed, commitError);
+                appendListener.onCommitError(index, commitError);
                 // replicating the entry will be retried on the next append request
-                log.error("Failed to replicate entry: {}", indexed, commitError);
+                log.error("Failed to replicate entry: {}", index, commitError);
               }
             },
             raft.getThreadContext());

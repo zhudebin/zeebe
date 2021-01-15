@@ -18,9 +18,7 @@ package io.atomix.raft.storage.log.entry;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-import io.atomix.raft.storage.log.RaftLog;
 
-/** Stores a state change in a {@link RaftLog}. */
 public abstract class RaftLogEntry {
 
   protected final long term;

@@ -2,9 +2,9 @@ package io.zeebe.journal.raft;
 
 public interface RaftEntry<T> {
 
-  long getTerm();
-
-  int entryType();
+  long term();
 
   T entry();
+
+  Class type();
 }

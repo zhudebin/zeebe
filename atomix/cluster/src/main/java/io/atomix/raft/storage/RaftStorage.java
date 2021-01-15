@@ -20,7 +20,6 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.storage.system.MetaStore;
 import io.atomix.storage.StorageException;
@@ -32,6 +31,7 @@ import io.atomix.storage.journal.index.JournalIndex;
 import io.atomix.storage.statistics.StorageStatistics;
 import io.atomix.utils.serializer.Namespace;
 import io.atomix.utils.serializer.Serializer;
+import io.zeebe.journal.raft.RaftJournal;
 import io.zeebe.snapshots.raft.PersistedSnapshotStore;
 import io.zeebe.snapshots.raft.ReceivableSnapshotStore;
 import java.io.File;
@@ -285,19 +285,8 @@ public final class RaftStorage {
    *
    * @return The opened log.
    */
-  public RaftLog openLog() {
-    return RaftLog.builder()
-        .withName(prefix)
-        .withDirectory(directory)
-        .withStorageLevel(storageLevel)
-        .withNamespace(namespace)
-        .withMaxSegmentSize(maxSegmentSize)
-        .withMaxEntrySize(maxEntrySize)
-        .withFreeDiskSpace(freeDiskSpace)
-        .withMaxEntriesPerSegment(maxEntriesPerSegment)
-        .withFlushExplicitly(flushExplicitly)
-        .withJournalIndexFactory(journalIndexFactory)
-        .build();
+  public RaftJournal openLog() {
+    return null;
   }
 
   /**

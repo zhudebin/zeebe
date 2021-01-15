@@ -20,9 +20,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import io.atomix.raft.storage.log.RaftLog;
-import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.storage.journal.JournalReader.Mode;
+import io.zeebe.journal.raft.RaftJournal;
+import io.zeebe.journal.raft.RaftLogReader;
 import io.zeebe.snapshots.raft.SnapshotChunkReader;
 import java.nio.ByteBuffer;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
@@ -62,7 +62,7 @@ public final class RaftMemberContext {
   }
 
   /** Resets the member state. */
-  public void resetState(final RaftLog log) {
+  public void resetState(final RaftJournal log) {
     snapshotIndex = 0;
     nextSnapshotIndex = 0;
     nextSnapshotChunk = null;
@@ -79,11 +79,11 @@ public final class RaftMemberContext {
 
     switch (member.getType()) {
       case PASSIVE:
-        reader = log.openReader(log.writer().getLastIndex() + 1, Mode.COMMITS);
+        reader = log.openReader(log.getLastIndex() + 1, Mode.COMMITS);
         break;
       case PROMOTABLE:
       case ACTIVE:
-        reader = log.openReader(log.writer().getLastIndex() + 1, Mode.ALL);
+        reader = log.openReader(log.getLastIndex() + 1, Mode.ALL);
         break;
       default:
         LoggerFactory.getLogger(RaftMemberContext.class)
@@ -221,7 +221,7 @@ public final class RaftMemberContext {
         .add("nextSnapshotIndex", nextSnapshotIndex)
         .add("nextSnapshotChunk", nextSnapshotChunk)
         .add("matchIndex", matchIndex)
-        .add("nextIndex", reader != null ? reader.getNextIndex() : matchIndex + 1)
+        .add("nextIndex", reader != null ? reader.getCurrentEntry() : matchIndex + 1)
         .add("heartbeatTime", heartbeatTime)
         .add("appending", inFlightAppendCount)
         .add("appendSucceeded", appendSucceeded)

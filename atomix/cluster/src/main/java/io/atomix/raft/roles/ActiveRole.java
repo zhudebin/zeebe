@@ -26,8 +26,6 @@ import io.atomix.raft.protocol.RaftRequest;
 import io.atomix.raft.protocol.RaftResponse;
 import io.atomix.raft.protocol.VoteRequest;
 import io.atomix.raft.protocol.VoteResponse;
-import io.atomix.raft.storage.log.entry.RaftLogEntry;
-import io.atomix.storage.journal.Indexed;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -113,7 +111,7 @@ public abstract class ActiveRole extends PassiveRole {
   /** Returns a boolean value indicating whether the given candidate's log is up-to-date. */
   boolean isLogUpToDate(final long lastIndex, final long lastTerm, final RaftRequest request) {
     // Read the last entry from the log.
-    final Indexed<RaftLogEntry> lastEntry = raft.getLogWriter().getLastEntry();
+    final var lastEntry = raft.getLog().getLastEntry();
 
     // If the log is empty then vote for the candidate.
     if (lastEntry == null) {

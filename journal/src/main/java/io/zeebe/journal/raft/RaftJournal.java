@@ -24,7 +24,8 @@ public class RaftJournal {
   public <T> void append(final RaftEntry<T> entry) {}
 
   public void append(final RaftIndexedRecord entry) throws Exception {
-    final JournalRecord recordToAppend =  null; //new JournalRecordImpl(entry.getLongIndex(), entry.checksum(), entry.getEntry());
+    final JournalRecord recordToAppend =
+        null; // new JournalRecordImpl(entry.getLongIndex(), entry.checksum(), entry.getEntry());
     journal.append(recordToAppend);
   }
 
@@ -36,8 +37,16 @@ public class RaftJournal {
     return journal.deleteUntil(indexExclusive);
   }
 
+  public void clearAndReset(final long nextIndex) {
+    journal.clearAndReset(nextIndex);
+  }
+
   public long getLastIndex() {
     return journal.getLastIndex();
+  }
+
+  public RaftIndexedRecord getLastEntry() {
+    return null; // TODO
   }
 
   public long getFirstIndex() {
@@ -55,5 +64,9 @@ public class RaftJournal {
   public RaftLogReader openReader() {
     // TODO
     return null;
+  }
+
+  public void close() {
+    journal.close();
   }
 }

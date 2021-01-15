@@ -21,7 +21,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import io.atomix.cluster.MemberId;
-import io.atomix.raft.storage.log.entry.RaftLogEntry;
+import io.zeebe.journal.raft.RaftEntry;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -39,7 +39,7 @@ public class AppendRequest extends AbstractRaftRequest {
   private final String leader;
   private final long prevLogIndex;
   private final long prevLogTerm;
-  private final List<RaftLogEntry> entries;
+  private final List<RaftEntry> entries;
   private final long commitIndex;
   private final List<Long> checksums;
 
@@ -48,7 +48,7 @@ public class AppendRequest extends AbstractRaftRequest {
       final String leader,
       final long prevLogIndex,
       final long prevLogTerm,
-      final List<RaftLogEntry> entries,
+      final List<RaftEntry> entries,
       final List<Long> checksums,
       final long commitIndex) {
     this.term = term;
@@ -110,7 +110,7 @@ public class AppendRequest extends AbstractRaftRequest {
    *
    * @return A list of log entries.
    */
-  public List<RaftLogEntry> entries() {
+  public List<RaftEntry> entries() {
     return entries;
   }
   /**
@@ -138,7 +138,7 @@ public class AppendRequest extends AbstractRaftRequest {
 
   @Override
   public boolean equals(final Object object) {
-    if (object != null && object.getClass() == this.getClass()) {
+    if (object != null && object.getClass() == getClass()) {
       final AppendRequest request = (AppendRequest) object;
       return request.term == term
           && request.leader.equals(leader)
@@ -172,7 +172,7 @@ public class AppendRequest extends AbstractRaftRequest {
     private String leader;
     private long logIndex;
     private long logTerm;
-    private List<RaftLogEntry> entries;
+    private List<RaftEntry> entries;
     private List<Long> checksums;
     private long commitIndex = -1;
 
@@ -234,7 +234,7 @@ public class AppendRequest extends AbstractRaftRequest {
      * @return The append request builder.
      * @throws NullPointerException if {@code entries} is null
      */
-    public Builder withEntries(final RaftLogEntry... entries) {
+    public Builder withEntries(final RaftEntry... entries) {
       return withEntries(Arrays.asList(checkNotNull(entries, NULL_ENTRIES_ERR)));
     }
 
@@ -246,7 +246,7 @@ public class AppendRequest extends AbstractRaftRequest {
      * @throws NullPointerException if {@code entries} is null
      */
     @SuppressWarnings("unchecked")
-    public Builder withEntries(final List<RaftLogEntry> entries) {
+    public Builder withEntries(final List<RaftEntry> entries) {
       this.entries = checkNotNull(entries, NULL_ENTRIES_ERR);
       return this;
     }
@@ -270,7 +270,7 @@ public class AppendRequest extends AbstractRaftRequest {
      * @return The request builder.
      * @throws NullPointerException if {@code entry} is {@code null}
      */
-    public Builder addEntry(final RaftLogEntry entry) {
+    public Builder addEntry(final RaftEntry entry) {
       entries.add(checkNotNull(entry, NULL_ENTRIES_ERR));
       return this;
     }

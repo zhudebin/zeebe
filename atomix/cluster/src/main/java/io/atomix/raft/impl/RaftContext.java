@@ -47,10 +47,6 @@ import io.atomix.raft.roles.PassiveRole;
 import io.atomix.raft.roles.PromotableRole;
 import io.atomix.raft.roles.RaftRole;
 import io.atomix.raft.storage.RaftStorage;
-import io.atomix.raft.storage.log.RaftJournal;
-import io.atomix.raft.storage.log.RaftJournalReader;
-import io.atomix.raft.storage.log.RaftLogReader;
-import io.atomix.raft.storage.log.RaftLogWriter;
 import io.atomix.raft.storage.system.MetaStore;
 import io.atomix.raft.zeebe.EntryValidator;
 import io.atomix.storage.StorageException;
@@ -59,6 +55,8 @@ import io.atomix.utils.concurrent.ThreadContext;
 import io.atomix.utils.logging.ContextualLoggerFactory;
 import io.atomix.utils.logging.LoggerContext;
 import io.zeebe.journal.impl.FileBasedJournal;
+import io.zeebe.journal.raft.RaftJournal;
+import io.zeebe.journal.raft.RaftLogReader;
 import io.zeebe.snapshots.raft.ReceivableSnapshotStore;
 import java.time.Duration;
 import java.util.Objects;
@@ -96,7 +94,7 @@ public class RaftContext implements AutoCloseable {
   private final RaftReplicationMetrics replicationMetrics;
   private final MetaStore meta;
   private final RaftJournal raftLog;
-  private final RaftJournalReader logReader;
+  private final RaftLogReader logReader;
   private final ReceivableSnapshotStore persistedSnapshotStore;
   private final LogCompactor logCompactor;
   private volatile State state = State.ACTIVE;
@@ -156,7 +154,7 @@ public class RaftContext implements AutoCloseable {
     // Construct the core log, reader, writer, and compactor.
     journal = new FileBasedJournal();
     raftLog = new RaftJournal(journal); // TEMP
-    logReader = raftLog.openReader(RaftLogReader.Mode.ALL);
+    logReader = raftLog.openReader();
 
     // Open the snapshot store.
     persistedSnapshotStore = storage.getPersistedSnapshotStore();
@@ -350,8 +348,8 @@ public class RaftContext implements AutoCloseable {
     final long previousCommitIndex = this.commitIndex;
     if (commitIndex > previousCommitIndex) {
       this.commitIndex = commitIndex;
-      raftLog.commit(Math.min(commitIndex, journal.getLastIndex()));
-      if (raftLog.shouldFlushExplicitly() && isLeader()) {
+      raftLog.setCommitPosition(Math.min(commitIndex, journal.getLastIndex()));
+      if (isLeader()) {
         // leader counts itself in quorum, so in order to commit the leader must persist
         journal.flush();
       }
@@ -776,17 +774,8 @@ public class RaftContext implements AutoCloseable {
    *
    * @return The log reader.
    */
-  public RaftJournalReader getLogReader() {
+  public RaftLogReader getLogReader() {
     return logReader;
-  }
-
-  /**
-   * Returns the server log writer.
-   *
-   * @return The log writer.
-   */
-  public RaftLogWriter getLogWriter() {
-    return logWriter;
   }
 
   /**

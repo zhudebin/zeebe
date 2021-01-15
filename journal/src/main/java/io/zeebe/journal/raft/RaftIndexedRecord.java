@@ -1,11 +1,11 @@
 package io.zeebe.journal.raft;
 
 public interface RaftIndexedRecord {
-  long getIndex();
+  long index();
 
   long checksum();
 
-  int getSize();
+  int size();
 
-  RaftEntry getEntry();
+  RaftEntry entry();
 }
