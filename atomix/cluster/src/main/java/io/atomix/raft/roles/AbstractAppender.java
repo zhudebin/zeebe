@@ -36,7 +36,6 @@ import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.utils.logging.ContextualLoggerFactory;
 import io.atomix.utils.logging.LoggerContext;
-import io.zeebe.journal.raft.RaftEntry;
 import io.zeebe.journal.raft.RaftLogReader;
 import io.zeebe.snapshots.raft.PersistedSnapshot;
 import io.zeebe.snapshots.raft.SnapshotChunk;
@@ -47,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.agrona.DirectBuffer;
 import org.slf4j.Logger;
 
 /** Abstract appender. */
@@ -147,7 +147,7 @@ abstract class AbstractAppender implements AutoCloseable {
             .withCommitIndex(raft.getCommitIndex());
 
     // Build a list of entries to send to the member.
-    final List<RaftEntry> entries = new ArrayList<>();
+    final List<DirectBuffer> entries = new ArrayList<>();
     final List<Long> checksums = new ArrayList<>();
 
     // Build a list of entries up to the MAX_BATCH_SIZE. Note that entries in the log may
@@ -162,9 +162,9 @@ abstract class AbstractAppender implements AutoCloseable {
     while (reader.hasNext()) {
       // Otherwise, read the next entry and add it to the batch.
       final var entry = reader.next();
-      entries.add(entry.entry());
+      entries.add(entry.data());
       checksums.add(entry.checksum());
-      size += entry.size();
+      size += entry.data().capacity();
       if (entry.index() == lastIndex || size >= maxBatchSizePerAppend) {
         break;
       }

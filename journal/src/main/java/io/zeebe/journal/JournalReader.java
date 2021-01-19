@@ -9,4 +9,7 @@ public interface JournalReader extends Iterator<JournalRecord> {
   // else hasNext() should return false.
   boolean seek(long index);
 
+  long currentIndex();
+
+  long nextIndex();
 }

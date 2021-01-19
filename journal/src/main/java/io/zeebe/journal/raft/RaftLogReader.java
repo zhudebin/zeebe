@@ -22,12 +22,13 @@ public class RaftLogReader {
 
   public RaftIndexedRecord next() {
     final var record = reader.next();
-    // TODO: return new RaftIndexedEntryImpl(record.index(), record.getChecksum(), record.getData())
-    // {
-   // update currentEntry TODO
+    // TODO:
+    //  currentEntry = new RaftIndexedRecordImpl(record)
+    // return currentEntry;
     return null;
   }
 
+  // Required for Raft to build AppendRequest
   public RaftIndexedRecord getCurrentEntry() {
     return currentEntry;
   }
