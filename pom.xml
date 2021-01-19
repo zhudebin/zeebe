@@ -48,6 +48,7 @@
     <module>snapshot</module>
     <module>benchmarks/project</module>
     <module>journal</module>
+    <module>journal-alt</module>
   </modules>
 
   <scm>

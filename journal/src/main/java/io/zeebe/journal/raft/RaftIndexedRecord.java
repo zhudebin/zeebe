@@ -11,5 +11,6 @@ public interface RaftIndexedRecord {
 
   RaftEntry entry();
 
+  // JournalRecord
   DirectBuffer data();
 }

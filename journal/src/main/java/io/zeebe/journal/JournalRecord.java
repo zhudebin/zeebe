@@ -4,8 +4,6 @@ import org.agrona.DirectBuffer;
 
 public interface JournalRecord {
 
-  long getChecksum();
-
   long index();
 
   DirectBuffer getData();

@@ -12,7 +12,9 @@ public interface Journal {
   // Guaranteed to delete all entries after indexExclusive
   boolean deleteAfter(long indexExclusive);
 
-  // Not guaranteed to delete. But more like marking that it is safe to delete. The entries may be deleted immediately or later.
+  // Not guaranteed to delete. But more like marking that it is safe to delete.
+  // The entries may be deleted immediately or later. TODO: May be rename to make this semantics
+  // clear
   boolean deleteUntil(long indexExclusive);
 
   boolean clearAndReset(long nextIndex);
