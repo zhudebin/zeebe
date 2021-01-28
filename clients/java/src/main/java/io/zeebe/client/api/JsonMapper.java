@@ -19,67 +19,102 @@ import java.io.InputStream;
 import java.util.Map;
 
 /**
- * This interface is using to customize the way how objects will be transformed in JSON format.
+ * This interface is using to customize the way how objects will be serialized and deserialized in
+ * JSON format. The default implementation is {@link io.zeebe.client.impl.ZeebeObjectMapper}. This
+ * interface could be implemented to customize the way how variables in the commands
+ * serialized/deserialized. For example: there is such map with variables:
+ *
+ * <pre>
+ *   final Map<String, Object> variables = new HashMap<>();
+ *   variables.put("a", "b");
+ *   variables.put("c", null);
+ * </pre>
+ *
+ * And after doing this:
+ *
+ * <pre>
+ *   public class MyJsonMapper implements JsonMapper {
+ *
+ *     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().setSerializationInclusion(Include.NON_NULL);
+ *
+ *     public String toJson(final Object value) {
+ *       return OBJECT_MAPPER.writeValueAsString(value);
+ *     }
+ *     ...
+ *   }
+ *   ...
+ *   ZeebeClient.newClientBuilder().withJsonMapper(new MyJsonMapper());
+ * </pre>
+ *
+ * Null values won't pass in the JSON with variables: {@code { "a": "b" } }
  *
  * @see io.zeebe.client.impl.ZeebeObjectMapper
  */
 public interface JsonMapper {
 
   /**
-   * Transform a JSON string to the typed object.
+   * Deserializes a JSON string into an equivalent POJO of type {@code T}.
    *
-   * @param json a JSON string
-   * @param typeClass a class of the type to serialize
-   * @param <T> a type of the returned object
-   * @return a typed object from a JSON string
+   * @param json the JSON string to deserialize
+   * @param typeClass the Java type to deserialize into
+   * @param <T> the type of the returned object
+   * @return the POJO deserialized from the given JSON string
+   * @throws io.zeebe.client.api.command.InternalClientException on serialization/deserialization
+   *     error
    */
   <T> T fromJson(final String json, final Class<T> typeClass);
 
   /**
-   * Transform a JSON string to the map with string to object pairs
+   * Deserializes a JSON string into a string to object map.
    *
-   * @param json a JSON string
-   * @return a map is filled with JSON
+   * @param json the JSON string to deserialize
+   * @return the map deserialized from the given JSON string
+   * @throws io.zeebe.client.api.command.InternalClientException on serialization/deserialization
+   *     error
    */
   Map<String, Object> fromJsonAsMap(final String json);
 
   /**
-   * Transform a JSON string to the map with string to string pairs
+   * Deserializes a JSON string into a string to string map.
    *
-   * @param json a JSON string
-   * @return a map is filled with JSON
+   * @param json the JSON string to deserialize
+   * @return the map deserialized from the given JSON string
+   * @throws io.zeebe.client.api.command.InternalClientException on serialization/deserialization
+   *     error
    */
   Map<String, String> fromJsonAsStringMap(final String json);
 
   /**
-   * Transform an object to a JSON string
+   * Serializes an object (POJO, map, list, etc.) into an JSON string.
    *
-   * @param value an object that will be transformed
-   * @return a JSON string
+   * @param value the object to serialize
+   * @return a JSON string serialized from the given object
+   * @throws io.zeebe.client.api.command.InternalClientException on serialization/deserialization
+   *     error
    */
   String toJson(final Object value);
 
   /**
-   * Validate that a jsonInput is actually a JSON string. If not throws a {@link
-   * io.zeebe.client.api.command.InternalClientException}
+   * Validates a JSON string. If it is not valid throws a {@link
+   * io.zeebe.client.api.command.InternalClientException}.
    *
-   * @param propertyName a property name that contains jsonInput
-   * @param jsonInput a JSON string
-   * @return a JSON string
-   * @throws io.zeebe.client.api.command.InternalClientException when a jsonInput is not a JSON
-   *     string
+   * @param propertyName the property name that contains the JSON string
+   * @param jsonInput the JSON string
+   * @return the same JSON string, that passed in
+   * @throws io.zeebe.client.api.command.InternalClientException on serialization/deserialization
+   *     error
    */
   String validateJson(final String propertyName, final String jsonInput);
 
   /**
-   * Validate that a jsonInput is actually a JSON string. If not throws a {@link
+   * Validates a stream that contains a JSON string. If it is not valid throws a {@link
    * io.zeebe.client.api.command.InternalClientException}
    *
-   * @param propertyName a property name that contains jsonInput
-   * @param jsonInput a stream that contains a JSON string
-   * @return a JSON string
-   * @throws io.zeebe.client.api.command.InternalClientException when a jsonInput doesn't contains a
-   *     JSON string
+   * @param propertyName a property name that contains the stream
+   * @param jsonInput the stream that contains the JSON string
+   * @return the JSON string from the stream
+   * @throws io.zeebe.client.api.command.InternalClientException on serialization/deserialization
+   *     error
    */
   String validateJson(final String propertyName, final InputStream jsonInput);
 }
