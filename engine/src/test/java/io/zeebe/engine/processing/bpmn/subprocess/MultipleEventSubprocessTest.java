@@ -18,11 +18,13 @@ import io.zeebe.model.bpmn.builder.ProcessBuilder;
 import io.zeebe.model.bpmn.builder.StartEventBuilder;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.protocol.record.intent.MessageSubscriptionIntent;
+import io.zeebe.protocol.record.intent.TimerIntent;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.test.util.BrokerClassRuleHelper;
 import io.zeebe.test.util.record.RecordingExporter;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -214,6 +216,55 @@ public final class MultipleEventSubprocessTest {
             tuple(BpmnElementType.SERVICE_TASK, WorkflowInstanceIntent.ELEMENT_TERMINATED),
             tuple(BpmnElementType.SUB_PROCESS, WorkflowInstanceIntent.ELEMENT_TERMINATED),
             tuple(BpmnElementType.PROCESS, WorkflowInstanceIntent.ELEMENT_TERMINATED));
+  }
+
+  @Test
+  public void shouldTerminateMultiInstanceScopeIfScopeTerminates() {
+    final var model =
+        Bpmn.createExecutableProcess("multi-instance-subprocess-with-event-subprocess")
+            .startEvent("proc_start")
+            .subProcess(
+                "sub",
+                sub ->
+                    sub.multiInstance(multi -> multi.zeebeInputCollectionExpression("values"))
+                        .embeddedSubProcess()
+                        .startEvent("sub_start")
+                        .intermediateCatchEvent("timer1", timer -> timer.timerWithDuration("P1D"))
+                        .endEvent()
+                        .subProcessDone()
+                        .embeddedSubProcess()
+                        .eventSubProcess()
+                        .startEvent("event_sub_start")
+                        .message(msg -> msg.name("foo").zeebeCorrelationKeyExpression("\"bar\""))
+                        .intermediateCatchEvent("timer2", timer -> timer.timerWithDuration("P1D"))
+                        .endEvent())
+            .endEvent()
+            .done();
+    ENGINE.deployment().withXmlResource(model).deploy();
+
+    final var wfKey =
+        ENGINE
+            .workflowInstance()
+            .ofBpmnProcessId("multi-instance-subprocess-with-event-subprocess")
+            .withVariable("values", Collections.singletonList(10))
+            .create();
+
+    ENGINE.message().withName("foo").withCorrelationKey("bar").publish();
+    RecordingExporter.timerRecords(TimerIntent.CREATED)
+        .withWorkflowInstanceKey(wfKey)
+        .limit(2)
+        .await();
+
+    ENGINE.workflowInstance().withInstanceKey(wfKey).cancel();
+
+    assertThat(
+            RecordingExporter.workflowInstanceRecords()
+                .withWorkflowInstanceKey(wfKey)
+                .withIntent(WorkflowInstanceIntent.ELEMENT_TERMINATED)
+                .limit(5))
+        .extracting(r -> r.getValue().getElementId())
+        .containsExactly(
+            "timer2", "subsub", "timer1", "sub", "multi-instance-subprocess-with-event-subprocess");
   }
 
   @Test
