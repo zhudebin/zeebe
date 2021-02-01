@@ -18,15 +18,16 @@ public final class LastProcessedPositionState {
   private static final long NO_EVENTS_PROCESSED = -1L;
 
   private final DbString positionKey;
-  private final LastProcessedPosition position = new LastProcessedPosition();
+  private final LastProcessedPosition position = ZeebeColumn.DEFAULT.createValueInstance();
   private final ColumnFamily<DbString, LastProcessedPosition> positionColumnFamily;
 
   public LastProcessedPositionState(
       final ZeebeDb<ZbColumnFamilies> zeebeDb, final DbContext dbContext) {
-    positionKey = new DbString();
+    positionKey = ZeebeColumn.DEFAULT.createKeyInstance();
     positionKey.wrapString(LAST_PROCESSED_EVENT_KEY);
     positionColumnFamily =
-        zeebeDb.createColumnFamily(ZbColumnFamilies.DEFAULT, dbContext, positionKey, position);
+        zeebeDb.createColumnFamily(
+            ZeebeColumn.DEFAULT.getColumnFamily(), dbContext, positionKey, position);
   }
 
   public long getPosition() {

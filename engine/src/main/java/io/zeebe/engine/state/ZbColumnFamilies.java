@@ -81,5 +81,5 @@ public enum ZbColumnFamilies {
 
   EXPORTER,
 
-  AWAIT_WORKLOW_RESULT
+  AWAIT_WORKLOW_RESULT;
 }
