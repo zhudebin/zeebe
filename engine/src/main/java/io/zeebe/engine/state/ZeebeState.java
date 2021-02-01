@@ -8,6 +8,8 @@
 package io.zeebe.engine.state;
 
 import io.zeebe.db.DbContext;
+import io.zeebe.db.DbKey;
+import io.zeebe.db.DbValue;
 import io.zeebe.db.ZeebeDb;
 import io.zeebe.engine.Loggers;
 import io.zeebe.engine.processing.streamprocessor.TypedRecord;
@@ -24,6 +26,7 @@ import io.zeebe.protocol.Protocol;
 import io.zeebe.protocol.record.intent.Intent;
 import io.zeebe.protocol.record.intent.WorkflowInstanceRelatedIntent;
 import io.zeebe.protocol.record.value.WorkflowInstanceRelated;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 
@@ -165,5 +168,14 @@ public class ZeebeState {
   public boolean isEmpty(final ZbColumnFamilies column) {
     final var newContext = zeebeDb.createContext();
     return zeebeDb.isEmpty(column, newContext);
+  }
+
+  public <KeyType extends DbKey, ValueType extends DbValue> void visit(
+      final ZbColumnFamilies column,
+      final KeyType keyInstance,
+      final ValueType valueInstance,
+      final BiConsumer<KeyType, ValueType> visitor) {
+    final var newContext = zeebeDb.createContext();
+    zeebeDb.visit(column, newContext, keyInstance, valueInstance, visitor);
   }
 }
