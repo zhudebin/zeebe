@@ -8,3 +8,7 @@ zeebe:
         statisticsEnabled: true
         memoryLimit: 32MB
         maxOpenFiles: 3
+        maxWriteBufferNumber: 3
+        minWriteBufferNumberToMerge: 3
+        ioRateBytesPerSecond: 4096
+        walDisabled: true
