@@ -9,8 +9,8 @@ package io.zeebe.engine.processing.deployment;
 
 import io.zeebe.engine.processing.deployment.model.element.ExecutableCatchEventElement;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableMessage;
-import io.zeebe.engine.processing.deployment.model.element.ExecutableStartEvent;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableProcess;
+import io.zeebe.engine.processing.deployment.model.element.ExecutableStartEvent;
 import io.zeebe.engine.processing.streamprocessor.TypedRecord;
 import io.zeebe.engine.processing.streamprocessor.TypedRecordProcessor;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedResponseWriter;
