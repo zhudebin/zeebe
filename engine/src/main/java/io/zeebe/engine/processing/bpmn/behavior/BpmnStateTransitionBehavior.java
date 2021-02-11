@@ -7,7 +7,7 @@
  */
 package io.zeebe.engine.processing.bpmn.behavior;
 
-import io.zeebe.engine.metrics.ProcessEngineMetrics;
+import io.zeebe.engine.metrics.EngineMetrics;
 import io.zeebe.engine.processing.bpmn.BpmnElementContainerProcessor;
 import io.zeebe.engine.processing.bpmn.BpmnElementContext;
 import io.zeebe.engine.processing.bpmn.BpmnProcessingException;
@@ -37,14 +37,14 @@ public final class BpmnStateTransitionBehavior {
       processorLookUp;
 
   private final ProcessInstanceStateTransitionGuard stateTransitionGuard;
-  private final ProcessEngineMetrics metrics;
+  private final EngineMetrics metrics;
   private final ProcessInstanceRecord childInstanceRecord = new ProcessInstanceRecord();
 
   public BpmnStateTransitionBehavior(
       final TypedStreamWriter streamWriter,
       final KeyGenerator keyGenerator,
       final BpmnStateBehavior stateBehavior,
-      final ProcessEngineMetrics metrics,
+      final EngineMetrics metrics,
       final ProcessInstanceStateTransitionGuard stateTransitionGuard,
       final Function<BpmnElementType, BpmnElementContainerProcessor<ExecutableFlowElement>>
           processorLookUp) {

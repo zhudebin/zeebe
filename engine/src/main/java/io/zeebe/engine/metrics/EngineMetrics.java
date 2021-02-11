@@ -11,7 +11,7 @@ import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
 import io.zeebe.protocol.record.value.BpmnElementType;
 
-public final class ProcessEngineMetrics {
+public final class EngineMetrics {
 
   private static final Counter ELEMENT_INSTANCE_EVENTS =
       Counter.build()
@@ -31,7 +31,7 @@ public final class ProcessEngineMetrics {
 
   private final String partitionIdLabel;
 
-  public ProcessEngineMetrics(final int partitionId) {
+  public EngineMetrics(final int partitionId) {
     partitionIdLabel = String.valueOf(partitionId);
   }
 

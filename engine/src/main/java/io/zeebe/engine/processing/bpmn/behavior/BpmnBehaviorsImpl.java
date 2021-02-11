@@ -7,7 +7,7 @@
  */
 package io.zeebe.engine.processing.bpmn.behavior;
 
-import io.zeebe.engine.metrics.ProcessEngineMetrics;
+import io.zeebe.engine.metrics.EngineMetrics;
 import io.zeebe.engine.processing.bpmn.BpmnElementContainerProcessor;
 import io.zeebe.engine.processing.bpmn.ProcessInstanceStateTransitionGuard;
 import io.zeebe.engine.processing.common.CatchEventBehavior;
@@ -57,7 +57,7 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
             streamWriter,
             zeebeState.getKeyGenerator(),
             stateBehavior,
-            new ProcessEngineMetrics(zeebeState.getPartitionId()),
+            new EngineMetrics(zeebeState.getPartitionId()),
             stateTransitionGuard,
             processorLookup);
     eventSubscriptionBehavior =
