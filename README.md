@@ -1,4 +1,4 @@
-# Zeebe.io - Process Engine for Microservices Orchestration
+# Zeebe.io - Workflow Engine for Microservices Orchestration
 
 
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.zeebe/zeebe-distribution/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.zeebe/zeebe-distribution)

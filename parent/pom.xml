@@ -157,7 +157,7 @@
 
       <dependency>
         <groupId>io.zeebe</groupId>
-        <artifactId>zeebe-process-engine</artifactId>
+        <artifactId>zeebe-workflow-engine</artifactId>
         <version>${project.version}</version>
         <classifier>tests</classifier>
         <type>test-jar</type>
