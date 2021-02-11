@@ -445,8 +445,7 @@ public final class CreateDeploymentTest {
     assertSameResource(
         findProcess(originalProcesss, PROCESS_ID), findProcess(repeatedProcesss, PROCESS_ID));
     assertDifferentResources(
-        findProcess(originalProcesss, PROCESS_ID_2),
-        findProcess(repeatedProcesss, PROCESS_ID_2));
+        findProcess(originalProcesss, PROCESS_ID_2), findProcess(repeatedProcesss, PROCESS_ID_2));
   }
 
   @Test
@@ -533,8 +532,7 @@ public final class CreateDeploymentTest {
         .orElse(null);
   }
 
-  private void assertSameResource(
-      final DeployedProcess original, final DeployedProcess repeated) {
+  private void assertSameResource(final DeployedProcess original, final DeployedProcess repeated) {
     io.zeebe.protocol.record.Assertions.assertThat(repeated)
         .hasVersion(original.getVersion())
         .hasProcessKey(original.getProcessKey())

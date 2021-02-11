@@ -986,9 +986,7 @@ public final class MultiInstanceActivityTest {
                 BpmnElementType.SERVICE_TASK,
                 ProcessInstanceIntent.ELEMENT_TERMINATING),
             tuple(
-                ELEMENT_ID,
-                BpmnElementType.SERVICE_TASK,
-                ProcessInstanceIntent.ELEMENT_TERMINATED),
+                ELEMENT_ID, BpmnElementType.SERVICE_TASK, ProcessInstanceIntent.ELEMENT_TERMINATED),
             tuple(
                 ELEMENT_ID,
                 BpmnElementType.MULTI_INSTANCE_BODY,
@@ -1065,8 +1063,7 @@ public final class MultiInstanceActivityTest {
                 "to-notified",
                 BpmnElementType.SEQUENCE_FLOW,
                 ProcessInstanceIntent.SEQUENCE_FLOW_TAKEN),
-            tuple(
-                "notified", BpmnElementType.END_EVENT, ProcessInstanceIntent.ELEMENT_ACTIVATING));
+            tuple("notified", BpmnElementType.END_EVENT, ProcessInstanceIntent.ELEMENT_ACTIVATING));
 
     // and
     completeJobs(processInstanceKey, 1);

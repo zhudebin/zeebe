@@ -190,9 +190,7 @@ public final class TimerStartEventTest {
 
     final long processKey = deployedProcess.getProcessKey();
     assertThat(
-            RecordingExporter.timerRecords(TimerIntent.CREATED)
-                .withProcessKey(processKey)
-                .exists())
+            RecordingExporter.timerRecords(TimerIntent.CREATED).withProcessKey(processKey).exists())
         .isTrue();
 
     // when
@@ -254,9 +252,7 @@ public final class TimerStartEventTest {
 
     // when
     assertThat(
-            RecordingExporter.timerRecords(TimerIntent.CREATED)
-                .withProcessKey(processKey)
-                .exists())
+            RecordingExporter.timerRecords(TimerIntent.CREATED).withProcessKey(processKey).exists())
         .isTrue();
     engine.increaseTime(Duration.ofSeconds(3));
 
@@ -462,9 +458,7 @@ public final class TimerStartEventTest {
 
     final long processKey = deployedProcess.getProcessKey();
     assertThat(
-            RecordingExporter.timerRecords(TimerIntent.CREATED)
-                .withProcessKey(processKey)
-                .exists())
+            RecordingExporter.timerRecords(TimerIntent.CREATED).withProcessKey(processKey).exists())
         .isTrue();
 
     // when
@@ -637,13 +631,7 @@ public final class TimerStartEventTest {
             .done();
 
     final DeployedProcess deployedProcess =
-        engine
-            .deployment()
-            .withXmlResource(model)
-            .deploy()
-            .getValue()
-            .getDeployedProcesss()
-            .get(0);
+        engine.deployment().withXmlResource(model).deploy().getValue().getDeployedProcesss().get(0);
 
     // when
     engine.increaseTime(Duration.ofSeconds(2));
@@ -680,13 +668,7 @@ public final class TimerStartEventTest {
             .done();
 
     final DeployedProcess deployedProcess =
-        engine
-            .deployment()
-            .withXmlResource(model)
-            .deploy()
-            .getValue()
-            .getDeployedProcesss()
-            .get(0);
+        engine.deployment().withXmlResource(model).deploy().getValue().getDeployedProcesss().get(0);
 
     // when
     engine.increaseTime(Duration.ofMillis(2000L));

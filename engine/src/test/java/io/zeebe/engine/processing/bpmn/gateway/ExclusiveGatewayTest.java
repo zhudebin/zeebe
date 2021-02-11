@@ -336,9 +336,7 @@ public final class ExclusiveGatewayTest {
     final long processInstanceKey =
         ENGINE.processInstance().ofBpmnProcessId(processId).withVariable("foo", 10).create();
     assertThat(
-            RecordingExporter.incidentRecords()
-                .withProcessInstanceKey(processInstanceKey)
-                .limit(2))
+            RecordingExporter.incidentRecords().withProcessInstanceKey(processInstanceKey).limit(2))
         .extracting(Record::getIntent)
         .containsExactly(IncidentIntent.CREATE, IncidentIntent.CREATED);
 
@@ -358,9 +356,7 @@ public final class ExclusiveGatewayTest {
             tuple(BpmnElementType.PROCESS, ProcessInstanceIntent.ELEMENT_TERMINATED));
 
     assertThat(
-            RecordingExporter.incidentRecords()
-                .withProcessInstanceKey(processInstanceKey)
-                .limit(3))
+            RecordingExporter.incidentRecords().withProcessInstanceKey(processInstanceKey).limit(3))
         .extracting(Record::getIntent)
         .containsExactly(IncidentIntent.CREATE, IncidentIntent.CREATED, IncidentIntent.RESOLVED);
   }

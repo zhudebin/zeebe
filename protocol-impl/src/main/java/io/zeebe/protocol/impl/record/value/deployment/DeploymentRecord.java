@@ -24,8 +24,7 @@ public final class DeploymentRecord extends UnifiedRecordValue implements Deploy
   private final ArrayProperty<DeploymentResource> resourcesProp =
       new ArrayProperty<>(RESOURCES, new DeploymentResource());
 
-  private final ArrayProperty<Process> processsProp =
-      new ArrayProperty<>(PROCESSS, new Process());
+  private final ArrayProperty<Process> processsProp = new ArrayProperty<>(PROCESSS, new Process());
 
   public DeploymentRecord() {
     declareProperty(resourcesProp).declareProperty(processsProp);

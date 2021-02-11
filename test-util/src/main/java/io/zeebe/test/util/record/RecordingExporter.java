@@ -172,8 +172,7 @@ public final class RecordingExporter implements Exporter {
   public static ProcessInstanceSubscriptionRecordStream processInstanceSubscriptionRecords() {
     return new ProcessInstanceSubscriptionRecordStream(
         records(
-            ValueType.PROCESS_INSTANCE_SUBSCRIPTION,
-            ProcessInstanceSubscriptionRecordValue.class));
+            ValueType.PROCESS_INSTANCE_SUBSCRIPTION, ProcessInstanceSubscriptionRecordValue.class));
   }
 
   public static ProcessInstanceSubscriptionRecordStream processInstanceSubscriptionRecords(

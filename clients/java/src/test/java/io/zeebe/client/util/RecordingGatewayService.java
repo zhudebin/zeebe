@@ -71,8 +71,7 @@ public final class RecordingGatewayService extends GatewayImplBase {
 
   public RecordingGatewayService() {
     addRequestHandler(TopologyRequest.class, r -> TopologyResponse.getDefaultInstance());
-    addRequestHandler(
-        DeployProcessRequest.class, r -> DeployProcessResponse.getDefaultInstance());
+    addRequestHandler(DeployProcessRequest.class, r -> DeployProcessResponse.getDefaultInstance());
     addRequestHandler(
         PublishMessageRequest.class, r -> PublishMessageResponse.getDefaultInstance());
     addRequestHandler(

@@ -159,8 +159,7 @@ public final class DbProcessState implements MutableProcessState {
             .findFirst()
             .get();
 
-    final DeployedProcess deployedProcess =
-        new DeployedProcess(executableProcess, copiedProcess);
+    final DeployedProcess deployedProcess = new DeployedProcess(executableProcess, copiedProcess);
 
     addProcessToInMemoryState(deployedProcess);
 
@@ -209,8 +208,7 @@ public final class DbProcessState implements MutableProcessState {
     return deployedProcess;
   }
 
-  private DeployedProcess lookupProcessByIdAndPersistedVersion(
-      final LatestProcessVersion version) {
+  private DeployedProcess lookupProcessByIdAndPersistedVersion(final LatestProcessVersion version) {
     final long latestVersion = version != null ? version.get() : -1;
     processVersion.wrapLong(latestVersion);
 
@@ -231,15 +229,14 @@ public final class DbProcessState implements MutableProcessState {
 
     if (versionMap != null) {
       final DeployedProcess deployedProcess = versionMap.get(version);
-      return deployedProcess != null
-          ? deployedProcess
-          : lookupPersistenceState(processId, version);
+      return deployedProcess != null ? deployedProcess : lookupPersistenceState(processId, version);
     } else {
       return lookupPersistenceState(processId, version);
     }
   }
 
-  private DeployedProcess lookupPersistenceState(final DirectBuffer processIdBuffer, final int version) {
+  private DeployedProcess lookupPersistenceState(
+      final DirectBuffer processIdBuffer, final int version) {
     processId.wrapBuffer(processIdBuffer);
     processVersion.wrapLong(version);
 
@@ -291,8 +288,7 @@ public final class DbProcessState implements MutableProcessState {
   }
 
   @Override
-  public Collection<DeployedProcess> getProcesssByBpmnProcessId(
-      final DirectBuffer bpmnProcessId) {
+  public Collection<DeployedProcess> getProcesssByBpmnProcessId(final DirectBuffer bpmnProcessId) {
     updateCompleteInMemoryState();
 
     final Long2ObjectHashMap<DeployedProcess> processsByVersions =
@@ -309,7 +305,8 @@ public final class DbProcessState implements MutableProcessState {
   }
 
   @Override
-  public void putLatestVersionDigest(final DirectBuffer processIdBuffer, final DirectBuffer digest) {
+  public void putLatestVersionDigest(
+      final DirectBuffer processIdBuffer, final DirectBuffer digest) {
     processId.wrapBuffer(processIdBuffer);
     this.digest.set(digest);
 

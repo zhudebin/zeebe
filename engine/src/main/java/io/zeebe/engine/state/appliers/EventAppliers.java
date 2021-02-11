@@ -38,8 +38,7 @@ public final class EventAppliers implements EventApplier {
 
   public EventAppliers(final ZeebeState state) {
     register(
-        ProcessInstanceIntent.ELEMENT_ACTIVATED,
-        new ProcessInstanceElementActivatedApplier(state));
+        ProcessInstanceIntent.ELEMENT_ACTIVATED, new ProcessInstanceElementActivatedApplier(state));
   }
 
   private <I extends Intent> void register(final I intent, final TypedEventApplier<I, ?> applier) {

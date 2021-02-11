@@ -397,13 +397,7 @@ public class InterruptingEventSubprocessTest {
 
   private long createInstanceAndWaitForTask(final BpmnModelInstance model) {
     currentProcess =
-        ENGINE
-            .deployment()
-            .withXmlResource(model)
-            .deploy()
-            .getValue()
-            .getDeployedProcesss()
-            .get(0);
+        ENGINE.deployment().withXmlResource(model).deploy().getValue().getDeployedProcesss().get(0);
 
     final long wfInstanceKey =
         ENGINE

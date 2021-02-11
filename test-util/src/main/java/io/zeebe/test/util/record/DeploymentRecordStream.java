@@ -35,8 +35,7 @@ public final class DeploymentRecordStream
     return valueFilter(v -> v.getResources().contains(resource));
   }
 
-  public DeploymentRecordStream withDeployedProcesss(
-      final List<DeployedProcess> deployedProcesss) {
+  public DeploymentRecordStream withDeployedProcesss(final List<DeployedProcess> deployedProcesss) {
     return valueFilter(v -> deployedProcesss.equals(v.getDeployedProcesss()));
   }
 

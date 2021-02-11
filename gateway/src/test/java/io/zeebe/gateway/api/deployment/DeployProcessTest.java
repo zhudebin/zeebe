@@ -32,10 +32,7 @@ public final class DeployProcessTest extends GatewayTest {
     final String otherName = "testProcess.txt";
 
     final Builder builder = DeployProcessRequest.newBuilder();
-    builder
-        .addProcesssBuilder()
-        .setName(bpmnName)
-        .setDefinition(ByteString.copyFromUtf8("<xml/>"));
+    builder.addProcesssBuilder().setName(bpmnName).setDefinition(ByteString.copyFromUtf8("<xml/>"));
     builder.addProcesssBuilder().setName(otherName).setDefinition(ByteString.copyFromUtf8("test"));
 
     final DeployProcessRequest request = builder.build();

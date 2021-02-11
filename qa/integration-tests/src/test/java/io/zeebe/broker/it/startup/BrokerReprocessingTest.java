@@ -705,12 +705,7 @@ public final class BrokerReprocessingTest {
 
   private void deploy(final BpmnModelInstance processTwoTasks, final String s) {
     final DeploymentEvent deploymentEvent =
-        clientRule
-            .getClient()
-            .newDeployCommand()
-            .addProcessModel(processTwoTasks, s)
-            .send()
-            .join();
+        clientRule.getClient().newDeployCommand().addProcessModel(processTwoTasks, s).send().join();
 
     clientRule.waitUntilDeploymentIsDone(deploymentEvent.getKey());
   }

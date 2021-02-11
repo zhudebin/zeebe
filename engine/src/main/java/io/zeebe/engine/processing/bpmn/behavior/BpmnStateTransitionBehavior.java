@@ -68,8 +68,7 @@ public final class BpmnStateTransitionBehavior {
 
     transitionTo(context, ProcessInstanceIntent.ELEMENT_COMPLETING);
 
-    stateTransitionGuard.registerStateTransition(
-        context, ProcessInstanceIntent.ELEMENT_COMPLETING);
+    stateTransitionGuard.registerStateTransition(context, ProcessInstanceIntent.ELEMENT_COMPLETING);
   }
 
   public void transitionToCompleted(final BpmnElementContext context) {
@@ -92,8 +91,7 @@ public final class BpmnStateTransitionBehavior {
 
     transitionTo(context, ProcessInstanceIntent.ELEMENT_TERMINATED);
 
-    stateTransitionGuard.registerStateTransition(
-        context, ProcessInstanceIntent.ELEMENT_TERMINATED);
+    stateTransitionGuard.registerStateTransition(context, ProcessInstanceIntent.ELEMENT_TERMINATED);
     metrics.elementInstanceTerminated(context.getBpmnElementType());
   }
 

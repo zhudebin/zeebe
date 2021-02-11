@@ -52,11 +52,7 @@ public final class UpdateVariableDocumentTest {
     // when
     ENGINE_RULE.deployment().withXmlResource(process).deploy();
     final long processInstanceKey =
-        ENGINE_RULE
-            .processInstance()
-            .ofBpmnProcessId(processId)
-            .withVariables("{'x': 1}")
-            .create();
+        ENGINE_RULE.processInstance().ofBpmnProcessId(processId).withVariables("{'x': 1}").create();
     final Record<ProcessInstanceRecordValue> activatedEvent = waitForActivityActivatedEvent();
     ENGINE_RULE
         .variables()

@@ -164,8 +164,7 @@ public final class ProcessInstanceStreamProcessorTest {
         .endsWith(ProcessInstanceIntent.ELEMENT_TERMINATED);
     LifecycleAssert.assertThat(taskLifecycle).compliesWithCompleteLifecycle();
 
-    ProcessInstanceAssert.assertThat(records)
-        .doesNotEvaluateFlowAfterTerminatingElement("process");
+    ProcessInstanceAssert.assertThat(records).doesNotEvaluateFlowAfterTerminatingElement("process");
   }
 
   @Test
@@ -445,11 +444,7 @@ public final class ProcessInstanceStreamProcessorTest {
             tuple(RecordType.COMMAND_REJECTION, TimerIntent.TRIGGER));
     // ensures timer1 node never exists as far as execution goes
     assertThat(
-            envRule
-                .events()
-                .onlyProcessInstanceRecords()
-                .onlyEvents()
-                .collect(Collectors.toList()))
+            envRule.events().onlyProcessInstanceRecords().onlyEvents().collect(Collectors.toList()))
         .noneMatch(r -> r.getValue().getElementIdBuffer().equals(wrapString("timer1")));
   }
 

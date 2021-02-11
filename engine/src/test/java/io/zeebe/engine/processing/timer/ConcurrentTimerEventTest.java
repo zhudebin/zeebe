@@ -144,8 +144,7 @@ public final class ConcurrentTimerEventTest {
             .processInstance(ProcessInstanceIntent.CANCEL, processActivated.getValue())
             .key(processActivated.getKey()),
         RecordToWrite.event()
-            .processInstance(
-                ProcessInstanceIntent.ELEMENT_TERMINATING, processActivated.getValue())
+            .processInstance(ProcessInstanceIntent.ELEMENT_TERMINATING, processActivated.getValue())
             .key(processActivated.getKey())
             .causedBy(0),
         RecordToWrite.event()

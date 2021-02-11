@@ -132,8 +132,7 @@ public class StreamProcessingComposite {
         .write();
   }
 
-  public long writeProcessInstanceEvent(
-      final ProcessInstanceIntent intent, final int instanceKey) {
+  public long writeProcessInstanceEvent(final ProcessInstanceIntent intent, final int instanceKey) {
     return streams
         .newRecord(getLogName(partitionId))
         .event(processInstance(instanceKey))

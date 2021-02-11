@@ -156,10 +156,10 @@ public final class CreateProcessInstanceProcessorTest
             .message(m -> m.name("message").zeebeCorrelationKeyExpression("key"))
             .endEvent()
             .done();
-    final DeployedProcess process = deployNewProcess(process);
+    final DeployedProcess deployedProcess = deployNewProcess(process);
     final TypedRecord<ProcessInstanceCreationRecord> command =
         newCommand(ProcessInstanceCreationRecord.class);
-    command.getValue().setBpmnProcessId(process.getBpmnProcessId());
+    command.getValue().setBpmnProcessId(deployedProcess.getBpmnProcessId());
 
     // when
     processor.onCommand(command, controller, streamWriter);
@@ -304,9 +304,7 @@ public final class CreateProcessInstanceProcessorTest
       final long instanceKey, final ElementInstance instance) {
     verify(streamWriter, times(1))
         .appendFollowUpEvent(
-            eq(instanceKey),
-            eq(ProcessInstanceIntent.ELEMENT_ACTIVATING),
-            eq(instance.getValue()));
+            eq(instanceKey), eq(ProcessInstanceIntent.ELEMENT_ACTIVATING), eq(instance.getValue()));
   }
 
   private DeployedProcess deployNewProcess() {

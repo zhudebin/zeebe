@@ -43,8 +43,7 @@ public final class TypedEventRegistry {
     registry.put(ValueType.MESSAGE_SUBSCRIPTION, MessageSubscriptionRecord.class);
     registry.put(
         ValueType.MESSAGE_START_EVENT_SUBSCRIPTION, MessageStartEventSubscriptionRecord.class);
-    registry.put(
-        ValueType.PROCESS_INSTANCE_SUBSCRIPTION, ProcessInstanceSubscriptionRecord.class);
+    registry.put(ValueType.PROCESS_INSTANCE_SUBSCRIPTION, ProcessInstanceSubscriptionRecord.class);
     registry.put(ValueType.JOB_BATCH, JobBatchRecord.class);
     registry.put(ValueType.TIMER, TimerRecord.class);
     registry.put(ValueType.VARIABLE, VariableRecord.class);

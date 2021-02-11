@@ -62,8 +62,7 @@ public final class ProcessEventProcessors {
 
     typedRecordProcessors.withListener(new UpdateVariableStreamWriter());
 
-    addProcessInstanceCommandProcessor(
-        typedRecordProcessors, zeebeState.getElementInstanceState());
+    addProcessInstanceCommandProcessor(typedRecordProcessors, zeebeState.getElementInstanceState());
 
     final var bpmnStreamProcessor =
         new BpmnStreamProcessor(expressionProcessor, catchEventBehavior, zeebeState);
@@ -166,9 +165,7 @@ public final class ProcessEventProcessors {
         new CreateProcessInstanceProcessor(
             zeebeState.getProcessState(), elementInstanceState, variablesState, keyGenerator);
     typedRecordProcessors.onCommand(
-        ValueType.PROCESS_INSTANCE_CREATION,
-        ProcessInstanceCreationIntent.CREATE,
-        createProcessor);
+        ValueType.PROCESS_INSTANCE_CREATION, ProcessInstanceCreationIntent.CREATE, createProcessor);
 
     typedRecordProcessors.onCommand(
         ValueType.PROCESS_INSTANCE_CREATION,

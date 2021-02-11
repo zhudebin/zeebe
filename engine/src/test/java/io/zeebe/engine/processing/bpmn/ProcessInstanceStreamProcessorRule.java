@@ -156,8 +156,7 @@ public final class ProcessInstanceStreamProcessorRule extends ExternalResource
 
   public Record<ProcessInstanceRecord> createAndReceiveProcessInstance(
       final Function<ProcessInstanceCreationRecord, ProcessInstanceCreationRecord> transformer) {
-    final Record<ProcessInstanceCreationRecord> createdRecord =
-        createProcessInstance(transformer);
+    final Record<ProcessInstanceCreationRecord> createdRecord = createProcessInstance(transformer);
 
     return awaitAndGetFirstProcessInstanceRecord(
         r ->
@@ -189,8 +188,7 @@ public final class ProcessInstanceStreamProcessorRule extends ExternalResource
 
   public Record<ProcessInstanceRecord> awaitAndGetFirstProcessInstanceRecord(
       final Predicate<Record<ProcessInstanceRecord>> matcher) {
-    return awaitAndGetFirstRecord(
-        ValueType.PROCESS_INSTANCE, matcher, ProcessInstanceRecord.class);
+    return awaitAndGetFirstRecord(ValueType.PROCESS_INSTANCE, matcher, ProcessInstanceRecord.class);
   }
 
   public <T extends UnifiedRecordValue> Record<T> awaitAndGetFirstRecord(

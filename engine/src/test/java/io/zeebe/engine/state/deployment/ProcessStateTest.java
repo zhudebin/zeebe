@@ -283,8 +283,7 @@ public final class ProcessStateTest {
 
     Assertions.assertThat(latestProcess.getKey()).isNotEqualTo(firstLatest.getKey());
 
-    Assertions.assertThat(firstLatest.getResourceName())
-        .isEqualTo(latestProcess.getResourceName());
+    Assertions.assertThat(firstLatest.getResourceName()).isEqualTo(latestProcess.getResourceName());
 
     Assertions.assertThat(latestProcess.getVersion()).isEqualTo(2);
     Assertions.assertThat(firstLatest.getVersion()).isEqualTo(1);

@@ -283,10 +283,7 @@ public final class TimerCatchEventTest {
 
     ENGINE.deployment().withXmlResource(process).deploy();
     final long processInstanceKey =
-        ENGINE
-            .processInstance()
-            .ofBpmnProcessId("shouldTriggerTimerWithNegativeDuration")
-            .create();
+        ENGINE.processInstance().ofBpmnProcessId("shouldTriggerTimerWithNegativeDuration").create();
 
     // then
     assertThat(
