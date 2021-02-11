@@ -13,8 +13,8 @@ import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertIncidentResolveFai
 import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertIncidentResolved;
 import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertJobCompleted;
 import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertJobCreated;
-import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertWorkflowInstanceCompleted;
-import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertWorkflowInstanceCreated;
+import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertProcessInstanceCompleted;
+import static io.zeebe.broker.it.util.ZeebeAssertHelper.assertProcessInstanceCreated;
 import static io.zeebe.test.util.TestUtil.waitUntil;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +27,7 @@ import io.zeebe.broker.test.EmbeddedBrokerRule;
 import io.zeebe.client.api.response.ActivateJobsResponse;
 import io.zeebe.client.api.response.ActivatedJob;
 import io.zeebe.client.api.response.DeploymentEvent;
-import io.zeebe.client.api.response.WorkflowInstanceEvent;
+import io.zeebe.client.api.response.ProcessInstanceEvent;
 import io.zeebe.client.api.worker.JobWorker;
 import io.zeebe.engine.processing.job.JobTimeoutTrigger;
 import io.zeebe.model.bpmn.Bpmn;
@@ -37,12 +37,12 @@ import io.zeebe.protocol.record.ValueType;
 import io.zeebe.protocol.record.intent.IncidentIntent;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.protocol.record.intent.TimerIntent;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
-import io.zeebe.protocol.record.intent.WorkflowInstanceSubscriptionIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceSubscriptionIntent;
 import io.zeebe.protocol.record.value.IncidentRecordValue;
 import io.zeebe.test.util.TestUtil;
 import io.zeebe.test.util.record.RecordingExporter;
-import io.zeebe.test.util.record.WorkflowInstances;
+import io.zeebe.test.util.record.ProcessInstances;
 import io.zeebe.util.sched.clock.ControlledActorClock;
 import java.time.Duration;
 import java.util.Map;
@@ -65,26 +65,26 @@ public final class BrokerReprocessingTest {
 
   private static final String PROCESS_ID = "process";
   private static final String NULL_VARIABLES = "{}";
-  private static final BpmnModelInstance WORKFLOW =
+  private static final BpmnModelInstance PROCESS =
       Bpmn.createExecutableProcess(PROCESS_ID)
           .startEvent("start")
           .serviceTask("task", t -> t.zeebeJobType("foo"))
           .endEvent("end")
           .done();
-  private static final BpmnModelInstance WORKFLOW_TWO_TASKS =
+  private static final BpmnModelInstance PROCESS_TWO_TASKS =
       Bpmn.createExecutableProcess(PROCESS_ID)
           .startEvent("start")
           .serviceTask("task1", t -> t.zeebeJobType("foo"))
           .serviceTask("task2", t -> t.zeebeJobType("bar"))
           .endEvent("end")
           .done();
-  private static final BpmnModelInstance WORKFLOW_INCIDENT =
+  private static final BpmnModelInstance PROCESS_INCIDENT =
       Bpmn.createExecutableProcess(PROCESS_ID)
           .startEvent("start")
           .serviceTask("task", t -> t.zeebeJobType("test").zeebeInputExpression("foo", "foo"))
           .endEvent("end")
           .done();
-  private static final BpmnModelInstance WORKFLOW_MESSAGE =
+  private static final BpmnModelInstance PROCESS_MESSAGE =
       Bpmn.createExecutableProcess(PROCESS_ID)
           .startEvent()
           .intermediateCatchEvent("catch-event")
@@ -92,7 +92,7 @@ public final class BrokerReprocessingTest {
           .sequenceFlowId("to-end")
           .endEvent()
           .done();
-  private static final BpmnModelInstance WORKFLOW_TIMER =
+  private static final BpmnModelInstance PROCESS_TIMER =
       Bpmn.createExecutableProcess(PROCESS_ID)
           .startEvent()
           .intermediateCatchEvent("timer", c -> c.timerWithDuration("PT10S"))
@@ -136,9 +136,9 @@ public final class BrokerReprocessingTest {
   }
 
   @Test
-  public void shouldCreateWorkflowInstanceAfterRestart() {
+  public void shouldCreateProcessInstanceAfterRestart() {
     // given
-    deploy(WORKFLOW, "workflow.bpmn");
+    deploy(PROCESS, "process.bpmn");
 
     // when
     reprocessingTrigger.accept(this);
@@ -152,13 +152,13 @@ public final class BrokerReprocessingTest {
         .join();
 
     // then
-    assertWorkflowInstanceCreated();
+    assertProcessInstanceCreated();
   }
 
   @Test
-  public void shouldContinueWorkflowInstanceAtTaskAfterRestart() {
+  public void shouldContinueProcessInstanceAtTaskAfterRestart() {
     // given
-    deploy(WORKFLOW, "workflow.bpmn");
+    deploy(PROCESS, "process.bpmn");
 
     clientRule
         .getClient()
@@ -184,13 +184,13 @@ public final class BrokerReprocessingTest {
 
     // then
     assertJobCompleted();
-    assertWorkflowInstanceCompleted(PROCESS_ID);
+    assertProcessInstanceCompleted(PROCESS_ID);
   }
 
   @Test
-  public void shouldContinueWorkflowInstanceWithLockedTaskAfterRestart() {
+  public void shouldContinueProcessInstanceWithLockedTaskAfterRestart() {
     // given
-    deploy(WORKFLOW, "workflow.bpmn");
+    deploy(PROCESS, "process.bpmn");
 
     clientRule
         .getClient()
@@ -216,13 +216,13 @@ public final class BrokerReprocessingTest {
 
     // then
     assertJobCompleted();
-    assertWorkflowInstanceCompleted(PROCESS_ID);
+    assertProcessInstanceCompleted(PROCESS_ID);
   }
 
   @Test
-  public void shouldContinueWorkflowInstanceAtSecondTaskAfterRestart() throws Exception {
+  public void shouldContinueProcessInstanceAtSecondTaskAfterRestart() throws Exception {
     // given
-    deploy(WORKFLOW_TWO_TASKS, "two-tasks.bpmn");
+    deploy(PROCESS_TWO_TASKS, "two-tasks.bpmn");
 
     final Duration defaultJobTimeout =
         clientRule.getClient().getConfiguration().getDefaultJobTimeout();
@@ -274,13 +274,13 @@ public final class BrokerReprocessingTest {
     // then
     assertJobCompleted("foo");
     assertJobCompleted("bar");
-    assertWorkflowInstanceCompleted(PROCESS_ID);
+    assertProcessInstanceCompleted(PROCESS_ID);
   }
 
   @Test
-  public void shouldDeployNewWorkflowVersionAfterRestart() {
+  public void shouldDeployNewProcessVersionAfterRestart() {
     // given
-    deploy(WORKFLOW, "workflow.bpmn");
+    deploy(PROCESS, "process.bpmn");
 
     // when
     reprocessingTrigger.accept(this);
@@ -289,14 +289,14 @@ public final class BrokerReprocessingTest {
         clientRule
             .getClient()
             .newDeployCommand()
-            .addWorkflowModel(WORKFLOW, "workflow-2.bpmn")
+            .addProcessModel(PROCESS, "process-2.bpmn")
             .send()
             .join();
 
     // then
-    assertThat(deploymentResult.getWorkflows().get(0).getVersion()).isEqualTo(2);
+    assertThat(deploymentResult.getProcesss().get(0).getVersion()).isEqualTo(2);
 
-    final WorkflowInstanceEvent workflowInstanceV1 =
+    final ProcessInstanceEvent processInstanceV1 =
         clientRule
             .getClient()
             .newCreateInstanceCommand()
@@ -305,7 +305,7 @@ public final class BrokerReprocessingTest {
             .send()
             .join();
 
-    final WorkflowInstanceEvent workflowInstanceV2 =
+    final ProcessInstanceEvent processInstanceV2 =
         clientRule
             .getClient()
             .newCreateInstanceCommand()
@@ -315,8 +315,8 @@ public final class BrokerReprocessingTest {
             .join();
 
     // then
-    assertThat(workflowInstanceV1.getVersion()).isEqualTo(1);
-    assertThat(workflowInstanceV2.getVersion()).isEqualTo(2);
+    assertThat(processInstanceV1.getVersion()).isEqualTo(1);
+    assertThat(processInstanceV2.getVersion()).isEqualTo(2);
   }
 
   @Test
@@ -392,9 +392,9 @@ public final class BrokerReprocessingTest {
   @Test
   public void shouldResolveIncidentAfterRestart() {
     // given
-    deploy(WORKFLOW_INCIDENT, "incident.bpmn");
+    deploy(PROCESS_INCIDENT, "incident.bpmn");
 
-    final WorkflowInstanceEvent instanceEvent =
+    final ProcessInstanceEvent instanceEvent =
         clientRule
             .getClient()
             .newCreateInstanceCommand()
@@ -414,7 +414,7 @@ public final class BrokerReprocessingTest {
 
     clientRule
         .getClient()
-        .newSetVariablesCommand(instanceEvent.getWorkflowInstanceKey())
+        .newSetVariablesCommand(instanceEvent.getProcessInstanceKey())
         .variables("{\"foo\":\"bar\"}")
         .send()
         .join();
@@ -429,9 +429,9 @@ public final class BrokerReprocessingTest {
   @Test
   public void shouldResolveFailedIncidentAfterRestart() {
     // given
-    deploy(WORKFLOW_INCIDENT, "incident.bpmn");
+    deploy(PROCESS_INCIDENT, "incident.bpmn");
 
-    final WorkflowInstanceEvent instanceEvent =
+    final ProcessInstanceEvent instanceEvent =
         clientRule
             .getClient()
             .newCreateInstanceCommand()
@@ -448,7 +448,7 @@ public final class BrokerReprocessingTest {
 
     clientRule
         .getClient()
-        .newSetVariablesCommand(instanceEvent.getWorkflowInstanceKey())
+        .newSetVariablesCommand(instanceEvent.getProcessInstanceKey())
         .variables("{\"x\":\"y\"}")
         .send()
         .join();
@@ -464,7 +464,7 @@ public final class BrokerReprocessingTest {
 
     clientRule
         .getClient()
-        .newSetVariablesCommand(instanceEvent.getWorkflowInstanceKey())
+        .newSetVariablesCommand(instanceEvent.getProcessInstanceKey())
         .variables("{\"foo\":\"bar\"}")
         .send()
         .join();
@@ -477,25 +477,25 @@ public final class BrokerReprocessingTest {
   }
 
   @Test
-  public void shouldAssignUniqueWorkflowInstanceKeyAfterRestart() {
+  public void shouldAssignUniqueProcessInstanceKeyAfterRestart() {
     // given
-    deploy(WORKFLOW, "workflow.bpmn");
+    deploy(PROCESS, "process.bpmn");
 
-    final long workflowInstance1Key = startWorkflowInstance(PROCESS_ID).getWorkflowInstanceKey();
+    final long processInstance1Key = startProcessInstance(PROCESS_ID).getProcessInstanceKey();
 
     // when
     reprocessingTrigger.accept(this);
 
-    final long workflowInstance2Key = startWorkflowInstance(PROCESS_ID).getWorkflowInstanceKey();
+    final long processInstance2Key = startProcessInstance(PROCESS_ID).getProcessInstanceKey();
 
     // then
-    assertThat(workflowInstance2Key).isGreaterThan(workflowInstance1Key);
+    assertThat(processInstance2Key).isGreaterThan(processInstance1Key);
   }
 
   @Test
   public void shouldAssignUniqueJobKeyAfterRestart() {
     // given
-    deploy(WORKFLOW, "workflow.bpmn");
+    deploy(PROCESS, "process.bpmn");
 
     final Supplier<Long> jobCreator = () -> clientRule.createSingleJob("foo");
 
@@ -513,26 +513,26 @@ public final class BrokerReprocessingTest {
   @Test
   public void shouldAssignUniqueIncidentKeyAfterRestart() {
     // given
-    deploy(WORKFLOW_INCIDENT, "incident.bpmn");
+    deploy(PROCESS_INCIDENT, "incident.bpmn");
 
-    final long workflowInstanceKey = startWorkflowInstance(PROCESS_ID).getWorkflowInstanceKey();
+    final long processInstanceKey = startProcessInstance(PROCESS_ID).getProcessInstanceKey();
     assertIncidentCreated();
 
     // when
     reprocessingTrigger.accept(this);
 
-    final long workflowInstanceKey2 = startWorkflowInstance(PROCESS_ID).getWorkflowInstanceKey();
+    final long processInstanceKey2 = startProcessInstance(PROCESS_ID).getProcessInstanceKey();
 
     // then
     final long firstIncidentKey =
         RecordingExporter.incidentRecords(IncidentIntent.CREATED)
-            .withWorkflowInstanceKey(workflowInstanceKey)
+            .withProcessInstanceKey(processInstanceKey)
             .getFirst()
             .getKey();
 
     final long secondIncidentKey =
         RecordingExporter.incidentRecords(IncidentIntent.CREATED)
-            .withWorkflowInstanceKey(workflowInstanceKey2)
+            .withProcessInstanceKey(processInstanceKey2)
             .getFirst()
             .getKey();
 
@@ -546,7 +546,7 @@ public final class BrokerReprocessingTest {
         clientRule
             .getClient()
             .newDeployCommand()
-            .addWorkflowModel(WORKFLOW_INCIDENT, "incident.bpmn")
+            .addProcessModel(PROCESS_INCIDENT, "incident.bpmn")
             .send()
             .join()
             .getKey();
@@ -559,7 +559,7 @@ public final class BrokerReprocessingTest {
         clientRule
             .getClient()
             .newDeployCommand()
-            .addWorkflowModel(WORKFLOW_INCIDENT, "incident.bpmn")
+            .addProcessModel(PROCESS_INCIDENT, "incident.bpmn")
             .send()
             .join()
             .getKey();
@@ -571,15 +571,15 @@ public final class BrokerReprocessingTest {
   @Test
   public void shouldCorrelateMessageAfterRestartIfEnteredBefore() throws Exception {
     // given
-    deploy(WORKFLOW_MESSAGE, "message.bpmn");
+    deploy(PROCESS_MESSAGE, "message.bpmn");
 
-    final long workflowInstanceKey =
-        startWorkflowInstance(PROCESS_ID, singletonMap("orderId", "order-123"))
-            .getWorkflowInstanceKey();
+    final long processInstanceKey =
+        startProcessInstance(PROCESS_ID, singletonMap("orderId", "order-123"))
+            .getProcessInstanceKey();
 
     assertThat(
-            RecordingExporter.workflowInstanceSubscriptionRecords(
-                    WorkflowInstanceSubscriptionIntent.OPENED)
+            RecordingExporter.processInstanceSubscriptionRecords(
+                    ProcessInstanceSubscriptionIntent.OPENED)
                 .exists())
         .isTrue();
 
@@ -590,46 +590,46 @@ public final class BrokerReprocessingTest {
 
     // then
     assertThat(
-            RecordingExporter.workflowInstanceRecords(WorkflowInstanceIntent.ELEMENT_COMPLETED)
+            RecordingExporter.processInstanceRecords(ProcessInstanceIntent.ELEMENT_COMPLETED)
                 .withElementId("catch-event")
                 .exists())
         .isTrue();
 
-    assertWorkflowInstanceCompleted(workflowInstanceKey);
-    assertThat(WorkflowInstances.getCurrentVariables(workflowInstanceKey))
+    assertProcessInstanceCompleted(processInstanceKey);
+    assertThat(ProcessInstances.getCurrentVariables(processInstanceKey))
         .containsOnly(entry("foo", "\"bar\""), entry("orderId", "\"order-123\""));
   }
 
   @Test
   public void shouldCorrelateMessageAfterRestartIfPublishedBefore() throws Exception {
     // given
-    deploy(WORKFLOW_MESSAGE, "message.bpmn");
+    deploy(PROCESS_MESSAGE, "message.bpmn");
 
     publishMessage("order canceled", "order-123", singletonMap("foo", "bar"));
     reprocessingTrigger.accept(this);
 
     // when
-    final long workflowInstanceKey =
-        startWorkflowInstance(PROCESS_ID, singletonMap("orderId", "order-123"))
-            .getWorkflowInstanceKey();
+    final long processInstanceKey =
+        startProcessInstance(PROCESS_ID, singletonMap("orderId", "order-123"))
+            .getProcessInstanceKey();
     assertThat(
-            RecordingExporter.workflowInstanceRecords(WorkflowInstanceIntent.ELEMENT_COMPLETED)
+            RecordingExporter.processInstanceRecords(ProcessInstanceIntent.ELEMENT_COMPLETED)
                 .withElementId("catch-event")
                 .exists())
         .isTrue();
 
     // then
-    assertWorkflowInstanceCompleted(workflowInstanceKey);
-    assertThat(WorkflowInstances.getCurrentVariables(workflowInstanceKey))
+    assertProcessInstanceCompleted(processInstanceKey);
+    assertThat(ProcessInstances.getCurrentVariables(processInstanceKey))
         .containsOnly(entry("foo", "\"bar\""), entry("orderId", "\"order-123\""));
   }
 
   @Test
   public void shouldTriggerTimerAfterRestart() {
     // given
-    deploy(WORKFLOW_TIMER, "timer.bpmn");
+    deploy(PROCESS_TIMER, "timer.bpmn");
 
-    startWorkflowInstance(PROCESS_ID);
+    startProcessInstance(PROCESS_ID);
 
     assertThat(RecordingExporter.timerRecords(TimerIntent.CREATED).exists()).isTrue();
 
@@ -639,13 +639,13 @@ public final class BrokerReprocessingTest {
 
     // then
     assertThat(
-            RecordingExporter.workflowInstanceRecords(WorkflowInstanceIntent.ELEMENT_COMPLETED)
+            RecordingExporter.processInstanceRecords(ProcessInstanceIntent.ELEMENT_COMPLETED)
                 .withElementId("timer")
                 .exists())
         .isTrue();
   }
 
-  private WorkflowInstanceEvent startWorkflowInstance(final String bpmnProcessId) {
+  private ProcessInstanceEvent startProcessInstance(final String bpmnProcessId) {
     return clientRule
         .getClient()
         .newCreateInstanceCommand()
@@ -655,7 +655,7 @@ public final class BrokerReprocessingTest {
         .join();
   }
 
-  protected WorkflowInstanceEvent startWorkflowInstance(
+  protected ProcessInstanceEvent startProcessInstance(
       final String bpmnProcessId, final Map<String, Object> variables) {
     return clientRule
         .getClient()
@@ -703,12 +703,12 @@ public final class BrokerReprocessingTest {
     brokerRule.startBroker();
   }
 
-  private void deploy(final BpmnModelInstance workflowTwoTasks, final String s) {
+  private void deploy(final BpmnModelInstance processTwoTasks, final String s) {
     final DeploymentEvent deploymentEvent =
         clientRule
             .getClient()
             .newDeployCommand()
-            .addWorkflowModel(workflowTwoTasks, s)
+            .addProcessModel(processTwoTasks, s)
             .send()
             .join();
 

@@ -30,7 +30,7 @@ public class BlockSequenceBuilder implements BlockBuilder {
           new ServiceTaskBlockBuilder.Factory(),
           // new IntermediateMessageCatchEventBlockBuilder.Factory(),
           /* The logic for IntermediateMessageCatchEventBlockBuilder is not fully implemented yet.
-           * the logic to generate a workflow and execution path is sound. What is incomplete
+           * the logic to generate a process and execution path is sound. What is incomplete
            * is the execution logic of the corresponding execution step. What is missing there is
            * that after publishing the message, the process should wait until the message has been
            * correlated.
@@ -68,13 +68,13 @@ public class BlockSequenceBuilder implements BlockBuilder {
 
   public AbstractFlowNodeBuilder<?, ?> buildFlowNodes(
       final AbstractFlowNodeBuilder<?, ?> nodeBuilder) {
-    AbstractFlowNodeBuilder<?, ?> workflowWorkInProgress = nodeBuilder;
+    AbstractFlowNodeBuilder<?, ?> processWorkInProgress = nodeBuilder;
 
     for (final BlockBuilder builder : blockBuilders) {
-      workflowWorkInProgress = builder.buildFlowNodes(workflowWorkInProgress);
+      processWorkInProgress = builder.buildFlowNodes(processWorkInProgress);
     }
 
-    return workflowWorkInProgress;
+    return processWorkInProgress;
   }
 
   @Override

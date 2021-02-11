@@ -14,17 +14,17 @@ import io.zeebe.msgpack.property.IntegerProperty;
 import io.zeebe.msgpack.property.LongProperty;
 import io.zeebe.msgpack.property.StringProperty;
 import io.zeebe.protocol.impl.record.value.deployment.DeploymentResource;
-import io.zeebe.protocol.impl.record.value.deployment.Workflow;
+import io.zeebe.protocol.impl.record.value.deployment.Process;
 import org.agrona.DirectBuffer;
 
-public final class PersistedWorkflow extends UnpackedObject implements DbValue {
+public final class PersistedProcess extends UnpackedObject implements DbValue {
   private final IntegerProperty versionProp = new IntegerProperty("version", -1);
   private final LongProperty keyProp = new LongProperty("key", -1L);
   private final StringProperty bpmnProcessIdProp = new StringProperty("bpmnProcessId");
   private final StringProperty resourceNameProp = new StringProperty("resourceName");
   private final BinaryProperty resourceProp = new BinaryProperty("resource");
 
-  public PersistedWorkflow() {
+  public PersistedProcess() {
     declareProperty(versionProp)
         .declareProperty(keyProp)
         .declareProperty(bpmnProcessIdProp)
@@ -33,13 +33,13 @@ public final class PersistedWorkflow extends UnpackedObject implements DbValue {
   }
 
   public void wrap(
-      final DeploymentResource resource, final Workflow workflow, final long workflowKey) {
-    bpmnProcessIdProp.setValue(workflow.getBpmnProcessIdBuffer());
+      final DeploymentResource resource, final Process process, final long processKey) {
+    bpmnProcessIdProp.setValue(process.getBpmnProcessIdBuffer());
     resourceNameProp.setValue(resource.getResourceNameBuffer());
     resourceProp.setValue(resource.getResourceBuffer());
 
-    versionProp.setValue(workflow.getVersion());
-    keyProp.setValue(workflowKey);
+    versionProp.setValue(process.getVersion());
+    keyProp.setValue(processKey);
   }
 
   public int getVersion() {

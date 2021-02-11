@@ -35,7 +35,7 @@
 
     <dependency>
       <groupId>io.zeebe</groupId>
-      <artifactId>zeebe-workflow-engine</artifactId>
+      <artifactId>zeebe-process-engine</artifactId>
     </dependency>
 
     <dependency>
@@ -182,7 +182,7 @@
 
     <dependency>
       <groupId>io.zeebe</groupId>
-      <artifactId>zeebe-workflow-engine</artifactId>
+      <artifactId>zeebe-process-engine</artifactId>
       <type>test-jar</type>
       <classifier>tests</classifier>
       <scope>test</scope>

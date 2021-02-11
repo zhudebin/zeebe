@@ -18,7 +18,7 @@ import io.zeebe.protocol.record.Record;
 import io.zeebe.protocol.record.RecordType;
 import io.zeebe.protocol.record.intent.DeploymentIntent;
 import io.zeebe.protocol.record.value.DeploymentRecordValue;
-import io.zeebe.protocol.record.value.deployment.DeployedWorkflow;
+import io.zeebe.protocol.record.value.deployment.DeployedProcess;
 import io.zeebe.protocol.record.value.deployment.DeploymentResource;
 import io.zeebe.test.util.record.RecordingExporter;
 import io.zeebe.test.util.record.RecordingExporterTestWatcher;
@@ -36,9 +36,9 @@ public final class CreateDeploymentMultiplePartitionsTest {
   public static final int PARTITION_ID = DEPLOYMENT_PARTITION;
   public static final int PARTITION_COUNT = 3;
   @ClassRule public static final EngineRule ENGINE = EngineRule.multiplePartition(PARTITION_COUNT);
-  private static final BpmnModelInstance WORKFLOW =
+  private static final BpmnModelInstance PROCESS =
       Bpmn.createExecutableProcess(PROCESS_ID).startEvent().endEvent().done();
-  private static final BpmnModelInstance WORKFLOW_2 =
+  private static final BpmnModelInstance PROCESS_2 =
       Bpmn.createExecutableProcess("process2").startEvent().endEvent().done();
 
   @Rule
@@ -74,16 +74,16 @@ public final class CreateDeploymentMultiplePartitionsTest {
                       final DeploymentResource resource =
                           createdDeployment.getValue().getResources().get(0);
 
-                      Assertions.assertThat(resource).hasResource(bpmnXml(WORKFLOW));
+                      Assertions.assertThat(resource).hasResource(bpmnXml(PROCESS));
 
-                      final List<DeployedWorkflow> deployedWorkflows =
-                          createdDeployment.getValue().getDeployedWorkflows();
+                      final List<DeployedProcess> deployedProcesss =
+                          createdDeployment.getValue().getDeployedProcesss();
 
-                      assertThat(deployedWorkflows).hasSize(1);
-                      Assertions.assertThat(deployedWorkflows.get(0))
+                      assertThat(deployedProcesss).hasSize(1);
+                      Assertions.assertThat(deployedProcesss.get(0))
                           .hasBpmnProcessId("shouldCreateDeploymentOnAllPartitions")
                           .hasVersion(1)
-                          .hasWorkflowKey(getDeployedWorkflow(deployment, 0).getWorkflowKey())
+                          .hasProcessKey(getDeployedProcess(deployment, 0).getProcessKey())
                           .hasResourceName("process.bpmn");
                     }));
   }
@@ -91,7 +91,7 @@ public final class CreateDeploymentMultiplePartitionsTest {
   @Test
   public void shouldOnlyDistributeFromDeploymentPartition() {
     // when
-    final long deploymentKey1 = ENGINE.deployment().withXmlResource(WORKFLOW).deploy().getKey();
+    final long deploymentKey1 = ENGINE.deployment().withXmlResource(PROCESS).deploy().getKey();
 
     // then
     final List<Record<DeploymentRecordValue>> deploymentRecords =
@@ -106,15 +106,15 @@ public final class CreateDeploymentMultiplePartitionsTest {
   }
 
   @Test
-  public void shouldCreateDeploymentResourceWithMultipleWorkflows() {
+  public void shouldCreateDeploymentResourceWithMultipleProcesss() {
     // given
 
     // when
     final Record<DeploymentRecordValue> deployment =
         ENGINE
             .deployment()
-            .withXmlResource("process.bpmn", WORKFLOW)
-            .withXmlResource("process2.bpmn", WORKFLOW_2)
+            .withXmlResource("process.bpmn", PROCESS)
+            .withXmlResource("process2.bpmn", PROCESS_2)
             .deploy();
 
     // then
@@ -131,16 +131,16 @@ public final class CreateDeploymentMultiplePartitionsTest {
     assertThat(createdDeployments)
         .hasSize(PARTITION_COUNT)
         .extracting(Record::getValue)
-        .flatExtracting(DeploymentRecordValue::getDeployedWorkflows)
-        .extracting(DeployedWorkflow::getBpmnProcessId)
+        .flatExtracting(DeploymentRecordValue::getDeployedProcesss)
+        .extracting(DeployedProcess::getBpmnProcessId)
         .containsOnly("process", "process2");
   }
 
   @Test
-  public void shouldIncrementWorkflowVersions() {
+  public void shouldIncrementProcessVersions() {
     // given
     final BpmnModelInstance modelInstance =
-        Bpmn.createExecutableProcess("shouldIncrementWorkflowVersions")
+        Bpmn.createExecutableProcess("shouldIncrementProcessVersions")
             .startEvent()
             .endEvent()
             .done();
@@ -162,8 +162,8 @@ public final class CreateDeploymentMultiplePartitionsTest {
     assertThat(firstCreatedDeployments)
         .hasSize(PARTITION_COUNT)
         .extracting(Record::getValue)
-        .flatExtracting(DeploymentRecordValue::getDeployedWorkflows)
-        .extracting(DeployedWorkflow::getVersion)
+        .flatExtracting(DeploymentRecordValue::getDeployedProcesss)
+        .extracting(DeployedProcess::getVersion)
         .containsOnly(1);
 
     final List<Record<DeploymentRecordValue>> secondCreatedDeployments =
@@ -176,27 +176,27 @@ public final class CreateDeploymentMultiplePartitionsTest {
     assertThat(secondCreatedDeployments)
         .hasSize(PARTITION_COUNT)
         .extracting(Record::getValue)
-        .flatExtracting(DeploymentRecordValue::getDeployedWorkflows)
-        .extracting(DeployedWorkflow::getVersion)
+        .flatExtracting(DeploymentRecordValue::getDeployedProcesss)
+        .extracting(DeployedProcess::getVersion)
         .containsOnly(2);
   }
 
   @Test
-  public void shouldFilterDuplicateWorkflow() {
+  public void shouldFilterDuplicateProcess() {
     // given
     final Record<DeploymentRecordValue> original =
-        ENGINE.deployment().withXmlResource("process.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("process.bpmn", PROCESS).deploy();
 
     // when
     final Record<DeploymentRecordValue> repeated =
-        ENGINE.deployment().withXmlResource("process.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("process.bpmn", PROCESS).deploy();
 
     // then
     assertThat(repeated.getKey()).isGreaterThan(original.getKey());
 
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = repeated.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isOne();
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = repeated.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isOne();
 
     assertThat(
             RecordingExporter.deploymentRecords(DeploymentIntent.CREATE)
@@ -205,22 +205,22 @@ public final class CreateDeploymentMultiplePartitionsTest {
                 .count())
         .isEqualTo(PARTITION_COUNT - 1);
 
-    final List<DeployedWorkflow> repeatedWfs =
+    final List<DeployedProcess> repeatedWfs =
         RecordingExporter.deploymentRecords(DeploymentIntent.CREATED)
             .withRecordKey(repeated.getKey())
             .limit(PARTITION_COUNT)
-            .map(r -> r.getValue().getDeployedWorkflows().get(0))
+            .map(r -> r.getValue().getDeployedProcesss().get(0))
             .collect(Collectors.toList());
 
     assertThat(repeatedWfs.size()).isEqualTo(PARTITION_COUNT);
-    repeatedWfs.forEach(repeatedWf -> assertSameResource(originalWorkflows.get(0), repeatedWf));
+    repeatedWfs.forEach(repeatedWf -> assertSameResource(originalProcesss.get(0), repeatedWf));
   }
 
   @Test
-  public void shouldNotFilterDifferentWorkflows() {
+  public void shouldNotFilterDifferentProcesss() {
     // given
     final Record<DeploymentRecordValue> original =
-        ENGINE.deployment().withXmlResource("process.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("process.bpmn", PROCESS).deploy();
 
     // when
     final BpmnModelInstance sameBpmnIdModel =
@@ -229,11 +229,11 @@ public final class CreateDeploymentMultiplePartitionsTest {
         ENGINE.deployment().withXmlResource("process.bpmn", sameBpmnIdModel).deploy();
 
     // then
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = repeated.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isOne();
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = repeated.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isOne();
 
-    assertDifferentResources(originalWorkflows.get(0), repeatedWorkflows.get(0));
+    assertDifferentResources(originalProcesss.get(0), repeatedProcesss.get(0));
 
     assertThat(
             RecordingExporter.deploymentRecords(DeploymentIntent.CREATE)
@@ -242,30 +242,30 @@ public final class CreateDeploymentMultiplePartitionsTest {
                 .count())
         .isEqualTo(PARTITION_COUNT - 1);
 
-    final List<DeployedWorkflow> repeatedWfs =
+    final List<DeployedProcess> repeatedWfs =
         RecordingExporter.deploymentRecords(DeploymentIntent.CREATED)
             .withRecordKey(repeated.getKey())
             .limit(PARTITION_COUNT)
-            .map(r -> r.getValue().getDeployedWorkflows().get(0))
+            .map(r -> r.getValue().getDeployedProcesss().get(0))
             .collect(Collectors.toList());
 
     assertThat(repeatedWfs.size()).isEqualTo(PARTITION_COUNT);
     repeatedWfs.forEach(
-        repeatedWf -> assertDifferentResources(originalWorkflows.get(0), repeatedWf));
+        repeatedWf -> assertDifferentResources(originalProcesss.get(0), repeatedWf));
   }
 
   private void assertSameResource(
-      final DeployedWorkflow original, final DeployedWorkflow repeated) {
+      final DeployedProcess original, final DeployedProcess repeated) {
     Assertions.assertThat(repeated)
         .hasVersion(original.getVersion())
-        .hasWorkflowKey(original.getWorkflowKey())
+        .hasProcessKey(original.getProcessKey())
         .hasResourceName(original.getResourceName())
         .hasBpmnProcessId(original.getBpmnProcessId());
   }
 
   private void assertDifferentResources(
-      final DeployedWorkflow original, final DeployedWorkflow repeated) {
-    assertThat(original.getWorkflowKey()).isLessThan(repeated.getWorkflowKey());
+      final DeployedProcess original, final DeployedProcess repeated) {
+    assertThat(original.getProcessKey()).isLessThan(repeated.getProcessKey());
     assertThat(original.getVersion()).isLessThan(repeated.getVersion());
   }
 
@@ -276,9 +276,9 @@ public final class CreateDeploymentMultiplePartitionsTest {
   }
 
   @SuppressWarnings("unchecked")
-  private DeployedWorkflow getDeployedWorkflow(
+  private DeployedProcess getDeployedProcess(
       final Record<DeploymentRecordValue> record, final int offset) {
-    return record.getValue().getDeployedWorkflows().get(offset);
+    return record.getValue().getDeployedProcesss().get(offset);
   }
 
   private void assertCreatedDeploymentEventResources(

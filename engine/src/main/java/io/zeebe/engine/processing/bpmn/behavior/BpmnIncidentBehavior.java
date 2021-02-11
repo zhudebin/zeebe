@@ -59,9 +59,9 @@ public final class BpmnIncidentBehavior {
 
     incidentCommand.reset();
     incidentCommand
-        .setWorkflowInstanceKey(context.getWorkflowInstanceKey())
+        .setProcessInstanceKey(context.getProcessInstanceKey())
         .setBpmnProcessId(context.getBpmnProcessId())
-        .setWorkflowKey(context.getWorkflowKey())
+        .setProcessKey(context.getProcessKey())
         .setElementInstanceKey(context.getElementInstanceKey())
         .setElementId(context.getElementId())
         .setVariableScopeKey(variableScopeKey)
@@ -79,7 +79,7 @@ public final class BpmnIncidentBehavior {
   }
 
   public void resolveIncidents(final BpmnElementContext context) {
-    incidentState.forExistingWorkflowIncident(
+    incidentState.forExistingProcessIncident(
         context.getElementInstanceKey(),
         (record, key) -> streamWriter.appendFollowUpEvent(key, IncidentIntent.RESOLVED, record));
   }

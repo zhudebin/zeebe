@@ -10,7 +10,7 @@ package io.zeebe.engine.processing.deployment;
 import static io.zeebe.test.util.TestUtil.waitUntil;
 import static io.zeebe.util.buffer.BufferUtil.wrapString;
 
-import io.zeebe.engine.state.mutable.MutableWorkflowState;
+import io.zeebe.engine.state.mutable.MutableProcessState;
 import io.zeebe.engine.util.StreamProcessorRule;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
@@ -33,7 +33,7 @@ public final class DeploymentCreateProcessorTest {
   public final StreamProcessorRule rule =
       new StreamProcessorRule(Protocol.DEPLOYMENT_PARTITION + 1);
 
-  private MutableWorkflowState workflowState;
+  private MutableProcessState processState;
 
   @Before
   public void setUp() {
@@ -41,10 +41,10 @@ public final class DeploymentCreateProcessorTest {
     rule.startTypedStreamProcessor(
         (typedRecordProcessors, processingContext) -> {
           final var zeebeState = processingContext.getZeebeState();
-          workflowState = zeebeState.getWorkflowState();
+          processState = zeebeState.getProcessState();
           DeploymentEventProcessors.addDeploymentCreateProcessor(
               typedRecordProcessors,
-              workflowState,
+              processState,
               (key, partition) -> {},
               Protocol.DEPLOYMENT_PARTITION + 1);
           return typedRecordProcessors;

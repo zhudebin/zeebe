@@ -15,7 +15,7 @@
  */
 package io.zeebe.protocol.record.intent;
 
-public enum WorkflowInstanceIntent implements WorkflowInstanceRelatedIntent {
+public enum ProcessInstanceIntent implements ProcessInstanceRelatedIntent {
   CANCEL((short) 0, false),
 
   SEQUENCE_FLOW_TAKEN((short) 1),
@@ -36,11 +36,11 @@ public enum WorkflowInstanceIntent implements WorkflowInstanceRelatedIntent {
   private final short value;
   private final boolean shouldBlacklist;
 
-  WorkflowInstanceIntent(final short value) {
+  ProcessInstanceIntent(final short value) {
     this(value, true);
   }
 
-  WorkflowInstanceIntent(final short value, final boolean shouldBlacklist) {
+  ProcessInstanceIntent(final short value, final boolean shouldBlacklist) {
     this.value = value;
     this.shouldBlacklist = shouldBlacklist;
   }

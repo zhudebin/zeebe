@@ -24,16 +24,16 @@ public final class SuccessfulDeploymentTest {
       new RecordingExporterTestWatcher();
 
   @Test
-  public void shouldDeployWorkflowWithOrphanErrorDefinition() {
+  public void shouldDeployProcessWithOrphanErrorDefinition() {
     // when
     final var deployment =
         engine
             .deployment()
-            .withXmlClasspathResource("/workflows/orphan-error-definition.bpmn")
+            .withXmlClasspathResource("/processs/orphan-error-definition.bpmn")
             .deploy();
 
     // then
     assertThat(deployment.getIntent()).isEqualTo(DeploymentIntent.DISTRIBUTED);
-    assertThat(deployment.getValue().getDeployedWorkflows()).hasSize(1);
+    assertThat(deployment.getValue().getDeployedProcesss()).hasSize(1);
   }
 }

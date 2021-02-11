@@ -23,7 +23,7 @@ import io.zeebe.protocol.record.RecordType;
 import io.zeebe.protocol.record.RejectionType;
 import io.zeebe.protocol.record.intent.DeploymentIntent;
 import io.zeebe.protocol.record.value.DeploymentRecordValue;
-import io.zeebe.protocol.record.value.deployment.DeployedWorkflow;
+import io.zeebe.protocol.record.value.deployment.DeployedProcess;
 import io.zeebe.protocol.record.value.deployment.DeploymentResource;
 import io.zeebe.test.util.record.RecordingExporterTestWatcher;
 import java.io.InputStream;
@@ -40,13 +40,13 @@ public final class CreateDeploymentTest {
   @ClassRule public static final EngineRule ENGINE = EngineRule.singlePartition();
   private static final String PROCESS_ID = "process";
   private static final String PROCESS_ID_2 = "process2";
-  private static final BpmnModelInstance WORKFLOW =
+  private static final BpmnModelInstance PROCESS =
       Bpmn.createExecutableProcess(PROCESS_ID).startEvent().endEvent().done();
-  private static final BpmnModelInstance WORKFLOW_2 =
+  private static final BpmnModelInstance PROCESS_2 =
       Bpmn.createExecutableProcess(PROCESS_ID_2).startEvent().endEvent().done();
-  private static final BpmnModelInstance WORKFLOW_V2 =
+  private static final BpmnModelInstance PROCESS_V2 =
       Bpmn.createExecutableProcess(PROCESS_ID).startEvent("v2").endEvent().done();
-  private static final BpmnModelInstance WORKFLOW_2_V2 =
+  private static final BpmnModelInstance PROCESS_2_V2 =
       Bpmn.createExecutableProcess(PROCESS_ID_2).startEvent("v2").endEvent().done();
 
   @Rule
@@ -57,7 +57,7 @@ public final class CreateDeploymentTest {
   public void shouldCreateDeploymentWithBpmnXml() {
     // when
     final Record<DeploymentRecordValue> deployment =
-        ENGINE.deployment().withXmlResource(WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource(PROCESS).deploy();
 
     // then
     assertThat(deployment.getKey()).isGreaterThanOrEqualTo(0L);
@@ -69,7 +69,7 @@ public final class CreateDeploymentTest {
   }
 
   @Test
-  public void shouldCreateDeploymentWithWorkflowWhichHaveUniqueKeys() {
+  public void shouldCreateDeploymentWithProcessWhichHaveUniqueKeys() {
     // given
     final BpmnModelInstance process =
         Bpmn.createExecutableProcess("process").startEvent().endEvent().done();
@@ -79,40 +79,40 @@ public final class CreateDeploymentTest {
         ENGINE.deployment().withXmlResource(process).deploy();
 
     // then
-    final long workflowKey = deployment.getValue().getDeployedWorkflows().get(0).getWorkflowKey();
+    final long processKey = deployment.getValue().getDeployedProcesss().get(0).getProcessKey();
     final long deploymentKey = deployment.getKey();
-    assertThat(workflowKey).isNotEqualTo(deploymentKey);
+    assertThat(processKey).isNotEqualTo(deploymentKey);
   }
 
   @Test
-  public void shouldReturnDeployedWorkflowDefinitions() {
+  public void shouldReturnDeployedProcessDefinitions() {
     // when
     final Record<DeploymentRecordValue> firstDeployment =
-        ENGINE.deployment().withXmlResource("wf1.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("wf1.bpmn", PROCESS).deploy();
     final Record<DeploymentRecordValue> secondDeployment =
-        ENGINE.deployment().withXmlResource("wf2.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("wf2.bpmn", PROCESS).deploy();
 
     // then
-    List<DeployedWorkflow> deployedWorkflows = firstDeployment.getValue().getDeployedWorkflows();
-    assertThat(deployedWorkflows).hasSize(1);
+    List<DeployedProcess> deployedProcesss = firstDeployment.getValue().getDeployedProcesss();
+    assertThat(deployedProcesss).hasSize(1);
 
-    DeployedWorkflow deployedWorkflow = deployedWorkflows.get(0);
-    assertThat(deployedWorkflow.getBpmnProcessId()).isEqualTo(PROCESS_ID);
-    assertThat(deployedWorkflow.getResourceName()).isEqualTo("wf1.bpmn");
+    DeployedProcess deployedProcess = deployedProcesss.get(0);
+    assertThat(deployedProcess.getBpmnProcessId()).isEqualTo(PROCESS_ID);
+    assertThat(deployedProcess.getResourceName()).isEqualTo("wf1.bpmn");
 
-    deployedWorkflows = secondDeployment.getValue().getDeployedWorkflows();
-    assertThat(deployedWorkflows).hasSize(1);
+    deployedProcesss = secondDeployment.getValue().getDeployedProcesss();
+    assertThat(deployedProcesss).hasSize(1);
 
-    deployedWorkflow = deployedWorkflows.get(0);
-    assertThat(deployedWorkflow.getBpmnProcessId()).isEqualTo(PROCESS_ID);
-    assertThat(deployedWorkflow.getResourceName()).isEqualTo("wf2.bpmn");
+    deployedProcess = deployedProcesss.get(0);
+    assertThat(deployedProcess.getBpmnProcessId()).isEqualTo(PROCESS_ID);
+    assertThat(deployedProcess.getResourceName()).isEqualTo("wf2.bpmn");
   }
 
   @Test
   public void shouldCreateDeploymentResourceWithCollaboration() {
     // given
     final InputStream resourceAsStream =
-        getClass().getResourceAsStream("/workflows/collaboration.bpmn");
+        getClass().getResourceAsStream("/processs/collaboration.bpmn");
     final BpmnModelInstance modelInstance = Bpmn.readModelFromStream(resourceAsStream);
 
     // when
@@ -120,26 +120,26 @@ public final class CreateDeploymentTest {
         ENGINE.deployment().withXmlResource("collaboration.bpmn", modelInstance).deploy();
 
     // then
-    assertThat(deployment.getValue().getDeployedWorkflows())
-        .extracting(DeployedWorkflow::getBpmnProcessId)
+    assertThat(deployment.getValue().getDeployedProcesss())
+        .extracting(DeployedProcess::getBpmnProcessId)
         .contains("process1", "process2");
   }
 
   @Test
-  public void shouldCreateDeploymentResourceWithMultipleWorkflows() {
+  public void shouldCreateDeploymentResourceWithMultipleProcesss() {
     // given
 
     // when
     final Record<DeploymentRecordValue> deployment =
         ENGINE
             .deployment()
-            .withXmlResource("process.bpmn", WORKFLOW)
-            .withXmlResource("process2.bpmn", WORKFLOW_2)
+            .withXmlResource("process.bpmn", PROCESS)
+            .withXmlResource("process2.bpmn", PROCESS_2)
             .deploy();
 
     // then
-    assertThat(deployment.getValue().getDeployedWorkflows())
-        .extracting(DeployedWorkflow::getBpmnProcessId)
+    assertThat(deployment.getValue().getDeployedProcesss())
+        .extracting(DeployedProcess::getBpmnProcessId)
         .contains(PROCESS_ID, PROCESS_ID_2);
 
     assertThat(deployment.getValue().getResources())
@@ -149,7 +149,7 @@ public final class CreateDeploymentTest {
     assertThat(deployment.getValue().getResources())
         .extracting(DeploymentResource::getResource)
         .contains(
-            Bpmn.convertToString(WORKFLOW).getBytes(), Bpmn.convertToString(WORKFLOW_2).getBytes());
+            Bpmn.convertToString(PROCESS).getBytes(), Bpmn.convertToString(PROCESS_2).getBytes());
   }
 
   @Test
@@ -216,7 +216,7 @@ public final class CreateDeploymentTest {
   @Test
   public void shouldRejectDeploymentIfNotValidDesignTimeAspect() throws Exception {
     // given
-    final Path path = Paths.get(getClass().getResource("/workflows/invalid_process.bpmn").toURI());
+    final Path path = Paths.get(getClass().getResource("/processs/invalid_process.bpmn").toURI());
     final byte[] resource = Files.readAllBytes(path);
 
     // when
@@ -237,7 +237,7 @@ public final class CreateDeploymentTest {
   public void shouldRejectDeploymentIfNotValidRuntimeAspect() throws Exception {
     // given
     final Path path =
-        Paths.get(getClass().getResource("/workflows/invalid_process_condition.bpmn").toURI());
+        Paths.get(getClass().getResource("/processs/invalid_process_condition.bpmn").toURI());
     final byte[] resource = Files.readAllBytes(path);
 
     // when
@@ -258,8 +258,8 @@ public final class CreateDeploymentTest {
   @Test
   public void shouldRejectDeploymentIfOneResourceIsNotValid() throws Exception {
     // given
-    final Path path1 = Paths.get(getClass().getResource("/workflows/invalid_process.bpmn").toURI());
-    final Path path2 = Paths.get(getClass().getResource("/workflows/collaboration.bpmn").toURI());
+    final Path path1 = Paths.get(getClass().getResource("/processs/invalid_process.bpmn").toURI());
+    final Path path2 = Paths.get(getClass().getResource("/processs/collaboration.bpmn").toURI());
     final byte[] resource1 = Files.readAllBytes(path1);
     final byte[] resource2 = Files.readAllBytes(path2);
 
@@ -299,7 +299,7 @@ public final class CreateDeploymentTest {
     final Record<DeploymentRecordValue> rejectedDeployment =
         ENGINE
             .deployment()
-            .withXmlResource("not a workflow".getBytes(UTF_8))
+            .withXmlResource("not a process".getBytes(UTF_8))
             .expectRejection()
             .deploy();
 
@@ -312,10 +312,10 @@ public final class CreateDeploymentTest {
   }
 
   @Test
-  public void shouldIncrementWorkflowVersions() {
+  public void shouldIncrementProcessVersions() {
     // given
     final BpmnModelInstance modelInstance =
-        Bpmn.createExecutableProcess("shouldIncrementWorkflowVersions")
+        Bpmn.createExecutableProcess("shouldIncrementProcessVersions")
             .startEvent()
             .endEvent()
             .done();
@@ -327,28 +327,28 @@ public final class CreateDeploymentTest {
         ENGINE.deployment().withXmlResource("process2", modelInstance).deploy();
 
     // then
-    assertThat(deployment.getValue().getDeployedWorkflows().get(0).getVersion()).isEqualTo(1L);
-    assertThat(deployment2.getValue().getDeployedWorkflows().get(0).getVersion()).isEqualTo(2L);
+    assertThat(deployment.getValue().getDeployedProcesss().get(0).getVersion()).isEqualTo(1L);
+    assertThat(deployment2.getValue().getDeployedProcesss().get(0).getVersion()).isEqualTo(2L);
   }
 
   @Test
-  public void shouldFilterDuplicateWorkflow() {
+  public void shouldFilterDuplicateProcess() {
     // given
     final Record<DeploymentRecordValue> original =
-        ENGINE.deployment().withXmlResource("process.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("process.bpmn", PROCESS).deploy();
 
     // when
     final Record<DeploymentRecordValue> repeated =
-        ENGINE.deployment().withXmlResource("process.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("process.bpmn", PROCESS).deploy();
 
     // then
     assertThat(repeated.getKey()).isGreaterThan(original.getKey());
 
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = repeated.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isOne();
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = repeated.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isOne();
 
-    assertSameResource(originalWorkflows.get(0), repeatedWorkflows.get(0));
+    assertSameResource(originalProcesss.get(0), repeatedProcesss.get(0));
   }
 
   @Test
@@ -356,39 +356,39 @@ public final class CreateDeploymentTest {
     // given
     final String originalResourceName = "process-1.bpmn";
     final Record<DeploymentRecordValue> original =
-        ENGINE.deployment().withXmlResource(originalResourceName, WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource(originalResourceName, PROCESS).deploy();
 
     // when
     final String repeatedResourceName = "process-2.bpmn";
     final Record<DeploymentRecordValue> repeated =
-        ENGINE.deployment().withXmlResource(repeatedResourceName, WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource(repeatedResourceName, PROCESS).deploy();
 
     // then
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = repeated.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isOne();
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = repeated.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isOne();
 
-    assertDifferentResources(originalWorkflows.get(0), repeatedWorkflows.get(0));
-    assertThat(originalWorkflows.get(0).getResourceName()).isEqualTo(originalResourceName);
-    assertThat(repeatedWorkflows.get(0).getResourceName()).isEqualTo(repeatedResourceName);
+    assertDifferentResources(originalProcesss.get(0), repeatedProcesss.get(0));
+    assertThat(originalProcesss.get(0).getResourceName()).isEqualTo(originalResourceName);
+    assertThat(repeatedProcesss.get(0).getResourceName()).isEqualTo(repeatedResourceName);
   }
 
   @Test
   public void shouldNotFilterWithDifferentResource() {
     // given
     final Record<DeploymentRecordValue> original =
-        ENGINE.deployment().withXmlResource("process.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("process.bpmn", PROCESS).deploy();
 
     // when
     final Record<DeploymentRecordValue> repeated =
-        ENGINE.deployment().withXmlResource("process.bpmn", WORKFLOW_V2).deploy();
+        ENGINE.deployment().withXmlResource("process.bpmn", PROCESS_V2).deploy();
 
     // then
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = repeated.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isOne();
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = repeated.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isOne();
 
-    assertDifferentResources(originalWorkflows.get(0), repeatedWorkflows.get(0));
+    assertDifferentResources(originalProcesss.get(0), repeatedProcesss.get(0));
   }
 
   @Test
@@ -397,25 +397,25 @@ public final class CreateDeploymentTest {
     final Record<DeploymentRecordValue> original =
         ENGINE
             .deployment()
-            .withXmlResource("p1.bpmn", WORKFLOW)
-            .withXmlResource("p2.bpmn", WORKFLOW_2)
+            .withXmlResource("p1.bpmn", PROCESS)
+            .withXmlResource("p2.bpmn", PROCESS_2)
             .deploy();
 
     // when
     final Record<DeploymentRecordValue> repeated =
         ENGINE
             .deployment()
-            .withXmlResource("p1.bpmn", WORKFLOW)
-            .withXmlResource("p2.bpmn", WORKFLOW_2)
+            .withXmlResource("p1.bpmn", PROCESS)
+            .withXmlResource("p2.bpmn", PROCESS_2)
             .deploy();
 
     // then
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = repeated.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isEqualTo(2);
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = repeated.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isEqualTo(2);
 
-    for (final DeployedWorkflow workflow : originalWorkflows) {
-      assertSameResource(workflow, findWorkflow(repeatedWorkflows, workflow.getBpmnProcessId()));
+    for (final DeployedProcess process : originalProcesss) {
+      assertSameResource(process, findProcess(repeatedProcesss, process.getBpmnProcessId()));
     }
   }
 
@@ -425,48 +425,48 @@ public final class CreateDeploymentTest {
     final Record<DeploymentRecordValue> original =
         ENGINE
             .deployment()
-            .withXmlResource("p1.bpmn", WORKFLOW)
-            .withXmlResource("p2.bpmn", WORKFLOW_2)
+            .withXmlResource("p1.bpmn", PROCESS)
+            .withXmlResource("p2.bpmn", PROCESS_2)
             .deploy();
 
     // when
     final Record<DeploymentRecordValue> repeated =
         ENGINE
             .deployment()
-            .withXmlResource("p1.bpmn", WORKFLOW)
-            .withXmlResource("p2.bpmn", WORKFLOW_2_V2)
+            .withXmlResource("p1.bpmn", PROCESS)
+            .withXmlResource("p2.bpmn", PROCESS_2_V2)
             .deploy();
 
     // then
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = repeated.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isEqualTo(2);
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = repeated.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isEqualTo(2);
 
     assertSameResource(
-        findWorkflow(originalWorkflows, PROCESS_ID), findWorkflow(repeatedWorkflows, PROCESS_ID));
+        findProcess(originalProcesss, PROCESS_ID), findProcess(repeatedProcesss, PROCESS_ID));
     assertDifferentResources(
-        findWorkflow(originalWorkflows, PROCESS_ID_2),
-        findWorkflow(repeatedWorkflows, PROCESS_ID_2));
+        findProcess(originalProcesss, PROCESS_ID_2),
+        findProcess(repeatedProcesss, PROCESS_ID_2));
   }
 
   @Test
   public void shouldNotFilterWithRollbackToPreviousVersion() {
     // given
     final Record<DeploymentRecordValue> original =
-        ENGINE.deployment().withXmlResource("p1.bpmn", WORKFLOW).deploy();
-    ENGINE.deployment().withXmlResource("p1.bpmn", WORKFLOW_V2).deploy();
+        ENGINE.deployment().withXmlResource("p1.bpmn", PROCESS).deploy();
+    ENGINE.deployment().withXmlResource("p1.bpmn", PROCESS_V2).deploy();
 
     // when
     final Record<DeploymentRecordValue> rollback =
-        ENGINE.deployment().withXmlResource("p1.bpmn", WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource("p1.bpmn", PROCESS).deploy();
 
     // then
-    final List<DeployedWorkflow> originalWorkflows = original.getValue().getDeployedWorkflows();
-    final List<DeployedWorkflow> repeatedWorkflows = rollback.getValue().getDeployedWorkflows();
-    assertThat(repeatedWorkflows.size()).isEqualTo(originalWorkflows.size()).isOne();
+    final List<DeployedProcess> originalProcesss = original.getValue().getDeployedProcesss();
+    final List<DeployedProcess> repeatedProcesss = rollback.getValue().getDeployedProcesss();
+    assertThat(repeatedProcesss.size()).isEqualTo(originalProcesss.size()).isOne();
 
     assertDifferentResources(
-        findWorkflow(originalWorkflows, PROCESS_ID), findWorkflow(repeatedWorkflows, PROCESS_ID));
+        findProcess(originalProcesss, PROCESS_ID), findProcess(repeatedProcesss, PROCESS_ID));
   }
 
   @Test
@@ -525,26 +525,26 @@ public final class CreateDeploymentTest {
                 + "'INVALID_CYCLE_EXPRESSION')\n");
   }
 
-  private DeployedWorkflow findWorkflow(
-      final List<DeployedWorkflow> workflows, final String processId) {
-    return workflows.stream()
+  private DeployedProcess findProcess(
+      final List<DeployedProcess> processs, final String processId) {
+    return processs.stream()
         .filter(w -> w.getBpmnProcessId().equals(processId))
         .findFirst()
         .orElse(null);
   }
 
   private void assertSameResource(
-      final DeployedWorkflow original, final DeployedWorkflow repeated) {
+      final DeployedProcess original, final DeployedProcess repeated) {
     io.zeebe.protocol.record.Assertions.assertThat(repeated)
         .hasVersion(original.getVersion())
-        .hasWorkflowKey(original.getWorkflowKey())
+        .hasProcessKey(original.getProcessKey())
         .hasResourceName(original.getResourceName())
         .hasBpmnProcessId(original.getBpmnProcessId());
   }
 
   private void assertDifferentResources(
-      final DeployedWorkflow original, final DeployedWorkflow repeated) {
-    assertThat(original.getWorkflowKey()).isLessThan(repeated.getWorkflowKey());
+      final DeployedProcess original, final DeployedProcess repeated) {
+    assertThat(original.getProcessKey()).isLessThan(repeated.getProcessKey());
     assertThat(original.getVersion()).isLessThan(repeated.getVersion());
   }
 }

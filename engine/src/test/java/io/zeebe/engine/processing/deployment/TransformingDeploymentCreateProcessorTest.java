@@ -20,7 +20,7 @@ import io.zeebe.el.ExpressionLanguageFactory;
 import io.zeebe.engine.processing.common.CatchEventBehavior;
 import io.zeebe.engine.processing.common.ExpressionProcessor;
 import io.zeebe.engine.processing.message.command.SubscriptionCommandSender;
-import io.zeebe.engine.state.immutable.WorkflowState;
+import io.zeebe.engine.state.immutable.ProcessState;
 import io.zeebe.engine.util.StreamProcessorRule;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
@@ -43,7 +43,7 @@ public final class TransformingDeploymentCreateProcessorTest {
   @Rule
   public final StreamProcessorRule rule = new StreamProcessorRule(Protocol.DEPLOYMENT_PARTITION);
 
-  private WorkflowState workflowState;
+  private ProcessState processState;
   private SubscriptionCommandSender mockSubscriptionCommandSender;
 
   @Before
@@ -64,7 +64,7 @@ public final class TransformingDeploymentCreateProcessorTest {
     rule.startTypedStreamProcessor(
         (typedRecordProcessors, processingContext) -> {
           final var zeebeState = processingContext.getZeebeState();
-          workflowState = zeebeState.getWorkflowState();
+          processState = zeebeState.getProcessState();
 
           final var variablesState = zeebeState.getVariableState();
           final ExpressionProcessor expressionProcessor =
@@ -83,7 +83,7 @@ public final class TransformingDeploymentCreateProcessorTest {
   }
 
   @Test
-  public void shouldCreateDeploymentAndAddToWorkflowCache() {
+  public void shouldCreateDeploymentAndAddToProcessCache() {
     // given
 
     // when
@@ -102,8 +102,8 @@ public final class TransformingDeploymentCreateProcessorTest {
         .extracting(Record::getRecordType)
         .containsExactly(RecordType.COMMAND, RecordType.EVENT);
 
-    Assertions.assertThat(workflowState.getWorkflows().size()).isEqualTo(1);
-    Assertions.assertThat(workflowState.getWorkflowsByBpmnProcessId(wrapString("processId")))
+    Assertions.assertThat(processState.getProcesss().size()).isEqualTo(1);
+    Assertions.assertThat(processState.getProcesssByBpmnProcessId(wrapString("processId")))
         .isNotNull();
   }
 

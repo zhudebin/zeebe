@@ -36,7 +36,7 @@ public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
    * Next step: activated.
    *
    * @param element the instance of the BPMN element that is executed
-   * @param context workflow instance-related data of the element that is executed
+   * @param context process instance-related data of the element that is executed
    */
   void onActivating(final T element, final BpmnElementContext context);
 
@@ -54,7 +54,7 @@ public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
    * Next step: completing - if not a wait-state.
    *
    * @param element the instance of the BPMN element that is executed
-   * @param context workflow instance-related data of the element that is executed
+   * @param context process instance-related data of the element that is executed
    */
   void onActivated(final T element, final BpmnElementContext context);
 
@@ -71,7 +71,7 @@ public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
    * <p>Next step: completed.
    *
    * @param element the instance of the BPMN element that is executed
-   * @param context workflow instance-related data of the element that is executed
+   * @param context process instance-related data of the element that is executed
    */
   void onCompleting(final T element, final BpmnElementContext context);
 
@@ -89,7 +89,7 @@ public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
    * Next step: none.
    *
    * @param element the instance of the BPMN element that is executed
-   * @param context workflow instance-related data of the element that is executed
+   * @param context process instance-related data of the element that is executed
    */
   void onCompleted(final T element, final BpmnElementContext context);
 
@@ -105,7 +105,7 @@ public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
    * <p>Next step: terminated.
    *
    * @param element the instance of the BPMN element that is executed
-   * @param context workflow instance-related data of the element that is executed
+   * @param context process instance-related data of the element that is executed
    */
   void onTerminating(final T element, final BpmnElementContext context);
 
@@ -126,7 +126,7 @@ public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
    * Next step: none.
    *
    * @param element the instance of the BPMN element that is executed
-   * @param context workflow instance-related data of the element that is executed
+   * @param context process instance-related data of the element that is executed
    */
   void onTerminated(final T element, final BpmnElementContext context);
 
@@ -144,7 +144,7 @@ public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
    * Next step: completing or terminating.
    *
    * @param element the instance of the BPMN element that is executed
-   * @param context workflow instance-related data of the element that is executed
+   * @param context process instance-related data of the element that is executed
    */
   void onEventOccurred(final T element, final BpmnElementContext context);
 }

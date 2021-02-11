@@ -19,20 +19,20 @@ import org.agrona.DirectBuffer;
 public final class MessageStartEventSubscriptionRecord extends UnifiedRecordValue
     implements MessageStartEventSubscriptionRecordValue {
 
-  private final LongProperty workflowKeyProp = new LongProperty("workflowKey", -1L);
+  private final LongProperty processKeyProp = new LongProperty("processKey", -1L);
   private final StringProperty bpmnProcessIdProp = new StringProperty("bpmnProcessId", "");
   private final StringProperty messageNameProp = new StringProperty("messageName", "");
   private final StringProperty startEventIdProp = new StringProperty("startEventId", "");
 
   public MessageStartEventSubscriptionRecord() {
-    declareProperty(workflowKeyProp)
+    declareProperty(processKeyProp)
         .declareProperty(messageNameProp)
         .declareProperty(startEventIdProp)
         .declareProperty(bpmnProcessIdProp);
   }
 
   public void wrap(final MessageStartEventSubscriptionRecord record) {
-    workflowKeyProp.setValue(record.getWorkflowKey());
+    processKeyProp.setValue(record.getProcessKey());
     bpmnProcessIdProp.setValue(record.getBpmnProcessIdBuffer());
     messageNameProp.setValue(record.getMessageNameBuffer());
     startEventIdProp.setValue(record.getStartEventIdBuffer());
@@ -49,12 +49,12 @@ public final class MessageStartEventSubscriptionRecord extends UnifiedRecordValu
   }
 
   @Override
-  public long getWorkflowKey() {
-    return workflowKeyProp.getValue();
+  public long getProcessKey() {
+    return processKeyProp.getValue();
   }
 
-  public MessageStartEventSubscriptionRecord setWorkflowKey(final long key) {
-    workflowKeyProp.setValue(key);
+  public MessageStartEventSubscriptionRecord setProcessKey(final long key) {
+    processKeyProp.setValue(key);
     return this;
   }
 

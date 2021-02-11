@@ -9,36 +9,36 @@ package io.zeebe.gateway.api.deployment;
 
 import io.zeebe.gateway.api.util.StubbedBrokerClient;
 import io.zeebe.gateway.api.util.StubbedBrokerClient.RequestStub;
-import io.zeebe.gateway.impl.broker.request.BrokerDeployWorkflowRequest;
+import io.zeebe.gateway.impl.broker.request.BrokerDeployProcessRequest;
 import io.zeebe.gateway.impl.broker.response.BrokerResponse;
 import io.zeebe.protocol.impl.record.value.deployment.DeploymentRecord;
 
-public final class DeployWorkflowStub
-    implements RequestStub<BrokerDeployWorkflowRequest, BrokerResponse<DeploymentRecord>> {
+public final class DeployProcessStub
+    implements RequestStub<BrokerDeployProcessRequest, BrokerResponse<DeploymentRecord>> {
 
   private static final long KEY = 123;
-  private static final long WORKFLOW_KEY = 456;
-  private static final int WORKFLOW_VERSION = 789;
+  private static final long PROCESS_KEY = 456;
+  private static final int PROCESS_VERSION = 789;
 
   @Override
   public void registerWith(final StubbedBrokerClient gateway) {
-    gateway.registerHandler(BrokerDeployWorkflowRequest.class, this);
+    gateway.registerHandler(BrokerDeployProcessRequest.class, this);
   }
 
   protected long getKey() {
     return KEY;
   }
 
-  protected long getWorkflowKey() {
-    return WORKFLOW_KEY;
+  protected long getProcessKey() {
+    return PROCESS_KEY;
   }
 
-  public int getWorkflowVersion() {
-    return WORKFLOW_VERSION;
+  public int getProcessVersion() {
+    return PROCESS_VERSION;
   }
 
   @Override
-  public BrokerResponse<DeploymentRecord> handle(final BrokerDeployWorkflowRequest request)
+  public BrokerResponse<DeploymentRecord> handle(final BrokerDeployProcessRequest request)
       throws Exception {
     final DeploymentRecord deploymentRecord = request.getRequestWriter();
     deploymentRecord
@@ -47,12 +47,12 @@ public final class DeployWorkflowStub
         .forEachRemaining(
             r -> {
               deploymentRecord
-                  .workflows()
+                  .processs()
                   .add()
                   .setBpmnProcessId(r.getResourceNameBuffer())
                   .setResourceName(r.getResourceNameBuffer())
-                  .setVersion(WORKFLOW_VERSION)
-                  .setKey(WORKFLOW_KEY);
+                  .setVersion(PROCESS_VERSION)
+                  .setKey(PROCESS_KEY);
             });
     return new BrokerResponse<>(deploymentRecord, 0, KEY);
   }

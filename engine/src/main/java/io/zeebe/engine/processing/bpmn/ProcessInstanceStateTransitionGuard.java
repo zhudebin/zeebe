@@ -10,31 +10,31 @@ package io.zeebe.engine.processing.bpmn;
 import io.zeebe.engine.Loggers;
 import io.zeebe.engine.processing.bpmn.behavior.BpmnStateBehavior;
 import io.zeebe.engine.state.instance.ElementInstance;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.util.Either;
 import org.slf4j.Logger;
 
 /**
- * A check to prevent concurrent state transitions of a workflow instance.
+ * A check to prevent concurrent state transitions of a process instance.
  *
- * <p>A workflow instance can be have concurrent state transitions if a user command is received
- * (e.g. cancel workflow instance) or if an internal/external event is triggered (e.g. timer
- * boundary event). In this case, the current workflow instance processing needs to be interrupted
+ * <p>A process instance can be have concurrent state transitions if a user command is received
+ * (e.g. cancel process instance) or if an internal/external event is triggered (e.g. timer
+ * boundary event). In this case, the current process instance processing needs to be interrupted
  * be avoid an inconsistent state.
  */
-public final class WorkflowInstanceStateTransitionGuard {
+public final class ProcessInstanceStateTransitionGuard {
 
-  private static final Logger LOGGER = Loggers.WORKFLOW_PROCESSOR_LOGGER;
+  private static final Logger LOGGER = Loggers.PROCESS_PROCESSOR_LOGGER;
 
   private final BpmnStateBehavior stateBehavior;
 
-  public WorkflowInstanceStateTransitionGuard(final BpmnStateBehavior stateBehavior) {
+  public ProcessInstanceStateTransitionGuard(final BpmnStateBehavior stateBehavior) {
     this.stateBehavior = stateBehavior;
   }
 
   /**
-   * Checks if a workflow instance event can be processed based on the current state.
+   * Checks if a process instance event can be processed based on the current state.
    *
    * @return {@code true} if the transition is valid.
    */
@@ -69,7 +69,7 @@ public final class WorkflowInstanceStateTransitionGuard {
         if (context.getBpmnElementType() == BpmnElementType.START_EVENT) {
           return Either.right(null);
         }
-        return hasElementInstanceWithState(context, WorkflowInstanceIntent.ELEMENT_ACTIVATED);
+        return hasElementInstanceWithState(context, ProcessInstanceIntent.ELEMENT_ACTIVATED);
 
       case SEQUENCE_FLOW_TAKEN:
         return hasActiveFlowScopeInstance(context);
@@ -77,7 +77,7 @@ public final class WorkflowInstanceStateTransitionGuard {
       default:
         return Either.left(
             String.format(
-                "Expected event to have a workflow instance intent but was '%s'",
+                "Expected event to have a process instance intent but was '%s'",
                 context.getIntent()));
     }
   }
@@ -109,7 +109,7 @@ public final class WorkflowInstanceStateTransitionGuard {
   }
 
   private Either<String, ElementInstance> hasElementInstanceInState(
-      final ElementInstance elementInstance, final WorkflowInstanceIntent expectedState) {
+      final ElementInstance elementInstance, final ProcessInstanceIntent expectedState) {
     final var currentState = elementInstance.getState();
     if (currentState != expectedState) {
       return Either.left(
@@ -123,7 +123,7 @@ public final class WorkflowInstanceStateTransitionGuard {
   }
 
   private Either<String, ElementInstance> hasFlowScopeInstanceInState(
-      final ElementInstance flowScopeInstance, final WorkflowInstanceIntent expectedState) {
+      final ElementInstance flowScopeInstance, final ProcessInstanceIntent expectedState) {
     final var currentState = flowScopeInstance.getState();
     if (currentState != expectedState) {
       return Either.left(
@@ -151,7 +151,7 @@ public final class WorkflowInstanceStateTransitionGuard {
   }
 
   private Either<String, ?> hasElementInstanceWithState(
-      final BpmnElementContext context, final WorkflowInstanceIntent expectedState) {
+      final BpmnElementContext context, final ProcessInstanceIntent expectedState) {
     // a shortcut to improve readability
     return getElementInstance(context)
         .flatMap(elementInstance -> hasElementInstanceInState(elementInstance, expectedState));
@@ -168,13 +168,13 @@ public final class WorkflowInstanceStateTransitionGuard {
           .flatMap(
               flowScopeInstance ->
                   hasFlowScopeInstanceInState(
-                      flowScopeInstance, WorkflowInstanceIntent.ELEMENT_ACTIVATED))
+                      flowScopeInstance, ProcessInstanceIntent.ELEMENT_ACTIVATED))
           .flatMap(flowScopeInstance -> hasNonInterruptedFlowScope(flowScopeInstance, context));
     }
   }
 
   public void registerStateTransition(
-      final BpmnElementContext context, final WorkflowInstanceIntent newState) {
+      final BpmnElementContext context, final ProcessInstanceIntent newState) {
     switch (newState) {
       case ELEMENT_ACTIVATING:
       case ELEMENT_ACTIVATED:
@@ -192,7 +192,7 @@ public final class WorkflowInstanceStateTransitionGuard {
   }
 
   private void updateElementInstanceState(
-      final BpmnElementContext context, final WorkflowInstanceIntent newState) {
+      final BpmnElementContext context, final ProcessInstanceIntent newState) {
 
     stateBehavior.updateElementInstance(
         context, elementInstance -> elementInstance.setState(newState));

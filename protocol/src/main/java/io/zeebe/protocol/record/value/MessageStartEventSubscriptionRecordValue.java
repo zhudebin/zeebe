@@ -25,8 +25,8 @@ import io.zeebe.protocol.record.intent.MessageStartEventSubscriptionIntent;
  */
 public interface MessageStartEventSubscriptionRecordValue extends RecordValue {
 
-  /** @return the workflow key tied to the subscription */
-  long getWorkflowKey();
+  /** @return the process key tied to the subscription */
+  long getProcessKey();
 
   /** @return the BPMN process id tied to the subscription */
   String getBpmnProcessId();

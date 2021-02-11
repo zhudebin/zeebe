@@ -11,21 +11,21 @@ import io.zeebe.engine.processing.streamprocessor.TypedRecord;
 import io.zeebe.engine.processing.streamprocessor.TypedRecordProcessor;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedResponseWriter;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedStreamWriter;
-import io.zeebe.engine.state.mutable.MutableWorkflowState;
+import io.zeebe.engine.state.mutable.MutableProcessState;
 import io.zeebe.protocol.impl.record.value.deployment.DeploymentRecord;
 import io.zeebe.protocol.record.intent.DeploymentIntent;
 
 public final class DeploymentCreateProcessor implements TypedRecordProcessor<DeploymentRecord> {
 
-  private final MutableWorkflowState workflowState;
+  private final MutableProcessState processState;
   private final int partitionId;
   private final DeploymentResponder deploymentResponder;
 
   public DeploymentCreateProcessor(
-      final MutableWorkflowState workflowState,
+      final MutableProcessState processState,
       final DeploymentResponder deploymentResponder,
       final int partitionId) {
-    this.workflowState = workflowState;
+    this.processState = processState;
     this.deploymentResponder = deploymentResponder;
     this.partitionId = partitionId;
   }
@@ -37,7 +37,7 @@ public final class DeploymentCreateProcessor implements TypedRecordProcessor<Dep
       final TypedStreamWriter streamWriter) {
 
     final DeploymentRecord deploymentEvent = event.getValue();
-    workflowState.putDeployment(deploymentEvent);
+    processState.putDeployment(deploymentEvent);
     streamWriter.appendFollowUpEvent(event.getKey(), DeploymentIntent.CREATED, deploymentEvent);
     deploymentResponder.sendDeploymentResponse(event.getKey(), partitionId);
   }

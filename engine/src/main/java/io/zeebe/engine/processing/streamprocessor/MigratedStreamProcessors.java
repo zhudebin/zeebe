@@ -7,7 +7,7 @@
  */
 package io.zeebe.engine.processing.streamprocessor;
 
-import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
+import io.zeebe.protocol.impl.record.value.processinstance.ProcessInstanceRecord;
 import io.zeebe.protocol.record.ValueType;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import java.util.ArrayList;
@@ -28,9 +28,9 @@ public final class MigratedStreamProcessors {
 
   static {
     MIGRATED_VALUE_TYPES.put(
-        ValueType.WORKFLOW_INSTANCE,
+        ValueType.PROCESS_INSTANCE,
         record -> {
-          final var recordValue = (WorkflowInstanceRecord) record.getValue();
+          final var recordValue = (ProcessInstanceRecord) record.getValue();
           final var bpmnElementType = recordValue.getBpmnElementType();
           return MIGRATED_BPMN_PROCESSORS.contains(bpmnElementType);
         });

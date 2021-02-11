@@ -11,9 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.zeebe.engine.processing.streamprocessor.StreamProcessor.Phase;
 import io.zeebe.engine.util.EngineRule;
-import io.zeebe.engine.util.WorkflowExecutor;
+import io.zeebe.engine.util.ProcessExecutor;
 import io.zeebe.model.bpmn.BpmnModelInstance;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
 import io.zeebe.test.util.bpmn.random.ExecutionPath;
@@ -33,18 +33,18 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class ReplayStatePropertyTest {
 
-  private static final int WORKFLOW_COUNT = 5;
+  private static final int PROCESS_COUNT = 5;
   private static final int EXECUTION_PATH_COUNT = 5;
 
   @Rule public final EngineRule engineRule = EngineRule.singlePartition();
 
   @Parameter public TestDataRecord record;
 
-  private final WorkflowExecutor workflowExecutor = new WorkflowExecutor(engineRule);
+  private final ProcessExecutor processExecutor = new ProcessExecutor(engineRule);
 
   /**
-   * This test takes a random workflow and execution path in that workflow. A process instance is
-   * started and the workflow is executed step by step according to the random execution path. After
+   * This test takes a random process and execution path in that process. A process instance is
+   * started and the process is executed step by step according to the random execution path. After
    * each step, the current database state is captured and the engine is restarted. After restart
    * the database state is captured and compared to the database state before the restart. After all
    * steps are executed, a final comparison is performed.
@@ -61,14 +61,14 @@ public class ReplayStatePropertyTest {
 
     for (final AbstractExecutionStep step : path.getSteps()) {
 
-      workflowExecutor.applyStep(step);
+      processExecutor.applyStep(step);
 
       stopAndRestartEngineAndCompareStates();
     }
 
     // wait for termination of the process
     final var result =
-        RecordingExporter.workflowInstanceRecords(WorkflowInstanceIntent.ELEMENT_COMPLETED)
+        RecordingExporter.processInstanceRecords(ProcessInstanceIntent.ELEMENT_COMPLETED)
             .withElementType(BpmnElementType.PROCESS)
             .withBpmnProcessId(path.getProcessId())
             .getFirst();
@@ -148,6 +148,6 @@ public class ReplayStatePropertyTest {
 
   @Parameters(name = "{0}")
   public static Collection<TestDataRecord> getTestRecords() {
-    return TestDataGenerator.generateTestRecords(WORKFLOW_COUNT, EXECUTION_PATH_COUNT);
+    return TestDataGenerator.generateTestRecords(PROCESS_COUNT, EXECUTION_PATH_COUNT);
   }
 }

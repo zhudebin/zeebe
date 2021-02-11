@@ -9,7 +9,7 @@ package io.zeebe.test.util.record;
 
 import io.zeebe.protocol.record.Record;
 import io.zeebe.protocol.record.value.DeploymentRecordValue;
-import io.zeebe.protocol.record.value.deployment.DeployedWorkflow;
+import io.zeebe.protocol.record.value.deployment.DeployedProcess;
 import io.zeebe.protocol.record.value.deployment.DeploymentResource;
 import java.util.List;
 import java.util.stream.Stream;
@@ -35,12 +35,12 @@ public final class DeploymentRecordStream
     return valueFilter(v -> v.getResources().contains(resource));
   }
 
-  public DeploymentRecordStream withDeployedWorkflows(
-      final List<DeployedWorkflow> deployedWorkflows) {
-    return valueFilter(v -> deployedWorkflows.equals(v.getDeployedWorkflows()));
+  public DeploymentRecordStream withDeployedProcesss(
+      final List<DeployedProcess> deployedProcesss) {
+    return valueFilter(v -> deployedProcesss.equals(v.getDeployedProcesss()));
   }
 
-  public DeploymentRecordStream withDeployedWorkflow(final DeployedWorkflow deployedWorkflow) {
-    return valueFilter(v -> v.getDeployedWorkflows().contains(deployedWorkflow));
+  public DeploymentRecordStream withDeployedProcess(final DeployedProcess deployedProcess) {
+    return valueFilter(v -> v.getDeployedProcesss().contains(deployedProcess));
   }
 }

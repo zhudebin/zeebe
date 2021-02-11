@@ -26,7 +26,7 @@ import io.zeebe.protocol.record.RecordType;
 import io.zeebe.protocol.record.RejectionType;
 import io.zeebe.protocol.record.ValueType;
 import io.zeebe.protocol.record.intent.Intent;
-import io.zeebe.protocol.record.intent.WorkflowInstanceCreationIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceCreationIntent;
 import org.junit.ClassRule;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -77,8 +77,8 @@ public abstract class CommandProcessorTestCase<T extends UnifiedRecordValue> {
   protected TypedRecord<T> newCommand(final Class<T> clazz) {
     final RecordMetadata metadata =
         new RecordMetadata()
-            .intent(WorkflowInstanceCreationIntent.CREATE)
-            .valueType(ValueType.WORKFLOW_INSTANCE_CREATION)
+            .intent(ProcessInstanceCreationIntent.CREATE)
+            .valueType(ValueType.PROCESS_INSTANCE_CREATION)
             .recordType(RecordType.COMMAND);
     final T value;
 

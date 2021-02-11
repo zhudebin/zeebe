@@ -13,7 +13,7 @@ Otherwise, go read Docker's
 [branches and tags](https://github.com/docker/docker/blob/master/project/BRANCHES-AND-TAGS.md).
 
 For an in-depth description of our contribution process, visit the
-contributors guide: [Understand how to contribute](https://docs.docker.com/opensource/workflow/make-a-contribution/)
+contributors guide: [Understand how to contribute](https://docs.docker.com/opensource/process/make-a-contribution/)
 
 ### Sign your work
 

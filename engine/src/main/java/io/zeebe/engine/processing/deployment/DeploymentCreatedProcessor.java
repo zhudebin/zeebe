@@ -10,15 +10,15 @@ package io.zeebe.engine.processing.deployment;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableCatchEventElement;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableMessage;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableStartEvent;
-import io.zeebe.engine.processing.deployment.model.element.ExecutableWorkflow;
+import io.zeebe.engine.processing.deployment.model.element.ExecutableProcess;
 import io.zeebe.engine.processing.streamprocessor.TypedRecord;
 import io.zeebe.engine.processing.streamprocessor.TypedRecordProcessor;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedResponseWriter;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedStreamWriter;
-import io.zeebe.engine.state.deployment.DeployedWorkflow;
-import io.zeebe.engine.state.mutable.MutableWorkflowState;
+import io.zeebe.engine.state.deployment.DeployedProcess;
+import io.zeebe.engine.state.mutable.MutableProcessState;
 import io.zeebe.protocol.impl.record.value.deployment.DeploymentRecord;
-import io.zeebe.protocol.impl.record.value.deployment.Workflow;
+import io.zeebe.protocol.impl.record.value.deployment.Process;
 import io.zeebe.protocol.impl.record.value.message.MessageStartEventSubscriptionRecord;
 import io.zeebe.protocol.record.intent.DeploymentIntent;
 import io.zeebe.protocol.record.intent.MessageStartEventSubscriptionIntent;
@@ -27,14 +27,14 @@ import java.util.List;
 
 public final class DeploymentCreatedProcessor implements TypedRecordProcessor<DeploymentRecord> {
 
-  private final MutableWorkflowState workflowState;
+  private final MutableProcessState processState;
   private final boolean isDeploymentPartition;
   private final MessageStartEventSubscriptionRecord subscriptionRecord =
       new MessageStartEventSubscriptionRecord();
 
   public DeploymentCreatedProcessor(
-      final MutableWorkflowState workflowState, final boolean isDeploymentPartition) {
-    this.workflowState = workflowState;
+      final MutableProcessState processState, final boolean isDeploymentPartition) {
+    this.processState = processState;
     this.isDeploymentPartition = isDeploymentPartition;
   }
 
@@ -50,41 +50,41 @@ public final class DeploymentCreatedProcessor implements TypedRecordProcessor<De
           event.getKey(), DeploymentIntent.DISTRIBUTE, deploymentEvent);
     }
 
-    for (final Workflow workflowRecord : deploymentEvent.workflows()) {
-      if (isLatestWorkflow(workflowRecord)) {
-        closeExistingMessageStartEventSubscriptions(workflowRecord, streamWriter);
-        openMessageStartEventSubscriptions(workflowRecord, streamWriter);
+    for (final Process processRecord : deploymentEvent.processs()) {
+      if (isLatestProcess(processRecord)) {
+        closeExistingMessageStartEventSubscriptions(processRecord, streamWriter);
+        openMessageStartEventSubscriptions(processRecord, streamWriter);
       }
     }
   }
 
-  private boolean isLatestWorkflow(final Workflow workflow) {
-    return workflowState
-            .getLatestWorkflowVersionByProcessId(workflow.getBpmnProcessIdBuffer())
+  private boolean isLatestProcess(final Process process) {
+    return processState
+            .getLatestProcessVersionByProcessId(process.getBpmnProcessIdBuffer())
             .getVersion()
-        == workflow.getVersion();
+        == process.getVersion();
   }
 
   private void closeExistingMessageStartEventSubscriptions(
-      final Workflow workflowRecord, final TypedStreamWriter streamWriter) {
-    final DeployedWorkflow lastMsgWorkflow = findLastMessageStartWorkflow(workflowRecord);
-    if (lastMsgWorkflow == null) {
+      final Process processRecord, final TypedStreamWriter streamWriter) {
+    final DeployedProcess lastMsgProcess = findLastMessageStartProcess(processRecord);
+    if (lastMsgProcess == null) {
       return;
     }
 
     subscriptionRecord.reset();
-    subscriptionRecord.setWorkflowKey(lastMsgWorkflow.getKey());
+    subscriptionRecord.setProcessKey(lastMsgProcess.getKey());
     streamWriter.appendNewCommand(MessageStartEventSubscriptionIntent.CLOSE, subscriptionRecord);
   }
 
-  private DeployedWorkflow findLastMessageStartWorkflow(final Workflow workflowRecord) {
-    for (int version = workflowRecord.getVersion() - 1; version > 0; --version) {
-      final DeployedWorkflow lastMsgWorkflow =
-          workflowState.getWorkflowByProcessIdAndVersion(
-              workflowRecord.getBpmnProcessIdBuffer(), version);
-      if (lastMsgWorkflow != null
-          && lastMsgWorkflow.getWorkflow().getStartEvents().stream().anyMatch(e -> e.isMessage())) {
-        return lastMsgWorkflow;
+  private DeployedProcess findLastMessageStartProcess(final Process processRecord) {
+    for (int version = processRecord.getVersion() - 1; version > 0; --version) {
+      final DeployedProcess lastMsgProcess =
+          processState.getProcessByProcessIdAndVersion(
+              processRecord.getBpmnProcessIdBuffer(), version);
+      if (lastMsgProcess != null
+          && lastMsgProcess.getProcess().getStartEvents().stream().anyMatch(e -> e.isMessage())) {
+        return lastMsgProcess;
       }
     }
 
@@ -92,11 +92,11 @@ public final class DeploymentCreatedProcessor implements TypedRecordProcessor<De
   }
 
   private void openMessageStartEventSubscriptions(
-      final Workflow workflowRecord, final TypedStreamWriter streamWriter) {
-    final long workflowKey = workflowRecord.getKey();
-    final DeployedWorkflow workflowDefinition = workflowState.getWorkflowByKey(workflowKey);
-    final ExecutableWorkflow workflow = workflowDefinition.getWorkflow();
-    final List<ExecutableStartEvent> startEvents = workflow.getStartEvents();
+      final Process processRecord, final TypedStreamWriter streamWriter) {
+    final long processKey = processRecord.getKey();
+    final DeployedProcess processDefinition = processState.getProcessByKey(processKey);
+    final ExecutableProcess process = processDefinition.getProcess();
+    final List<ExecutableStartEvent> startEvents = process.getStartEvents();
 
     // if startEvents contain message events
     for (final ExecutableCatchEventElement startEvent : startEvents) {
@@ -111,8 +111,8 @@ public final class DeploymentCreatedProcessor implements TypedRecordProcessor<De
                   subscriptionRecord.reset();
                   subscriptionRecord
                       .setMessageName(messageNameBuffer)
-                      .setWorkflowKey(workflowKey)
-                      .setBpmnProcessId(workflow.getId())
+                      .setProcessKey(processKey)
+                      .setBpmnProcessId(process.getId())
                       .setStartEventId(startEvent.getId());
                   streamWriter.appendNewCommand(
                       MessageStartEventSubscriptionIntent.OPEN, subscriptionRecord);

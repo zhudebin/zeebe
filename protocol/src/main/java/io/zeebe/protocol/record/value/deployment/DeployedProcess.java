@@ -15,17 +15,17 @@
  */
 package io.zeebe.protocol.record.value.deployment;
 
-/** Represents a deployed workflow. */
-public interface DeployedWorkflow {
-  /** @return the bpmn process ID of this workflow */
+/** Represents a deployed process. */
+public interface DeployedProcess {
+  /** @return the bpmn process ID of this process */
   String getBpmnProcessId();
 
-  /** @return the version of this workflow */
+  /** @return the version of this process */
   int getVersion();
 
-  /** @return the key of this workflow */
-  long getWorkflowKey();
+  /** @return the key of this process */
+  long getProcessKey();
 
-  /** @return the name of the resource through which this workflow was deployed */
+  /** @return the name of the resource through which this process was deployed */
   String getResourceName();
 }

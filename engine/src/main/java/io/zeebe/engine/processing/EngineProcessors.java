@@ -25,10 +25,10 @@ import io.zeebe.engine.processing.streamprocessor.TypedRecordProcessor;
 import io.zeebe.engine.processing.streamprocessor.TypedRecordProcessors;
 import io.zeebe.engine.processing.timer.DueDateTimerChecker;
 import io.zeebe.engine.state.ZeebeState;
-import io.zeebe.engine.state.mutable.MutableWorkflowState;
+import io.zeebe.engine.state.mutable.MutableProcessState;
 import io.zeebe.logstreams.log.LogStream;
 import io.zeebe.protocol.Protocol;
-import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
+import io.zeebe.protocol.impl.record.value.processinstance.ProcessInstanceRecord;
 import io.zeebe.protocol.record.ValueType;
 import io.zeebe.protocol.record.intent.DeploymentIntent;
 import io.zeebe.util.sched.ActorControl;
@@ -73,8 +73,8 @@ public final class EngineProcessors {
         expressionProcessor);
     addMessageProcessors(subscriptionCommandSender, zeebeState, typedRecordProcessors);
 
-    final TypedRecordProcessor<WorkflowInstanceRecord> bpmnStreamProcessor =
-        addWorkflowProcessors(
+    final TypedRecordProcessor<ProcessInstanceRecord> bpmnStreamProcessor =
+        addProcessProcessors(
             zeebeState,
             expressionProcessor,
             typedRecordProcessors,
@@ -105,14 +105,14 @@ public final class EngineProcessors {
         ValueType.DEPLOYMENT, DeploymentIntent.DISTRIBUTE, deploymentDistributeProcessor);
   }
 
-  private static TypedRecordProcessor<WorkflowInstanceRecord> addWorkflowProcessors(
+  private static TypedRecordProcessor<ProcessInstanceRecord> addProcessProcessors(
       final ZeebeState zeebeState,
       final ExpressionProcessor expressionProcessor,
       final TypedRecordProcessors typedRecordProcessors,
       final SubscriptionCommandSender subscriptionCommandSender,
       final CatchEventBehavior catchEventBehavior) {
     final DueDateTimerChecker timerChecker = new DueDateTimerChecker(zeebeState.getTimerState());
-    return WorkflowEventProcessors.addWorkflowProcessors(
+    return ProcessEventProcessors.addProcessProcessors(
         zeebeState,
         expressionProcessor,
         typedRecordProcessors,
@@ -128,25 +128,25 @@ public final class EngineProcessors {
       final TypedRecordProcessors typedRecordProcessors,
       final DeploymentResponder deploymentResponder,
       final ExpressionProcessor expressionProcessor) {
-    final MutableWorkflowState workflowState = zeebeState.getWorkflowState();
+    final MutableProcessState processState = zeebeState.getProcessState();
     final boolean isDeploymentPartition = partitionId == Protocol.DEPLOYMENT_PARTITION;
     if (isDeploymentPartition) {
       DeploymentEventProcessors.addTransformingDeploymentProcessor(
           typedRecordProcessors, zeebeState, catchEventBehavior, expressionProcessor);
     } else {
       DeploymentEventProcessors.addDeploymentCreateProcessor(
-          typedRecordProcessors, workflowState, deploymentResponder, partitionId);
+          typedRecordProcessors, processState, deploymentResponder, partitionId);
     }
 
     typedRecordProcessors.onEvent(
         ValueType.DEPLOYMENT,
         DeploymentIntent.CREATED,
-        new DeploymentCreatedProcessor(workflowState, isDeploymentPartition));
+        new DeploymentCreatedProcessor(processState, isDeploymentPartition));
   }
 
   private static void addIncidentProcessors(
       final ZeebeState zeebeState,
-      final TypedRecordProcessor<WorkflowInstanceRecord> bpmnStreamProcessor,
+      final TypedRecordProcessor<ProcessInstanceRecord> bpmnStreamProcessor,
       final TypedRecordProcessors typedRecordProcessors,
       final JobErrorThrownProcessor jobErrorThrownProcessor) {
     IncidentEventProcessors.addProcessors(

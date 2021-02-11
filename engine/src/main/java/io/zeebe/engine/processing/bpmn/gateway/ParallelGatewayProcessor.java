@@ -55,7 +55,7 @@ public final class ParallelGatewayProcessor implements BpmnElementProcessor<Exec
 
   @Override
   public void onCompleted(final ExecutableFlowNode element, final BpmnElementContext context) {
-    // fork the workflow processing by taking all outgoing sequence flows of the parallel gateway
+    // fork the process processing by taking all outgoing sequence flows of the parallel gateway
 
     stateTransitionBehavior.takeOutgoingSequenceFlows(element, context);
 

@@ -16,8 +16,8 @@ import io.zeebe.engine.state.mutable.MutableElementInstanceState;
 import io.zeebe.engine.state.mutable.MutableEventScopeInstanceState;
 import io.zeebe.engine.state.mutable.MutableVariableState;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
-import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.impl.record.value.processinstance.ProcessInstanceRecord;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 
 public final class JobCompletedEventProcessor implements TypedRecordProcessor<JobRecord> {
 
@@ -49,14 +49,14 @@ public final class JobCompletedEventProcessor implements TypedRecordProcessor<Jo
       final ElementInstance scopeInstance = elementInstanceState.getInstance(scopeKey);
 
       if (scopeInstance != null && scopeInstance.isActive()) {
-        final WorkflowInstanceRecord value = elementInstance.getValue();
+        final ProcessInstanceRecord value = elementInstance.getValue();
 
-        elementInstance.setState(WorkflowInstanceIntent.ELEMENT_COMPLETING);
+        elementInstance.setState(ProcessInstanceIntent.ELEMENT_COMPLETING);
         elementInstance.setJobKey(-1);
         elementInstanceState.updateInstance(elementInstance);
 
         streamWriter.appendFollowUpEvent(
-            elementInstanceKey, WorkflowInstanceIntent.ELEMENT_COMPLETING, value);
+            elementInstanceKey, ProcessInstanceIntent.ELEMENT_COMPLETING, value);
 
         eventScopeInstanceState.shutdownInstance(elementInstanceKey);
 

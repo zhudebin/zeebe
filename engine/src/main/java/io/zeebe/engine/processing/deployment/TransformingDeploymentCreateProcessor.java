@@ -26,10 +26,10 @@ import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.immutable.TimerInstanceState;
 import io.zeebe.engine.state.instance.TimerInstance;
 import io.zeebe.engine.state.mutable.MutableEventScopeInstanceState;
-import io.zeebe.engine.state.mutable.MutableWorkflowState;
+import io.zeebe.engine.state.mutable.MutableProcessState;
 import io.zeebe.model.bpmn.util.time.Timer;
 import io.zeebe.protocol.impl.record.value.deployment.DeploymentRecord;
-import io.zeebe.protocol.impl.record.value.deployment.Workflow;
+import io.zeebe.protocol.impl.record.value.deployment.Process;
 import io.zeebe.protocol.record.RejectionType;
 import io.zeebe.protocol.record.intent.DeploymentIntent;
 import io.zeebe.util.Either;
@@ -44,7 +44,7 @@ public final class TransformingDeploymentCreateProcessor
   private static final String COULD_NOT_CREATE_TIMER_MESSAGE =
       "Expected to create timer for start event, but encountered the following error: %s";
   private final DeploymentTransformer deploymentTransformer;
-  private final MutableWorkflowState workflowState;
+  private final MutableProcessState processState;
   private final MutableEventScopeInstanceState eventScopeInstanceState;
   private final TimerInstanceState timerInstanceState;
   private final CatchEventBehavior catchEventBehavior;
@@ -55,7 +55,7 @@ public final class TransformingDeploymentCreateProcessor
       final ZeebeState zeebeState,
       final CatchEventBehavior catchEventBehavior,
       final ExpressionProcessor expressionProcessor) {
-    workflowState = zeebeState.getWorkflowState();
+    processState = zeebeState.getProcessState();
     eventScopeInstanceState = zeebeState.getEventScopeInstanceState();
     timerInstanceState = zeebeState.getTimerState();
     keyGenerator = zeebeState.getKeyGenerator();
@@ -75,7 +75,7 @@ public final class TransformingDeploymentCreateProcessor
     final boolean accepted = deploymentTransformer.transform(deploymentEvent);
     if (accepted) {
       final long key = keyGenerator.nextKey();
-      workflowState.putDeployment(deploymentEvent);
+      processState.putDeployment(deploymentEvent);
 
       try {
         createTimerIfTimerStartEvent(command, streamWriter);
@@ -102,12 +102,12 @@ public final class TransformingDeploymentCreateProcessor
 
   private void createTimerIfTimerStartEvent(
       final TypedRecord<DeploymentRecord> record, final TypedStreamWriter streamWriter) {
-    for (final Workflow workflow : record.getValue().workflows()) {
+    for (final Process process : record.getValue().processs()) {
       final List<ExecutableStartEvent> startEvents =
-          workflowState.getWorkflowByKey(workflow.getKey()).getWorkflow().getStartEvents();
+          processState.getProcessByKey(process.getKey()).getProcess().getStartEvents();
       boolean hasAtLeastOneTimer = false;
 
-      unsubscribeFromPreviousTimers(streamWriter, workflow);
+      unsubscribeFromPreviousTimers(streamWriter, process);
 
       for (final ExecutableCatchEventElement startEvent : startEvents) {
         if (startEvent.isTimer()) {
@@ -125,7 +125,7 @@ public final class TransformingDeploymentCreateProcessor
           catchEventBehavior.subscribeToTimerEvent(
               NO_ELEMENT_INSTANCE,
               NO_ELEMENT_INSTANCE,
-              workflow.getKey(),
+              process.getKey(),
               startEvent.getId(),
               timerOrError.get(),
               streamWriter);
@@ -133,23 +133,23 @@ public final class TransformingDeploymentCreateProcessor
       }
 
       if (hasAtLeastOneTimer) {
-        eventScopeInstanceState.createIfNotExists(workflow.getKey(), Collections.emptyList());
+        eventScopeInstanceState.createIfNotExists(process.getKey(), Collections.emptyList());
       }
     }
   }
 
   private void unsubscribeFromPreviousTimers(
-      final TypedStreamWriter streamWriter, final Workflow workflow) {
+      final TypedStreamWriter streamWriter, final Process process) {
     timerInstanceState.forEachTimerForElementInstance(
-        NO_ELEMENT_INSTANCE, timer -> unsubscribeFromPreviousTimer(streamWriter, workflow, timer));
+        NO_ELEMENT_INSTANCE, timer -> unsubscribeFromPreviousTimer(streamWriter, process, timer));
   }
 
   private void unsubscribeFromPreviousTimer(
-      final TypedStreamWriter streamWriter, final Workflow workflow, final TimerInstance timer) {
+      final TypedStreamWriter streamWriter, final Process process, final TimerInstance timer) {
     final DirectBuffer timerBpmnId =
-        workflowState.getWorkflowByKey(timer.getWorkflowKey()).getBpmnProcessId();
+        processState.getProcessByKey(timer.getProcessKey()).getBpmnProcessId();
 
-    if (timerBpmnId.equals(workflow.getBpmnProcessIdBuffer())) {
+    if (timerBpmnId.equals(process.getBpmnProcessIdBuffer())) {
       catchEventBehavior.unsubscribeFromTimerEvent(timer, streamWriter);
     }
   }

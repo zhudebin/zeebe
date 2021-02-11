@@ -47,17 +47,17 @@ public final class DeploymentCreatedProcessorTest {
     rule.startTypedStreamProcessor(
         (typedRecordProcessors, processingContext) -> {
           final var zeebeState = processingContext.getZeebeState();
-          final var workflowState = zeebeState.getWorkflowState();
+          final var processState = zeebeState.getProcessState();
 
           DeploymentEventProcessors.addDeploymentCreateProcessor(
               typedRecordProcessors,
-              workflowState,
+              processState,
               (key, partition) -> {},
               Protocol.DEPLOYMENT_PARTITION + 1);
           typedRecordProcessors.onEvent(
               ValueType.DEPLOYMENT,
               DeploymentIntent.CREATED,
-              new DeploymentCreatedProcessor(workflowState, false));
+              new DeploymentCreatedProcessor(processState, false));
           return typedRecordProcessors;
         },
         processedRecord -> processedRecordPositions.add(processedRecord.getPosition()));
@@ -119,7 +119,7 @@ public final class DeploymentCreatedProcessorTest {
             .withIntent(MessageStartEventSubscriptionIntent.CLOSE)
             .getFirst();
 
-    Assertions.assertThat(closeRecord.getValue().getWorkflowKey()).isEqualTo(3);
+    Assertions.assertThat(closeRecord.getValue().getProcessKey()).isEqualTo(3);
   }
 
   @Test
@@ -156,8 +156,8 @@ public final class DeploymentCreatedProcessorTest {
     // then
     Assertions.assertThat(
             rule.getZeebeState()
-                .getWorkflowState()
-                .getLatestWorkflowVersionByProcessId(BufferUtil.wrapString(PROCESS_ID))
+                .getProcessState()
+                .getLatestProcessVersionByProcessId(BufferUtil.wrapString(PROCESS_ID))
                 .getVersion())
         .isEqualTo(2);
     Assertions.assertThat(
@@ -262,7 +262,7 @@ public final class DeploymentCreatedProcessorTest {
         .setResource(wrapString(Bpmn.convertToString(modelInstance)));
 
     deploymentRecord
-        .workflows()
+        .processs()
         .add()
         .setKey(key)
         .setBpmnProcessId(processId)

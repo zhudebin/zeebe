@@ -15,7 +15,7 @@ import io.zeebe.engine.util.EngineRule;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.protocol.record.Record;
 import io.zeebe.protocol.record.intent.JobIntent;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.test.util.record.RecordingExporter;
 import io.zeebe.test.util.record.RecordingExporterTestWatcher;
@@ -34,7 +34,7 @@ public final class ReplayStateTest {
   public final RecordingExporterTestWatcher recordingExporterTestWatcher =
       new RecordingExporterTestWatcher();
 
-  private long workflowInstanceKey;
+  private long processInstanceKey;
   private Map<ZbColumnFamilies, Map<Object, Object>> processingState;
 
   @Before
@@ -48,9 +48,9 @@ public final class ReplayStateTest {
                 .done())
         .deploy();
 
-    workflowInstanceKey = engine.workflowInstance().ofBpmnProcessId("process").create();
+    processInstanceKey = engine.processInstance().ofBpmnProcessId("process").create();
 
-    RecordingExporter.workflowInstanceRecords(WorkflowInstanceIntent.ELEMENT_ACTIVATED)
+    RecordingExporter.processInstanceRecords(ProcessInstanceIntent.ELEMENT_ACTIVATED)
         .withElementType(BpmnElementType.SERVICE_TASK)
         .await();
 
@@ -84,12 +84,12 @@ public final class ReplayStateTest {
 
     // then
     assertThat(
-            RecordingExporter.workflowInstanceRecords()
-                .withWorkflowInstanceKey(workflowInstanceKey)
+            RecordingExporter.processInstanceRecords()
+                .withProcessInstanceKey(processInstanceKey)
                 .filterRootScope()
-                .limitToWorkflowInstanceCompleted())
+                .limitToProcessInstanceCompleted())
         .extracting(Record::getIntent)
-        .contains(WorkflowInstanceIntent.ELEMENT_COMPLETED);
+        .contains(ProcessInstanceIntent.ELEMENT_COMPLETED);
   }
 
   @Test

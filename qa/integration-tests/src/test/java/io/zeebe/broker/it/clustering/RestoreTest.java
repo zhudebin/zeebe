@@ -58,21 +58,21 @@ public final class RestoreTest {
     // given
     clusteringRule.stopBrokerAndAwaitNewLeader(2);
 
-    final BpmnModelInstance firstWorkflow =
+    final BpmnModelInstance firstProcess =
         Bpmn.createExecutableProcess("process-test1").startEvent().endEvent().done();
 
-    final BpmnModelInstance secondWorkflow =
+    final BpmnModelInstance secondProcess =
         Bpmn.createExecutableProcess("process-test2").startEvent().endEvent().done();
 
-    final BpmnModelInstance thirdWorkflow =
+    final BpmnModelInstance thirdProcess =
         Bpmn.createExecutableProcess("process-test3").startEvent().endEvent().done();
 
     // when
-    final long firstWorkflowKey = clientRule.deployWorkflow(firstWorkflow);
+    final long firstProcessKey = clientRule.deployProcess(firstProcess);
     clusteringRule.getClock().addTime(SNAPSHOT_PERIOD);
     clusteringRule.waitForSnapshotAtBroker(getLeader());
 
-    final long secondWorkflowKey = clientRule.deployWorkflow(secondWorkflow);
+    final long secondProcessKey = clientRule.deployProcess(secondProcess);
 
     writeManyEventsUntilAtomixLogIsCompactable();
     clusteringRule.waitForSnapshotAtBroker(
@@ -83,7 +83,7 @@ public final class RestoreTest {
 
     clusteringRule.stopBrokerAndAwaitNewLeader(1);
 
-    final long thirdWorkflowKey = clientRule.deployWorkflow(thirdWorkflow);
+    final long thirdProcessKey = clientRule.deployProcess(thirdProcess);
 
     writeManyEventsUntilAtomixLogIsCompactable();
     clusteringRule.waitForSnapshotAtBroker(
@@ -93,10 +93,10 @@ public final class RestoreTest {
     clusteringRule.stopBrokerAndAwaitNewLeader(0);
 
     // then
-    // If restore did not happen, following workflows won't be deployed
-    assertThat(clientRule.createWorkflowInstance(firstWorkflowKey)).isPositive();
-    assertThat(clientRule.createWorkflowInstance(secondWorkflowKey)).isPositive();
-    assertThat(clientRule.createWorkflowInstance(thirdWorkflowKey)).isPositive();
+    // If restore did not happen, following processs won't be deployed
+    assertThat(clientRule.createProcessInstance(firstProcessKey)).isPositive();
+    assertThat(clientRule.createProcessInstance(secondProcessKey)).isPositive();
+    assertThat(clientRule.createProcessInstance(thirdProcessKey)).isPositive();
   }
 
   @Test
@@ -130,13 +130,13 @@ public final class RestoreTest {
   }
 
   private void writeManyEventsUntilAtomixLogIsCompactable() {
-    final BpmnModelInstance workflow =
+    final BpmnModelInstance process =
         Bpmn.createExecutableProcess("process").startEvent().endEvent().done();
-    final long workflowKey = clientRule.deployWorkflow(workflow);
+    final long processKey = clientRule.deployProcess(process);
     final int requiredInstances =
         (int) Math.floorDiv(ATOMIX_SEGMENT_SIZE.toBytes(), LARGE_PAYLOAD_BYTESIZE.toBytes()) + 1;
     IntStream.range(0, requiredInstances)
-        .forEach(i -> clientRule.createWorkflowInstance(workflowKey, LARGE_PAYLOAD));
+        .forEach(i -> clientRule.createProcessInstance(processKey, LARGE_PAYLOAD));
   }
 
   private static String getRandomBase64Bytes(final long size) {

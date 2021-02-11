@@ -9,19 +9,19 @@ package io.zeebe.engine.state.appliers;
 
 import io.zeebe.engine.state.TypedEventApplier;
 import io.zeebe.engine.state.ZeebeState;
-import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.impl.record.value.processinstance.ProcessInstanceRecord;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 
 /**
- * This class represents an example to apply state changes for `WorkflowInstance:Element_Activated`
+ * This class represents an example to apply state changes for `ProcessInstance:Element_Activated`
  */
-final class WorkflowInstanceElementActivatedApplier
-    implements TypedEventApplier<WorkflowInstanceIntent, WorkflowInstanceRecord> {
+final class ProcessInstanceElementActivatedApplier
+    implements TypedEventApplier<ProcessInstanceIntent, ProcessInstanceRecord> {
 
-  WorkflowInstanceElementActivatedApplier(final ZeebeState state) {}
+  ProcessInstanceElementActivatedApplier(final ZeebeState state) {}
 
   @Override
-  public void applyState(final long key, final WorkflowInstanceRecord value) {
+  public void applyState(final long key, final ProcessInstanceRecord value) {
     throw new UnsupportedOperationException("Not yet implemented");
   }
 }

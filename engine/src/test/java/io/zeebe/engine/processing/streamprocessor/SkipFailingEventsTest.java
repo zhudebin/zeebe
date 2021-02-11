@@ -36,13 +36,13 @@ import io.zeebe.protocol.impl.record.UnifiedRecordValue;
 import io.zeebe.protocol.impl.record.value.error.ErrorRecord;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.protocol.impl.record.value.timer.TimerRecord;
-import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
+import io.zeebe.protocol.impl.record.value.processinstance.ProcessInstanceRecord;
 import io.zeebe.protocol.record.RecordType;
 import io.zeebe.protocol.record.ValueType;
 import io.zeebe.protocol.record.intent.ErrorIntent;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.protocol.record.intent.TimerIntent;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.test.util.AutoCloseableRule;
 import io.zeebe.test.util.TestUtil;
 import io.zeebe.util.buffer.BufferUtil;
@@ -105,17 +105,17 @@ public final class SkipFailingEventsTest {
           zeebeState = processingContext.getZeebeState();
           return TypedRecordProcessors.processors(zeebeState.getKeyGenerator())
               .onEvent(
-                  ValueType.WORKFLOW_INSTANCE,
-                  WorkflowInstanceIntent.ELEMENT_ACTIVATING,
+                  ValueType.PROCESS_INSTANCE,
+                  ProcessInstanceIntent.ELEMENT_ACTIVATING,
                   errorProneProcessor);
         });
 
     final long failingEventPosition =
         streams
             .newRecord(STREAM_NAME)
-            .event(Records.workflowInstance(1))
+            .event(Records.processInstance(1))
             .recordType(RecordType.EVENT)
-            .intent(WorkflowInstanceIntent.ELEMENT_ACTIVATING)
+            .intent(ProcessInstanceIntent.ELEMENT_ACTIVATING)
             .key(keyGenerator.nextKey())
             .write();
 
@@ -131,7 +131,7 @@ public final class SkipFailingEventsTest {
     assertThat(errorRecord.getErrorEventPosition()).isEqualTo(failingEventPosition);
     assertThat(BufferUtil.bufferAsString(errorRecord.getExceptionMessageBuffer()))
         .isEqualTo("expected");
-    assertThat(errorRecord.getWorkflowInstanceKey()).isEqualTo(1);
+    assertThat(errorRecord.getProcessInstanceKey()).isEqualTo(1);
   }
 
   @Test
@@ -144,8 +144,8 @@ public final class SkipFailingEventsTest {
           zeebeState = processingContext.getZeebeState();
           return TypedRecordProcessors.processors(zeebeState.getKeyGenerator())
               .onEvent(
-                  ValueType.WORKFLOW_INSTANCE,
-                  WorkflowInstanceIntent.ELEMENT_ACTIVATING,
+                  ValueType.PROCESS_INSTANCE,
+                  ProcessInstanceIntent.ELEMENT_ACTIVATING,
                   new TypedRecordProcessor<>() {
                     @Override
                     public void processRecord(
@@ -160,9 +160,9 @@ public final class SkipFailingEventsTest {
     final long failingEventPosition =
         streams
             .newRecord(STREAM_NAME)
-            .event(Records.workflowInstance(1))
+            .event(Records.processInstance(1))
             .recordType(RecordType.EVENT)
-            .intent(WorkflowInstanceIntent.ELEMENT_ACTIVATING)
+            .intent(ProcessInstanceIntent.ELEMENT_ACTIVATING)
             .key(keyGenerator.nextKey())
             .write();
 
@@ -176,7 +176,7 @@ public final class SkipFailingEventsTest {
     assertThat(errorRecord.getErrorEventPosition()).isEqualTo(failingEventPosition);
     assertThat(BufferUtil.bufferAsString(errorRecord.getExceptionMessageBuffer()))
         .isEqualTo("Without exception message.");
-    assertThat(errorRecord.getWorkflowInstanceKey()).isEqualTo(1);
+    assertThat(errorRecord.getProcessInstanceKey()).isEqualTo(1);
   }
 
   @Test
@@ -192,34 +192,34 @@ public final class SkipFailingEventsTest {
           zeebeState = processingContext.getZeebeState();
           return TypedRecordProcessors.processors(zeebeState.getKeyGenerator())
               .onEvent(
-                  ValueType.WORKFLOW_INSTANCE, WorkflowInstanceIntent.ELEMENT_ACTIVATING, processor)
+                  ValueType.PROCESS_INSTANCE, ProcessInstanceIntent.ELEMENT_ACTIVATING, processor)
               .onEvent(
-                  ValueType.WORKFLOW_INSTANCE,
-                  WorkflowInstanceIntent.ELEMENT_ACTIVATED,
+                  ValueType.PROCESS_INSTANCE,
+                  ProcessInstanceIntent.ELEMENT_ACTIVATED,
                   dumpProcessor);
         });
 
     streams
         .newRecord(STREAM_NAME)
-        .event(Records.workflowInstance(1))
+        .event(Records.processInstance(1))
         .recordType(RecordType.EVENT)
-        .intent(WorkflowInstanceIntent.ELEMENT_ACTIVATING)
+        .intent(ProcessInstanceIntent.ELEMENT_ACTIVATING)
         .key(keyGenerator.nextKey())
         .write();
     streams
         .newRecord(STREAM_NAME)
-        .event(Records.workflowInstance(1))
+        .event(Records.processInstance(1))
         .recordType(RecordType.EVENT)
-        .intent(WorkflowInstanceIntent.ELEMENT_ACTIVATED)
+        .intent(ProcessInstanceIntent.ELEMENT_ACTIVATED)
         .key(keyGenerator.nextKey())
         .write();
 
     // other instance
     streams
         .newRecord(STREAM_NAME)
-        .event(Records.workflowInstance(2))
+        .event(Records.processInstance(2))
         .recordType(RecordType.EVENT)
-        .intent(WorkflowInstanceIntent.ELEMENT_ACTIVATED)
+        .intent(ProcessInstanceIntent.ELEMENT_ACTIVATED)
         .key(keyGenerator.nextKey())
         .write();
 
@@ -227,15 +227,15 @@ public final class SkipFailingEventsTest {
     waitForRecordWhichSatisfies(
         e ->
             Records.isEvent(
-                e, ValueType.WORKFLOW_INSTANCE, WorkflowInstanceIntent.ELEMENT_COMPLETED));
+                e, ValueType.PROCESS_INSTANCE, ProcessInstanceIntent.ELEMENT_COMPLETED));
 
     // then
     assertThat(processor.getProcessCount()).isEqualTo(1);
 
     final RecordMetadata metadata = new RecordMetadata();
-    metadata.valueType(ValueType.WORKFLOW_INSTANCE);
-    final MockTypedRecord<WorkflowInstanceRecord> mockTypedRecord =
-        new MockTypedRecord<>(0, metadata, Records.workflowInstance(1));
+    metadata.valueType(ValueType.PROCESS_INSTANCE);
+    final MockTypedRecord<ProcessInstanceRecord> mockTypedRecord =
+        new MockTypedRecord<>(0, metadata, Records.processInstance(1));
     Assertions.assertThat(zeebeState.getBlackListState().isOnBlacklist(mockTypedRecord)).isTrue();
 
     verify(dumpProcessor, times(1)).processRecord(any(), any(), any(), any());
@@ -286,9 +286,9 @@ public final class SkipFailingEventsTest {
 
     // then
     final RecordMetadata metadata = new RecordMetadata();
-    metadata.valueType(ValueType.WORKFLOW_INSTANCE);
-    final MockTypedRecord<WorkflowInstanceRecord> mockTypedRecord =
-        new MockTypedRecord<>(0, metadata, Records.workflowInstance(1));
+    metadata.valueType(ValueType.PROCESS_INSTANCE);
+    final MockTypedRecord<ProcessInstanceRecord> mockTypedRecord =
+        new MockTypedRecord<>(0, metadata, Records.processInstance(1));
     waitUntil(() -> zeebeState.getBlackListState().isOnBlacklist(mockTypedRecord));
   }
 
@@ -305,11 +305,11 @@ public final class SkipFailingEventsTest {
                   final TypedRecord<JobRecord> record,
                   final TypedResponseWriter responseWriter,
                   final TypedStreamWriter streamWriter) {
-                processedInstances.add(record.getValue().getWorkflowInstanceKey());
+                processedInstances.add(record.getValue().getProcessInstanceKey());
                 streamWriter.appendFollowUpEvent(
                     record.getKey(),
-                    WorkflowInstanceIntent.ELEMENT_COMPLETED,
-                    Records.workflowInstance(2));
+                    ProcessInstanceIntent.ELEMENT_COMPLETED,
+                    Records.processInstance(2));
               }
             });
     final TypedRecordProcessor<JobRecord> errorProneProcessor =
@@ -361,13 +361,13 @@ public final class SkipFailingEventsTest {
     waitForRecordWhichSatisfies(
         e ->
             Records.isEvent(
-                e, ValueType.WORKFLOW_INSTANCE, WorkflowInstanceIntent.ELEMENT_COMPLETED));
+                e, ValueType.PROCESS_INSTANCE, ProcessInstanceIntent.ELEMENT_COMPLETED));
 
     // then
     final RecordMetadata metadata = new RecordMetadata();
-    metadata.valueType(ValueType.WORKFLOW_INSTANCE);
-    final MockTypedRecord<WorkflowInstanceRecord> mockTypedRecord =
-        new MockTypedRecord<>(0, metadata, Records.workflowInstance(1));
+    metadata.valueType(ValueType.PROCESS_INSTANCE);
+    final MockTypedRecord<ProcessInstanceRecord> mockTypedRecord =
+        new MockTypedRecord<>(0, metadata, Records.processInstance(1));
     Assertions.assertThat(zeebeState.getBlackListState().isOnBlacklist(mockTypedRecord)).isFalse();
 
     verify(dumpProcessor, timeout(1000).times(2)).processRecord(any(), any(), any(), any());
@@ -389,7 +389,7 @@ public final class SkipFailingEventsTest {
             if (record.getKey() == 0) {
               throw new RuntimeException("expected");
             }
-            processedInstances.add(record.getValue().getWorkflowInstanceKey());
+            processedInstances.add(record.getValue().getProcessInstanceKey());
             streamWriter.appendFollowUpEvent(
                 record.getKey(),
                 TimerIntent.CREATED,
@@ -440,13 +440,13 @@ public final class SkipFailingEventsTest {
   }
 
   protected static class ErrorProneProcessor
-      implements TypedRecordProcessor<WorkflowInstanceRecord> {
+      implements TypedRecordProcessor<ProcessInstanceRecord> {
 
     public final AtomicLong processCount = new AtomicLong(0);
 
     @Override
     public void processRecord(
-        final TypedRecord<WorkflowInstanceRecord> record,
+        final TypedRecord<ProcessInstanceRecord> record,
         final TypedResponseWriter responseWriter,
         final TypedStreamWriter streamWriter) {
       processCount.incrementAndGet();
@@ -458,17 +458,17 @@ public final class SkipFailingEventsTest {
     }
   }
 
-  protected static class DumpProcessor implements TypedRecordProcessor<WorkflowInstanceRecord> {
+  protected static class DumpProcessor implements TypedRecordProcessor<ProcessInstanceRecord> {
     final List<Long> processedInstances = new ArrayList<>();
 
     @Override
     public void processRecord(
-        final TypedRecord<WorkflowInstanceRecord> record,
+        final TypedRecord<ProcessInstanceRecord> record,
         final TypedResponseWriter responseWriter,
         final TypedStreamWriter streamWriter) {
-      processedInstances.add(record.getValue().getWorkflowInstanceKey());
+      processedInstances.add(record.getValue().getProcessInstanceKey());
       streamWriter.appendFollowUpEvent(
-          record.getKey(), WorkflowInstanceIntent.ELEMENT_COMPLETED, record.getValue());
+          record.getKey(), ProcessInstanceIntent.ELEMENT_COMPLETED, record.getValue());
     }
   }
 }

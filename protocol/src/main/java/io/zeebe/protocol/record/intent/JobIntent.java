@@ -15,7 +15,7 @@
  */
 package io.zeebe.protocol.record.intent;
 
-public enum JobIntent implements WorkflowInstanceRelatedIntent {
+public enum JobIntent implements ProcessInstanceRelatedIntent {
   CREATE((short) 0),
   CREATED((short) 1),
 

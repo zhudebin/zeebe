@@ -89,7 +89,7 @@ public final class ReProcessingStateMachine {
   private static final String LOG_STMT_REPROCESSING_FINISHED =
       "Processor finished reprocessing at event position {}";
   private static final String LOG_STMT_FAILED_ON_PROCESSING =
-      "Event {} failed on processing last time, will call #onError to update workflow instance blacklist.";
+      "Event {} failed on processing last time, will call #onError to update process instance blacklist.";
 
   private static final String ERROR_INCONSISTENT_LOG =
       "Expected that position '%d' of current event is higher then position '%d' of last event, but was not. Inconsistent log detected!";

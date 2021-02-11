@@ -13,7 +13,7 @@ import io.zeebe.engine.state.TypedEventApplier;
 import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.protocol.record.RecordValue;
 import io.zeebe.protocol.record.intent.Intent;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -38,8 +38,8 @@ public final class EventAppliers implements EventApplier {
 
   public EventAppliers(final ZeebeState state) {
     register(
-        WorkflowInstanceIntent.ELEMENT_ACTIVATED,
-        new WorkflowInstanceElementActivatedApplier(state));
+        ProcessInstanceIntent.ELEMENT_ACTIVATED,
+        new ProcessInstanceElementActivatedApplier(state));
   }
 
   private <I extends Intent> void register(final I intent, final TypedEventApplier<I, ?> applier) {

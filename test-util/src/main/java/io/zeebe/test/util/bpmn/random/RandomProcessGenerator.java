@@ -15,8 +15,8 @@ import java.io.File;
 import java.util.Optional;
 import java.util.Random;
 
-/** Class to generate random workflows and execution paths for those workflows */
-public final class RandomWorkflowGenerator {
+/** Class to generate random processs and execution paths for those processs */
+public final class RandomProcessGenerator {
 
   private static final BlockSequenceBuilderFactory FACTORY = new BlockSequenceBuilderFactory();
 
@@ -27,7 +27,7 @@ public final class RandomWorkflowGenerator {
   private final String processId;
 
   /**
-   * Creates the random workflow generator
+   * Creates the random process generator
    *
    * @param seed seed for random noise generator
    * @param maxBlocks maximum number of blocks in a sequence (defaults to {@code 5})
@@ -35,7 +35,7 @@ public final class RandomWorkflowGenerator {
    * @param maxBranches maximum number of outgoing branches for a forking node (defaults to {@code
    *     3})
    */
-  public RandomWorkflowGenerator(
+  public RandomProcessGenerator(
       final long seed, final Integer maxBlocks, final Integer maxDepth, final Integer maxBranches) {
     final Random random = new Random(seed);
 
@@ -58,14 +58,14 @@ public final class RandomWorkflowGenerator {
     blockBuilder = FACTORY.createBlockSequenceBuilder(context);
   }
 
-  public BpmnModelInstance buildWorkflow() {
+  public BpmnModelInstance buildProcess() {
 
-    AbstractFlowNodeBuilder<?, ?> workflowWorkInProgress =
+    AbstractFlowNodeBuilder<?, ?> processWorkInProgress =
         Bpmn.createExecutableProcess(processId).startEvent(startEventId);
 
-    workflowWorkInProgress = blockBuilder.buildFlowNodes(workflowWorkInProgress);
+    processWorkInProgress = blockBuilder.buildFlowNodes(processWorkInProgress);
 
-    return workflowWorkInProgress.endEvent(endEventId).done();
+    return processWorkInProgress.endEvent(endEventId).done();
   }
 
   public ExecutionPath findRandomExecutionPath(final long seed) {
@@ -81,10 +81,10 @@ public final class RandomWorkflowGenerator {
 
       final String id = "process" + i;
 
-      final RandomWorkflowGenerator builder =
-          new RandomWorkflowGenerator(random.nextLong(), 5, 3, 3);
+      final RandomProcessGenerator builder =
+          new RandomProcessGenerator(random.nextLong(), 5, 3, 3);
 
-      Bpmn.writeModelToFile(new File(id + ".bpmn"), builder.buildWorkflow());
+      Bpmn.writeModelToFile(new File(id + ".bpmn"), builder.buildProcess());
 
       for (int p = 0; p < 10; p++) {
         final ExecutionPath path = builder.findRandomExecutionPath(random.nextLong());

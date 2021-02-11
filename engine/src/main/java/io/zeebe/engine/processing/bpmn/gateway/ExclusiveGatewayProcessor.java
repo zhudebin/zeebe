@@ -23,8 +23,8 @@ import io.zeebe.engine.processing.common.Failure;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableExclusiveGateway;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableSequenceFlow;
 import io.zeebe.engine.state.instance.IndexedRecord;
-import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.impl.record.value.processinstance.ProcessInstanceRecord;
+import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.protocol.record.value.ErrorType;
 import io.zeebe.util.Either;
@@ -35,7 +35,7 @@ public final class ExclusiveGatewayProcessor
   private static final String NO_OUTGOING_FLOW_CHOSEN_ERROR =
       "Expected at least one condition to evaluate to true, or to have a default flow";
 
-  private final WorkflowInstanceRecord record = new WorkflowInstanceRecord();
+  private final ProcessInstanceRecord record = new ProcessInstanceRecord();
 
   private final BpmnStateBehavior stateBehavior;
   private final BpmnStateTransitionBehavior stateTransitionBehavior;
@@ -79,7 +79,7 @@ public final class ExclusiveGatewayProcessor
                   context,
                   context.getElementInstanceKey(),
                   record,
-                  WorkflowInstanceIntent.SEQUENCE_FLOW_TAKEN);
+                  ProcessInstanceIntent.SEQUENCE_FLOW_TAKEN);
             },
             failure -> incidentBehavior.createIncident(failure, context));
   }
@@ -101,7 +101,7 @@ public final class ExclusiveGatewayProcessor
       final ExecutableExclusiveGateway element, final BpmnElementContext context) {
 
     deferredRecordsBehavior.getDeferredRecords(context).stream()
-        .filter(r -> r.hasState(WorkflowInstanceIntent.SEQUENCE_FLOW_TAKEN))
+        .filter(r -> r.hasState(ProcessInstanceIntent.SEQUENCE_FLOW_TAKEN))
         .findFirst()
         .map(r -> getOutgoingSequenceFlow(element, context, r))
         .ifPresentOrElse(
