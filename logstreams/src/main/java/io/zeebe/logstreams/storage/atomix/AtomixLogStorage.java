@@ -8,16 +8,21 @@
 package io.zeebe.logstreams.storage.atomix;
 
 import io.atomix.raft.partition.RaftPartition;
-import io.zeebe.logstreams.spi.LogStorage;
-import io.zeebe.logstreams.spi.LogStorageReader;
+import io.zeebe.logstreams.storage.LogStorage;
+import io.zeebe.logstreams.storage.LogStorageReader;
 import java.nio.ByteBuffer;
 import java.util.NoSuchElementException;
 
+/**
+ * Implementation of {@link LogStorage} for the Atomix {@link io.atomix.raft.storage.log.RaftLog}.
+ *
+ * <p>Note that this class cannot be made final because we currently spy on it in our tests. This
+ * should be changed when the log storage implementation is taken out of this module, at which point
+ * it can be made final.
+ */
 public class AtomixLogStorage implements LogStorage {
   private final AtomixReaderFactory readerFactory;
   private final AtomixAppenderSupplier appenderSupplier;
-
-  private boolean opened;
 
   public AtomixLogStorage(
       final AtomixReaderFactory readerFactory, final AtomixAppenderSupplier appenderSupplier) {
@@ -48,35 +53,9 @@ public class AtomixLogStorage implements LogStorage {
       final var adapter = new AtomixAppendListenerAdapter(listener);
       appender.appendEntry(lowestPosition, highestPosition, buffer, adapter);
     } else {
-      // todo: better error message
       listener.onWriteError(
           new NoSuchElementException(
               "Expected an appender, but none found, most likely we are not the leader"));
     }
-  }
-
-  @Override
-  public void open() {
-    opened = true;
-  }
-
-  @Override
-  public void close() {
-    opened = false;
-  }
-
-  @Override
-  public boolean isOpen() {
-    return opened;
-  }
-
-  @Override
-  public boolean isClosed() {
-    return !opened;
-  }
-
-  @Override
-  public void flush() throws Exception {
-    // does nothing as append guarantees blocks are appended immediately
   }
 }

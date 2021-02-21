@@ -9,6 +9,7 @@ package io.zeebe.logstreams.impl.log;
 
 import static io.zeebe.util.StringUtil.getBytes;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import io.zeebe.logstreams.log.LogStreamReader;
 import io.zeebe.logstreams.log.LoggedEvent;
@@ -58,17 +59,13 @@ public final class LogStreamReaderTest {
   }
 
   @Test
-  public void shouldThrowExceptionIfReaderClosed() {
+  public void shouldNotHaveNextIfReaderIsClosed() {
     // given
     final LogStreamReader reader = logStreamRule.getLogStreamReader();
     reader.close();
 
-    // expect
-    expectedException.expectMessage(LogStreamReaderImpl.ERROR_CLOSED);
-    expectedException.expect(IllegalStateException.class);
-
-    // when
-    reader.hasNext();
+    // when - then
+    assertThat(reader.hasNext()).isFalse();
   }
 
   @Test
@@ -77,13 +74,8 @@ public final class LogStreamReaderTest {
     final LogStreamReader reader = logStreamRule.getLogStreamReader();
     reader.close();
 
-    // expect
-    expectedException.expectMessage(LogStreamReaderImpl.ERROR_CLOSED);
-    expectedException.expect(IllegalStateException.class);
-
-    // when
-    // then
-    reader.next();
+    // when - then
+    assertThatCode(reader::next).isInstanceOf(NoSuchElementException.class);
   }
 
   @Test
@@ -97,7 +89,7 @@ public final class LogStreamReaderTest {
     final long position = writer.writeEvent(w -> w.key(eventKey).value(EVENT_VALUE));
 
     // then
-    assertThat(reader.hasNext()).isEqualTo(true);
+    assertThat(reader.hasNext()).isTrue();
     final LoggedEvent next = reader.next();
     assertThat(next.getKey()).isEqualTo(eventKey);
     assertThat(next.getPosition()).isEqualTo(position);
@@ -106,14 +98,9 @@ public final class LogStreamReaderTest {
 
   @Test
   public void shouldThrowNoSuchElementExceptionOnNextCall() {
-    // expect
-    expectedException.expectMessage(
-        "Api protocol violation: No next log entry available; You need to probe with hasNext() first.");
-    expectedException.expect(NoSuchElementException.class);
-
-    // when
+    // given an empty log
     // then
-    reader.next();
+    assertThatCode(reader::next).isInstanceOf(NoSuchElementException.class);
   }
 
   @Test
@@ -361,6 +348,6 @@ public final class LogStreamReaderTest {
     final var result = reader.seekToEnd();
 
     // then
-    assertThat(result).isLessThan(0);
+    assertThat(result).isNegative();
   }
 }

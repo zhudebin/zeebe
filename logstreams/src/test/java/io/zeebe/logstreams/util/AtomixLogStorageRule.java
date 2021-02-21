@@ -22,7 +22,7 @@ import io.atomix.raft.zeebe.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
 import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.Indexed;
-import io.zeebe.logstreams.spi.LogStorage;
+import io.zeebe.logstreams.storage.LogStorage;
 import io.zeebe.logstreams.storage.atomix.AtomixAppenderSupplier;
 import io.zeebe.logstreams.storage.atomix.AtomixLogStorage;
 import io.zeebe.logstreams.storage.atomix.AtomixReaderFactory;
@@ -201,7 +201,6 @@ public final class AtomixLogStorageRule extends ExternalResource
     raftLog = null;
     Optional.ofNullable(metaStore).ifPresent(MetaStore::close);
     metaStore = null;
-    Optional.ofNullable(storage).ifPresent(AtomixLogStorage::close);
     storage = null;
     Optional.ofNullable(raftStorage).ifPresent(RaftStorage::deleteLog);
     raftStorage = null;
@@ -238,21 +237,12 @@ public final class AtomixLogStorageRule extends ExternalResource
         .withRetainStaleSnapshots();
   }
 
-  private final class NoopListener implements AppendListener {
+  private static final class NoopListener implements AppendListener {
     private Indexed<ZeebeEntry> lastWrittenEntry;
 
     @Override
     public void onWrite(final Indexed<ZeebeEntry> indexed) {
       lastWrittenEntry = indexed;
     }
-
-    @Override
-    public void onWriteError(final Throwable error) {}
-
-    @Override
-    public void onCommit(final Indexed<ZeebeEntry> indexed) {}
-
-    @Override
-    public void onCommitError(final Indexed<ZeebeEntry> indexed, final Throwable error) {}
   }
 }
