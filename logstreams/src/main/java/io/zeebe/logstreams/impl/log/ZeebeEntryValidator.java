@@ -7,16 +7,17 @@
  */
 package io.zeebe.logstreams.impl.log;
 
+import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
 import io.atomix.raft.zeebe.EntryValidator;
 import io.atomix.raft.zeebe.ValidationResult;
-import io.atomix.raft.zeebe.ZeebeEntry;
 import org.agrona.concurrent.UnsafeBuffer;
 
 public class ZeebeEntryValidator implements EntryValidator {
   @Override
-  public ValidationResult validateEntry(final ZeebeEntry lastEntry, final ZeebeEntry entry) {
+  public ValidationResult validateEntry(
+      final ApplicationEntryImpl lastEntry, final ApplicationEntryImpl entry) {
     final UnsafeBuffer reader = new UnsafeBuffer(entry.data());
-    long lastPosition = lastEntry != null ? lastEntry.highestPosition() : -1;
+    long lastPosition = lastEntry != null ? lastEntry.highestAsqn() : -1;
     int offset = 0;
 
     do {
@@ -25,7 +26,7 @@ public class ZeebeEntryValidator implements EntryValidator {
         return ValidationResult.failure(
             String.format(
                 "Unexpected position %d was encountered after position %d when appending positions <%d, %d>.",
-                position, lastPosition, entry.lowestPosition(), entry.highestPosition()));
+                position, lastPosition, entry.lowestAsqn(), entry.highestAsqn()));
       }
       lastPosition = position;
 

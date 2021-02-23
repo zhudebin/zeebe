@@ -32,6 +32,7 @@ import io.atomix.raft.protocol.InstallResponse;
 import io.atomix.raft.protocol.RaftRequest;
 import io.atomix.raft.protocol.RaftResponse;
 import io.atomix.raft.snapshot.impl.SnapshotChunkImpl;
+import io.atomix.raft.storage.log.entry.RaftEntry;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.utils.logging.ContextualLoggerFactory;
@@ -95,7 +96,9 @@ abstract class AbstractAppender implements AutoCloseable {
   protected AppendRequest buildAppendEmptyRequest(final RaftMemberContext member) {
     // Read the previous entry from the reader.
     // The reader can be null for RESERVE members.
-    final Indexed<RaftLogEntry> prevEntry = member.getCurrentEntry();
+
+    // TODO: remove cast
+    final Indexed<RaftLogEntry> prevEntry = (Indexed<RaftLogEntry>) member.getCurrentEntry();
 
     final DefaultRaftMember leader = raft.getLeader();
     return builderWithPreviousEntry(prevEntry)
@@ -127,7 +130,8 @@ abstract class AbstractAppender implements AutoCloseable {
   /** Builds a populated AppendEntries request. */
   protected AppendRequest buildAppendEntriesRequest(
       final RaftMemberContext member, final long lastIndex) {
-    final Indexed<RaftLogEntry> prevEntry = member.getCurrentEntry();
+    // TODO: remove cast
+    final Indexed<RaftLogEntry> prevEntry = (Indexed<RaftLogEntry>) member.getCurrentEntry();
 
     final DefaultRaftMember leader = raft.getLeader();
     final AppendRequest.Builder builder =
@@ -137,8 +141,8 @@ abstract class AbstractAppender implements AutoCloseable {
             .withCommitIndex(raft.getCommitIndex());
 
     // Build a list of entries to send to the member.
-    final List<RaftLogEntry> entries = new ArrayList<>();
-    final List<Long> checksums = new ArrayList<>();
+    final List<RaftEntry> entries = new ArrayList<>();
+    final List<Integer> checksums = new ArrayList<>();
 
     // Build a list of entries up to the MAX_BATCH_SIZE. Note that entries in the log may
     // be null if they've been compacted and the member to which we're sending entries is just
@@ -151,8 +155,8 @@ abstract class AbstractAppender implements AutoCloseable {
     // Iterate through the log until the last index or the end of the log is reached.
     while (member.hasNextEntry()) {
       // Otherwise, read the next entry and add it to the batch.
-      final Indexed<RaftLogEntry> entry = member.nextEntry();
-      entries.add(entry.entry());
+      final RaftEntry entry = member.nextEntry();
+      entries.add(entry);
       checksums.add(entry.checksum());
       size += entry.size();
       if (entry.index() == lastIndex || size >= maxBatchSizePerAppend) {

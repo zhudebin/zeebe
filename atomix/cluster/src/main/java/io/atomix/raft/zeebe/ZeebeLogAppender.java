@@ -15,13 +15,14 @@
  */
 package io.atomix.raft.zeebe;
 
+import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
 import io.atomix.storage.journal.Indexed;
 import java.nio.ByteBuffer;
 
 /**
  * A log appender provides a central entry point to append to the local Raft log such that it is
  * automatically replicated and eventually committed, and the ability for callers to be notified of
- * various events, e.g. {@link AppendListener#onCommit(Indexed)}.
+ * various events, e.g. {@link AppendListener#onCommit(ApplicationEntryImpl)}.
  */
 @FunctionalInterface
 public interface ZeebeLogAppender {
@@ -45,9 +46,9 @@ public interface ZeebeLogAppender {
     /**
      * Called when the entry has been written to the log.
      *
-     * @param indexed the entry that was written to the log
+     * @param entry the entry that was written to the log
      */
-    void onWrite(Indexed<ZeebeEntry> indexed);
+    void onWrite(ApplicationEntryImpl entry);
 
     /**
      * Called when an error occurred while writing the entry to the log.
@@ -59,9 +60,9 @@ public interface ZeebeLogAppender {
     /**
      * Called when the entry has been committed.
      *
-     * @param indexed the entry that was committed
+     * @param entry the entry that was committed
      */
-    void onCommit(Indexed<ZeebeEntry> indexed);
+    void onCommit(ApplicationEntryImpl entry);
 
     /**
      * Called when an error occurred while replicating or committing an entry, typically when if an

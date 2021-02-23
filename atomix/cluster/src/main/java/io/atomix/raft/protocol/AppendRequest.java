@@ -21,6 +21,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import io.atomix.cluster.MemberId;
+import io.atomix.raft.storage.log.entry.RaftEntry;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import java.util.Arrays;
 import java.util.List;
@@ -246,7 +247,7 @@ public class AppendRequest extends AbstractRaftRequest {
      * @throws NullPointerException if {@code entries} is null
      */
     @SuppressWarnings("unchecked")
-    public Builder withEntries(final List<RaftLogEntry> entries) {
+    public Builder withEntries(final List<RaftEntry> entries) {
       this.entries = checkNotNull(entries, NULL_ENTRIES_ERR);
       return this;
     }
@@ -258,7 +259,7 @@ public class AppendRequest extends AbstractRaftRequest {
      * @return The append request builder.
      * @throws NullPointerException if {@code entries} is null
      */
-    public Builder withChecksums(final List<Long> checksums) {
+    public Builder withChecksums(final List<Integer> checksums) {
       this.checksums = checkNotNull(checksums, "checksums cannot be null");
       return this;
     }

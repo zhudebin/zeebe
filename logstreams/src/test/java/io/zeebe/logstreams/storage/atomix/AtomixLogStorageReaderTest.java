@@ -10,6 +10,7 @@ package io.zeebe.logstreams.storage.atomix;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
+import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
 import io.atomix.raft.storage.log.entry.ConfigurationEntry;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender.AppendListener;
@@ -187,9 +188,9 @@ public final class AtomixLogStorageReaderTest {
     assertThat(isEmpty).isFalse();
   }
 
-  private Indexed<ZeebeEntry> append(
+  private ApplicationEntryImpl append(
       final long lowestPosition, final long highestPosition, final ByteBuffer data) {
-    final var future = new CompletableFuture<Indexed<ZeebeEntry>>();
+    final var future = new CompletableFuture<ApplicationEntryImpl>();
     final var listener = new Listener(future);
     storageRule.appendEntry(lowestPosition, highestPosition, data, listener);
     return future.join();
@@ -205,15 +206,15 @@ public final class AtomixLogStorageReaderTest {
   }
 
   private static final class Listener implements AppendListener {
-    private final CompletableFuture<Indexed<ZeebeEntry>> future;
+    private final CompletableFuture<ApplicationEntryImpl> future;
 
-    private Listener(final CompletableFuture<Indexed<ZeebeEntry>> future) {
+    private Listener(final CompletableFuture<ApplicationEntryImpl> future) {
       this.future = future;
     }
 
     @Override
-    public void onWrite(final Indexed<ZeebeEntry> indexed) {
-      future.complete(indexed);
+    public void onWrite(final ApplicationEntryImpl entry) {
+      future.complete(entry);
     }
 
     @Override
@@ -222,7 +223,7 @@ public final class AtomixLogStorageReaderTest {
     }
 
     @Override
-    public void onCommit(final Indexed<ZeebeEntry> indexed) {
+    public void onCommit(final ApplicationEntryImpl entry) {
       // do nothing
     }
 

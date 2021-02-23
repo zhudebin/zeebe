@@ -14,7 +14,9 @@ import io.atomix.raft.storage.RaftStorage;
 import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogReader.Mode;
-import io.atomix.raft.storage.log.entry.RaftLogEntry;
+import io.atomix.raft.storage.log.entry.ApplicationEntry;
+import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
+import io.atomix.raft.storage.log.entry.RaftEntry;
 import io.atomix.raft.storage.system.MetaStore;
 import io.atomix.raft.zeebe.EntryValidator;
 import io.atomix.raft.zeebe.ValidationResult;
@@ -35,6 +37,7 @@ import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
 
@@ -107,13 +110,13 @@ public final class AtomixLogStorageRule extends ExternalResource
       final long highestPosition,
       final ByteBuffer data,
       final AppendListener listener) {
-    final ZeebeEntry zbEntry =
-        new ZeebeEntry(0, System.currentTimeMillis(), lowestPosition, highestPosition, data);
-    final Indexed<RaftLogEntry> lastEntry = raftLog.getLastEntry();
+    final TestApplicationEntry zbEntry =
+        new TestApplicationEntry(0, 1, lowestPosition, highestPosition, new UnsafeBuffer(data));
+    final RaftEntry lastEntry = raftLog.getLastEntry();
 
-    ZeebeEntry lastZbEntry = null;
-    if (lastEntry != null && lastEntry.type() == ZeebeEntry.class) {
-      lastZbEntry = ((ZeebeEntry) lastEntry.cast().entry());
+    ApplicationEntryImpl lastZbEntry = null;
+    if (lastEntry != null && lastEntry.isApplicationEntry()) {
+      lastZbEntry = lastEntry.asApplicationEntry();
     }
 
     final ValidationResult result = entryValidator.validateEntry(lastZbEntry, zbEntry);
@@ -127,18 +130,18 @@ public final class AtomixLogStorageRule extends ExternalResource
       return;
     }
 
-    final Indexed<ZeebeEntry> entry = raftLog.append(zbEntry);
+    final RaftEntry entry = raftLog.append(zbEntry);
 
-    listener.onWrite(entry);
+    listener.onWrite(entry.asApplicationEntry());
     raftLog.setCommitIndex(entry.index());
 
-    listener.onCommit(entry);
+    listener.onCommit(entry.asApplicationEntry());
     if (positionListener != null) {
       positionListener.accept(highestPosition);
     }
   }
 
-  public Indexed<ZeebeEntry> appendEntry(
+  public ApplicationEntry appendEntry(
       final long lowestPosition, final long highestPosition, final ByteBuffer data) {
     final NoopListener listener = new NoopListener();
     appendEntry(lowestPosition, highestPosition, data, listener);
@@ -236,10 +239,10 @@ public final class AtomixLogStorageRule extends ExternalResource
   }
 
   private final class NoopListener implements AppendListener {
-    private Indexed<ZeebeEntry> lastWrittenEntry;
+    private ApplicationEntryImpl lastWrittenEntry;
 
     @Override
-    public void onWrite(final Indexed<ZeebeEntry> indexed) {
+    public void onWrite(final ApplicationEntryImpl indexed) {
       lastWrittenEntry = indexed;
     }
 
@@ -247,7 +250,7 @@ public final class AtomixLogStorageRule extends ExternalResource
     public void onWriteError(final Throwable error) {}
 
     @Override
-    public void onCommit(final Indexed<ZeebeEntry> indexed) {}
+    public void onCommit(final ApplicationEntryImpl indexed) {}
 
     @Override
     public void onCommitError(final Indexed<ZeebeEntry> indexed, final Throwable error) {}

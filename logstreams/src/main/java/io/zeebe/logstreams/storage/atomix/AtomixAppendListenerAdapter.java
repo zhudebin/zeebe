@@ -7,6 +7,7 @@
  */
 package io.zeebe.logstreams.storage.atomix;
 
+import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender.AppendListener;
 import io.atomix.storage.journal.Indexed;
@@ -20,8 +21,8 @@ public final class AtomixAppendListenerAdapter implements AppendListener {
   }
 
   @Override
-  public void onWrite(final Indexed<ZeebeEntry> indexed) {
-    delegate.onWrite(indexed.index());
+  public void onWrite(final ApplicationEntryImpl entry) {
+    delegate.onWrite(entry.index());
   }
 
   @Override
