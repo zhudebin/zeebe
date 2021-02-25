@@ -16,8 +16,6 @@
  */
 package io.atomix.raft;
 
-import io.atomix.raft.storage.log.entry.RaftLogEntry;
-
 @FunctionalInterface
 public interface RaftCommitListener {
 

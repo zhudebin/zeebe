@@ -45,7 +45,6 @@ import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogReader.Mode;
 import io.atomix.raft.storage.log.entry.InitializeEntry;
-import io.atomix.raft.storage.log.entry.RaftEntry;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.atomix.raft.zeebe.ZeebeLogAppender;
@@ -375,7 +374,7 @@ public class RaftTest extends ConcurrentTestCase {
       final RaftLog raftLog = server.getContext().getLog();
       final RaftLogReader raftLogReader = raftLog.openReader(0, Mode.COMMITS);
       raftLogReader.reset(raftLog.getLastIndex());
-      final RaftEntry entry = raftLogReader.next();
+      final RaftLogEntry entry = raftLogReader.next();
       assert (entry instanceof InitializeEntry);
       assertEquals(term, entry.term());
       transitionCompleted.countDown();

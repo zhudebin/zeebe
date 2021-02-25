@@ -1,25 +1,18 @@
 package io.atomix.raft.storage.log.entry;
 
-import io.zeebe.journal.JournalRecord;
-import org.agrona.DirectBuffer;
+import org.agrona.MutableDirectBuffer;
 
-public interface RaftEntry extends JournalRecord {
+public interface RaftEntry {
 
-  long term();
+  void write(MutableDirectBuffer buffer);
 
-  boolean isApplicationEntry();
+  int getLength();
 
-  ApplicationEntryImpl asApplicationEntry();
+  default boolean isApplicationEntry() {
+    return false;
+  }
 
-  boolean isConfigurationEntry();
-
-  ConfigurationEntry asConfigurationEntry();
-
-  boolean isInitialEntry();
-
-  InitializeEntry asInitialEntry();
-
-  DirectBuffer entry();
-
-  int size();
+  default long getAsqn() {
+    return -1;
+  }
 }

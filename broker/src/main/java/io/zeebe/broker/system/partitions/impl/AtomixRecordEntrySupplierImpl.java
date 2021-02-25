@@ -8,7 +8,6 @@
 package io.zeebe.broker.system.partitions.impl;
 
 import io.atomix.raft.storage.log.RaftLogReader;
-import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
 import io.zeebe.broker.system.partitions.AtomixRecordEntrySupplier;

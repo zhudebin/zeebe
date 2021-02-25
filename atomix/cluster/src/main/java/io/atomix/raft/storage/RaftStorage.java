@@ -236,7 +236,6 @@ public final class RaftStorage {
     return RaftLog.builder()
         .withName(prefix)
         .withDirectory(directory)
-        .withNamespace(namespace)
         .withMaxSegmentSize(maxSegmentSize)
         .withMaxEntrySize(maxEntrySize)
         .withFreeDiskSpace(freeDiskSpace)

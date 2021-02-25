@@ -8,7 +8,7 @@ import io.atomix.raft.storage.impl.ZeebeEntryDecoder;
 import io.zeebe.journal.JournalRecord;
 import org.agrona.DirectBuffer;
 
-public class RaftEntryImpl implements RaftEntry {
+public class RaftEntryImpl implements RaftLogEntry {
 
   private final RaftFrameReader reader;
   private final JournalRecord record;
@@ -33,8 +33,8 @@ public class RaftEntryImpl implements RaftEntry {
   }
 
   @Override
-  public ApplicationEntryImpl asApplicationEntry() {
-    return new ApplicationEntryImpl(this);
+  public ApplicationEntry asApplicationEntry() {
+    return new ApplicationEntryImpl(new ApplicationEntryReader(reader.data()));
   }
 
   @Override
@@ -72,7 +72,7 @@ public class RaftEntryImpl implements RaftEntry {
   }
 
   @Override
-  public int checksum() {
+  public long checksum() {
     return record.checksum();
   }
 

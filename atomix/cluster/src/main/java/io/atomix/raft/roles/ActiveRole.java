@@ -26,7 +26,7 @@ import io.atomix.raft.protocol.RaftRequest;
 import io.atomix.raft.protocol.RaftResponse;
 import io.atomix.raft.protocol.VoteRequest;
 import io.atomix.raft.protocol.VoteResponse;
-import io.atomix.raft.storage.log.entry.RaftEntry;
+import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -118,7 +118,7 @@ public abstract class ActiveRole extends PassiveRole {
     }
 
     // Read the last entry from the log.
-    final RaftEntry lastEntry = raft.getLog().getLastEntry();
+    final RaftLogEntry lastEntry = raft.getLog().getLastEntry();
 
     // If the candidate's last log term is lower than the local log's last entry term, reject the
     // request.

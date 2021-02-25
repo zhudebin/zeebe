@@ -90,12 +90,8 @@ public interface LogStorage {
    */
   interface AppendListener {
 
-    /**
-     * Called when the entry has been successfully written to the local storage.
-     *
-     * @param address the address of the written entry
-     */
-    void onWrite(long address);
+    /** Called when the entry has been successfully written to the local storage. */
+    void onWrite();
 
     /**
      * Called when an error occurred while writing to the entry.
@@ -104,19 +100,14 @@ public interface LogStorage {
      */
     void onWriteError(Throwable error);
 
-    /**
-     * Called when the entry has been successfully committed.
-     *
-     * @param address the address of the committed entry
-     */
-    void onCommit(long address);
+    /** Called when the entry has been successfully committed. */
+    void onCommit();
 
     /**
      * Called when an error occurs while committing an entry.
      *
-     * @param address the address of the entry to be committed
      * @param error the error that occurred
      */
-    void onCommitError(long address, Throwable error);
+    void onCommitError(Throwable error);
   }
 }

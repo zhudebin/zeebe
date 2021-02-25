@@ -17,7 +17,6 @@ package io.atomix.raft.zeebe;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-import io.atomix.raft.storage.log.entry.TimestampedEntry;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 

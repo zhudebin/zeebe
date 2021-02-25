@@ -23,7 +23,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogReader.Mode;
-import io.atomix.raft.storage.log.entry.RaftEntry;
+import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.zeebe.snapshots.raft.SnapshotChunkReader;
 import java.nio.ByteBuffer;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
@@ -53,7 +53,7 @@ public final class RaftMemberContext {
   private long failureTime;
   private volatile RaftLogReader reader;
   private SnapshotChunkReader snapshotChunkReader;
-  private RaftEntry currentEntry;
+  private RaftLogEntry currentEntry;
 
   RaftMemberContext(
       final DefaultRaftMember member,
@@ -423,12 +423,12 @@ public final class RaftMemberContext {
     return reader.hasNext();
   }
 
-  public RaftEntry nextEntry() {
+  public RaftLogEntry nextEntry() {
     currentEntry = reader.next();
     return currentEntry;
   }
 
-  public RaftEntry getCurrentEntry() {
+  public RaftLogEntry getCurrentEntry() {
     return currentEntry;
   }
 

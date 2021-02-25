@@ -46,7 +46,7 @@ class PersistedJournalRecord implements JournalRecord {
   }
 
   @Override
-  public int checksum() {
+  public long checksum() {
     return checksum;
   }
 

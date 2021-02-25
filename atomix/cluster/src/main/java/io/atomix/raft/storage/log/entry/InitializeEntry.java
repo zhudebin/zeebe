@@ -16,6 +16,8 @@
  */
 package io.atomix.raft.storage.log.entry;
 
+import org.agrona.MutableDirectBuffer;
+
 /**
  * Indicates a leader change has occurred.
  *
@@ -25,9 +27,15 @@ package io.atomix.raft.storage.log.entry;
  * following leader changes. Initialize entries are always the first entry to be committed at the
  * start of a leader's term.
  */
-public class InitializeEntry extends TimestampedEntry {
+public class InitializeEntry implements RaftEntry {
 
-  public InitializeEntry(final long term, final long timestamp) {
-    super(term, timestamp);
+  @Override
+  public void write(final MutableDirectBuffer buffer) {
+
+  }
+
+  @Override
+  public int getLength() {
+    return 0;
   }
 }

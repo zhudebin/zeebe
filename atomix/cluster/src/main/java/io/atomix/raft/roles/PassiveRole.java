@@ -34,7 +34,6 @@ import io.atomix.raft.protocol.VoteResponse;
 import io.atomix.raft.snapshot.impl.SnapshotChunkImpl;
 import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.log.RaftLogReader;
-import io.atomix.raft.storage.log.entry.RaftEntry;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.storage.StorageException;
 import io.atomix.utils.concurrent.ThreadContext;
@@ -486,7 +485,7 @@ public class PassiveRole extends InactiveRole {
       }
 
       // Read the previous entry and validate that the term matches the request previous log term.
-      final var  previousEntry = reader.next();
+      final var previousEntry = reader.next();
       if (request.prevLogTerm() != previousEntry.term()) {
         log.debug(
             "Rejected {}: Previous entry term ({}) does not match local log's term for the same entry ({})",
@@ -579,7 +578,7 @@ public class PassiveRole extends InactiveRole {
       final RaftLogReader reader,
       final RaftLogEntry entry,
       final long index,
-      final RaftEntry lastEntry) {
+      final RaftLogEntry lastEntry) {
     boolean failedToAppend = false;
     if (lastEntry != null) {
       // If the last written entry index is greater than the next append entry index,
@@ -609,7 +608,7 @@ public class PassiveRole extends InactiveRole {
       final CompletableFuture<AppendResponse> future,
       final RaftLogEntry entry,
       final long index,
-      final RaftEntry lastEntry) {
+      final RaftLogEntry lastEntry) {
     // If the last entry index isn't the previous index, throw an exception because
     // something crazy happened!
     if (lastEntry.index() != index - 1) {
@@ -657,7 +656,7 @@ public class PassiveRole extends InactiveRole {
   private boolean appendEntry(
       final long index, final RaftLogEntry entry, final CompletableFuture<AppendResponse> future) {
     try {
-      final RaftEntry indexed;
+      final RaftLogEntry indexed;
       indexed = raft.getLog().append(entry);
 
       log.trace("Appended {}", indexed);

@@ -6,7 +6,7 @@ import io.atomix.raft.storage.log.RaftLog;
 import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogReader.Mode;
 import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
-import io.atomix.raft.storage.log.entry.RaftEntry;
+import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.zeebe.ZeebeEntry;
 import io.zeebe.util.buffer.BufferUtil;
 import java.io.File;
@@ -38,7 +38,7 @@ public class RaftLogTest {
     log.append(new ZeebeEntry(99, 1, 55, 57, data));
     log.append(new ZeebeEntry(11, 1, 33, 57, data));
 
-    RaftEntry entry = reader.next();
+    RaftLogEntry entry = reader.next();
     assertThat(entry.index()).isEqualTo(1);
     assertThat(entry.term()).isEqualTo(99);
     assertThat(entry.asqn()).isEqualTo(55);

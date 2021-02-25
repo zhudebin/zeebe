@@ -17,15 +17,10 @@
 package io.atomix.raft.storage.log;
 
 import io.atomix.raft.storage.RaftFrameReader;
-import io.atomix.raft.storage.RaftFrameWriter;
 import io.atomix.raft.storage.log.RaftLogReader.Mode;
-import io.atomix.raft.storage.log.entry.ApplicationEntryWriter;
-import io.atomix.raft.storage.log.entry.ConfigurationEntry;
-import io.atomix.raft.storage.log.entry.InitializeEntry;
-import io.atomix.raft.storage.log.entry.RaftEntry;
-import io.atomix.raft.storage.log.entry.RaftEntryImpl;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
-import io.atomix.raft.zeebe.ZeebeEntry;
+import io.atomix.raft.storage.log.entry.RaftEntryImpl;
+import io.atomix.raft.storage.log.entry.RaftEntry;
 import io.zeebe.journal.Journal;
 import io.zeebe.journal.JournalRecord;
 import io.zeebe.journal.file.SegmentedJournal;
@@ -43,7 +38,7 @@ public class RaftLog implements Closeable {
   private final Journal journal;
   private final boolean flushExplicitly;
 
-  private RaftEntry lastAppendedEntry;
+  private RaftLogEntry lastAppendedEntry;
   private volatile long commitIndex;
   private final MutableDirectBuffer buffer = new ExpandableArrayBuffer();
 
@@ -117,7 +112,7 @@ public class RaftLog implements Closeable {
     return journal.getLastIndex();
   }
 
-  public RaftEntry getLastEntry() {
+  public RaftLogEntry getLastEntry() {
     if (lastAppendedEntry == null) {
       readLastEntry();
     }
@@ -137,41 +132,20 @@ public class RaftLog implements Closeable {
     return journal.isEmpty();
   }
 
-  public <T extends RaftLogEntry> RaftEntry append(final T entry) {
-    final DirectBuffer wrappedEntryBuffer = new UnsafeBuffer();
-    MutableDirectBuffer entryBuffer = new ExpandableArrayBuffer();
-
-    if (entry instanceof ZeebeEntry) {
-      final ZeebeEntry zbEntry = (ZeebeEntry) entry;
-      final ApplicationEntryWriter appEntryWriter =
-          new ApplicationEntryWriter(
-              zbEntry.lowestPosition(),
-              zbEntry.highestPosition(),
-              new UnsafeBuffer(zbEntry.data()));
-      appEntryWriter.write(entryBuffer, 0);
-      wrappedEntryBuffer.wrap(entryBuffer, 0, appEntryWriter.getLength());
-    } else if (entry instanceof ConfigurationEntry) {
-
-    } else if (entry instanceof InitializeEntry) {
-
-    }
-
-    final RaftFrameWriter writer = new RaftFrameWriter(entry.term(), wrappedEntryBuffer);
-
+  public RaftLogEntry append(final RaftEntry entry) {
     final DirectBuffer b = new UnsafeBuffer();
-    writer.write(buffer, 0);
-    b.wrap(buffer, 0, writer.getLength());
+    entry.write(buffer);
+    b.wrap(buffer, 0, entry.getLength());
 
     final JournalRecord journalRecord;
-    if (entry instanceof ZeebeEntry) {
-      final ZeebeEntry asqnEntry = (ZeebeEntry) entry;
-      journalRecord = journal.append(asqnEntry.lowestPosition(), b);
+    if (entry.isApplicationEntry()) {
+      journalRecord = journal.append(entry.getAsqn(), b);
     } else {
       journalRecord = journal.append(b);
     }
 
     final RaftFrameReader reader = new RaftFrameReader(journalRecord.data());
-    final RaftEntry writtenEntry = new RaftEntryImpl(reader, journalRecord);
+    final RaftLogEntry writtenEntry = new RaftEntryImpl(reader, journalRecord);
     lastAppendedEntry = writtenEntry;
 
     return writtenEntry;

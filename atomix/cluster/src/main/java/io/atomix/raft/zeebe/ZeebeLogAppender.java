@@ -15,14 +15,13 @@
  */
 package io.atomix.raft.zeebe;
 
-import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
-import io.atomix.storage.journal.Indexed;
+import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import java.nio.ByteBuffer;
 
 /**
  * A log appender provides a central entry point to append to the local Raft log such that it is
  * automatically replicated and eventually committed, and the ability for callers to be notified of
- * various events, e.g. {@link AppendListener#onCommit(ApplicationEntryImpl)}.
+ * various events, e.g. {@link AppendListener#onCommit(RaftLogEntry)}.
  */
 @FunctionalInterface
 public interface ZeebeLogAppender {
@@ -43,12 +42,8 @@ public interface ZeebeLogAppender {
    */
   interface AppendListener {
 
-    /**
-     * Called when the entry has been written to the log.
-     *
-     * @param entry the entry that was written to the log
-     */
-    void onWrite(ApplicationEntryImpl entry);
+    /** Called when the entry has been written to the log. */
+    void onWrite();
 
     /**
      * Called when an error occurred while writing the entry to the log.
@@ -57,20 +52,15 @@ public interface ZeebeLogAppender {
      */
     void onWriteError(Throwable error);
 
-    /**
-     * Called when the entry has been committed.
-     *
-     * @param entry the entry that was committed
-     */
-    void onCommit(ApplicationEntryImpl entry);
+    /** Called when the entry has been committed. */
+    void onCommit();
 
     /**
      * Called when an error occurred while replicating or committing an entry, typically when if an
      * append operation was pending when shutting down the server or stepping down as leader.
      *
-     * @param indexed the entry that should have been committed
      * @param error the error that occurred
      */
-    void onCommitError(Indexed<ZeebeEntry> indexed, Throwable error);
+    void onCommitError(Throwable error);
   }
 }

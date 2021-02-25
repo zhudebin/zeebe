@@ -17,7 +17,7 @@
 package io.atomix.raft.storage.log;
 
 import io.atomix.raft.storage.RaftFrameReader;
-import io.atomix.raft.storage.log.entry.RaftEntry;
+import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.storage.log.entry.RaftEntryImpl;
 import io.zeebe.journal.JournalReader;
 import io.zeebe.journal.JournalRecord;
@@ -25,7 +25,7 @@ import java.util.NoSuchElementException;
 import org.agrona.DirectBuffer;
 
 /** Raft log reader. */
-public class RaftLogReader implements java.util.Iterator<RaftEntry>, AutoCloseable {
+public class RaftLogReader implements java.util.Iterator<RaftLogEntry>, AutoCloseable {
   private final RaftLog log;
   private final JournalReader journalReader;
   private final RaftLogReader.Mode mode;
@@ -49,7 +49,7 @@ public class RaftLogReader implements java.util.Iterator<RaftEntry>, AutoCloseab
   }
 
   @Override
-  public RaftEntry next() {
+  public RaftLogEntry next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }

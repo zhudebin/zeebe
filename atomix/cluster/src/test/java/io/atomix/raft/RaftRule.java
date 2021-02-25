@@ -33,7 +33,6 @@ import io.atomix.raft.snapshot.InMemorySnapshot;
 import io.atomix.raft.snapshot.TestSnapshotStore;
 import io.atomix.raft.storage.RaftStorage;
 import io.atomix.raft.storage.log.RaftLogReader.Mode;
-import io.atomix.raft.storage.log.entry.RaftEntry;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.zeebe.EntryValidator;
 import io.atomix.raft.zeebe.NoopEntryValidator;
@@ -370,15 +369,15 @@ public final class RaftRule extends ExternalResource {
             });
   }
 
-  public Map<String, List<RaftEntry>> getMemberLogs() {
+  public Map<String, List<RaftLogEntry>> getMemberLogs() {
 
-    final Map<String, List<RaftEntry>> memberLogs = new HashMap<>();
+    final Map<String, List<RaftLogEntry>> memberLogs = new HashMap<>();
 
     for (final var server : servers.values()) {
       if (server.isRunning()) {
 
         final var log = server.getContext().getLog();
-        final List<RaftEntry> entryList = new ArrayList<>();
+        final List<RaftLogEntry> entryList = new ArrayList<>();
         try (final var raftLogReader = log.openReader(1, Mode.ALL)) {
 
           while (raftLogReader.hasNext()) {

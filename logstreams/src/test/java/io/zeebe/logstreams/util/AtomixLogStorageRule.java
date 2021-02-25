@@ -16,7 +16,7 @@ import io.atomix.raft.storage.log.RaftLogReader;
 import io.atomix.raft.storage.log.RaftLogReader.Mode;
 import io.atomix.raft.storage.log.entry.ApplicationEntry;
 import io.atomix.raft.storage.log.entry.ApplicationEntryImpl;
-import io.atomix.raft.storage.log.entry.RaftEntry;
+import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.storage.system.MetaStore;
 import io.atomix.raft.zeebe.EntryValidator;
 import io.atomix.raft.zeebe.ValidationResult;
@@ -111,10 +111,10 @@ public final class AtomixLogStorageRule extends ExternalResource
       final ByteBuffer data,
       final AppendListener listener) {
     final TestApplicationEntry zbEntry =
-        new TestApplicationEntry(0, 1, lowestPosition, highestPosition, new UnsafeBuffer(data));
-    final RaftEntry lastEntry = raftLog.getLastEntry();
+        new TestApplicationEntry(lowestPosition, highestPosition, new UnsafeBuffer(data));
+    final RaftLogEntry lastEntry = raftLog.getLastEntry();
 
-    ApplicationEntryImpl lastZbEntry = null;
+    ApplicationEntry lastZbEntry = null;
     if (lastEntry != null && lastEntry.isApplicationEntry()) {
       lastZbEntry = lastEntry.asApplicationEntry();
     }
@@ -130,7 +130,7 @@ public final class AtomixLogStorageRule extends ExternalResource
       return;
     }
 
-    final RaftEntry entry = raftLog.append(zbEntry);
+    final RaftLogEntry entry = raftLog.append(zbEntry);
 
     listener.onWrite(entry.asApplicationEntry());
     raftLog.setCommitIndex(entry.index());
