@@ -251,8 +251,7 @@ public class ElasticsearchClient {
   }
 
   private RestClient createClient() {
-    final HttpHost[] httpHosts =
-        urlsToHttpHosts(configuration.url != null ? configuration.url : configuration.urls);
+    final HttpHost[] httpHosts = urlsToHttpHosts(configuration.url);
     final RestClientBuilder builder =
         RestClient.builder(httpHosts)
             .setHttpClientConfigCallback(this::setHttpClientConfigCallback);

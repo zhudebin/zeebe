@@ -15,15 +15,8 @@ public class ElasticsearchExporterConfiguration {
 
   private static final String DEFAULT_URL = "http://localhost:9200";
 
-  /**
-   * Elasticsearch http url
-   *
-   * @deprecated Use {@link #urls} instead.
-   */
-  @Deprecated public String url;
-
-  /** Elasticsearch http urls */
-  public String urls = DEFAULT_URL;
+  /** Comma-separated Elasticsearch http urls */
+  public String url = DEFAULT_URL;
 
   public final IndexConfiguration index = new IndexConfiguration();
   public final BulkConfiguration bulk = new BulkConfiguration();
@@ -40,8 +33,8 @@ public class ElasticsearchExporterConfiguration {
   @Override
   public String toString() {
     return "ElasticsearchExporterConfiguration{"
-        + "urls='"
-        + urls
+        + "url='"
+        + url
         + '\''
         + ", index="
         + index
