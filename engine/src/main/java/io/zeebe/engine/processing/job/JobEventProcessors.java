@@ -10,6 +10,7 @@ package io.zeebe.engine.processing.job;
 import io.zeebe.engine.processing.streamprocessor.ReadonlyProcessingContext;
 import io.zeebe.engine.processing.streamprocessor.StreamProcessorLifecycleAware;
 import io.zeebe.engine.processing.streamprocessor.TypedRecordProcessors;
+import io.zeebe.engine.processing.streamprocessor.writers.Writers;
 import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.protocol.record.ValueType;
 import io.zeebe.protocol.record.intent.JobBatchIntent;
@@ -22,10 +23,10 @@ public final class JobEventProcessors {
       final TypedRecordProcessors typedRecordProcessors,
       final ZeebeState zeebeState,
       final Consumer<String> onJobsAvailableCallback,
-      final int maxRecordSize) {
+      final int maxRecordSize,
+      final Writers writers) {
 
     final var jobState = zeebeState.getJobState();
-    final var keyGenerator = zeebeState.getKeyGenerator();
 
     typedRecordProcessors
         .onCommand(ValueType.JOB, JobIntent.CREATE, new CreateProcessor())
@@ -39,8 +40,7 @@ public final class JobEventProcessors {
         .onCommand(
             ValueType.JOB_BATCH,
             JobBatchIntent.ACTIVATE,
-            new JobBatchActivateProcessor(
-                jobState, zeebeState.getVariableState(), keyGenerator, maxRecordSize))
+            new JobBatchActivateProcessor(writers, zeebeState, maxRecordSize))
         .withListener(new JobTimeoutTrigger(jobState))
         .withListener(
             new StreamProcessorLifecycleAware() {

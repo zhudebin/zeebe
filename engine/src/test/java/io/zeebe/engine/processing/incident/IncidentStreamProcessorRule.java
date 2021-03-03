@@ -96,7 +96,11 @@ public final class IncidentStreamProcessorRule extends ExternalResource {
                   processingContext.getWriters());
 
           JobEventProcessors.addJobProcessors(
-              typedRecordProcessors, zeebeState, type -> {}, Integer.MAX_VALUE);
+              typedRecordProcessors,
+              zeebeState,
+              type -> {},
+              Integer.MAX_VALUE,
+              processingContext.getWriters());
 
           IncidentEventProcessors.addProcessors(typedRecordProcessors, zeebeState, stepProcessor);
 

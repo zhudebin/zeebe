@@ -14,6 +14,7 @@ import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.protocol.record.RecordValue;
 import io.zeebe.protocol.record.intent.DeploymentDistributionIntent;
 import io.zeebe.protocol.record.intent.Intent;
+import io.zeebe.protocol.record.intent.JobBatchIntent;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.protocol.record.intent.MessageIntent;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
@@ -53,6 +54,7 @@ public final class EventAppliers implements EventApplier {
 
     register(MessageIntent.EXPIRED, new MessageExpiredApplier(state.getMessageState()));
     registerJobIntentEventAppliers(state);
+    register(JobBatchIntent.ACTIVATED, new JobBatchActivatedApplier(state));
   }
 
   private void registerJobIntentEventAppliers(final ZeebeState state) {
