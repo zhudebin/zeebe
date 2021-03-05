@@ -9,21 +9,21 @@ package io.zeebe.engine.processing.streamprocessor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.zeebe.engine.processing.message.MessageObserver;
 import io.zeebe.engine.processing.streamprocessor.StreamProcessor.Phase;
 import io.zeebe.engine.state.ZbColumnFamilies;
 import io.zeebe.engine.util.EngineRule;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.record.Record;
-import io.zeebe.protocol.record.intent.JobIntent;
-import io.zeebe.protocol.record.intent.MessageIntent;
+import io.zeebe.protocol.record.intent.IncidentIntent;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
+import io.zeebe.protocol.record.value.VariableDocumentUpdateSemantic;
+import io.zeebe.test.util.MsgPackUtil;
 import io.zeebe.test.util.record.RecordingExporter;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import org.assertj.core.api.SoftAssertions;
@@ -40,6 +40,8 @@ import org.junit.runners.Parameterized.Parameters;
 public final class ReplayStateTest {
 
   private static final String PROCESS_ID = "process";
+  @Parameter public TestCase testCase;
+  private long lastProcessedPosition = -1L;
 
   @Rule
   public final EngineRule engine =
@@ -47,48 +49,89 @@ public final class ReplayStateTest {
           .withOnProcessedCallback(record -> lastProcessedPosition = record.getPosition())
           .withOnSkippedCallback(record -> lastProcessedPosition = record.getPosition());
 
-  @Parameter public TestCase testCase;
-
-  private long lastProcessedPosition = -1L;
-
   @Parameters(name = "{0}")
   public static Collection<TestCase> testRecords() {
     return List.of(
-        testCase("activated service task")
+        //        testCase("activated service task")
+        //            .withWorkflow(
+        //                Bpmn.createExecutableProcess(PROCESS_ID)
+        //                    .startEvent()
+        //                    .serviceTask("task", t -> t.zeebeJobType("test"))
+        //                    .done())
+        //            .withExecution(
+        //                engine -> {
+        //                  engine.workflowInstance().ofBpmnProcessId(PROCESS_ID).create();
+        //
+        //                  RecordingExporter.workflowInstanceRecords(
+        //                          WorkflowInstanceIntent.ELEMENT_ACTIVATED)
+        //                      .withElementType(BpmnElementType.SERVICE_TASK)
+        //                      .await();
+        //
+        //                  return RecordingExporter.jobRecords(JobIntent.CREATED).getFirst();
+        //                }),
+        //        testCase("expired buffered message")
+        //            .withExecution(
+        //                engine -> {
+        //                  final var timeToLive = Duration.ofMinutes(1);
+        //
+        //                  engine
+        //                      .message()
+        //                      .withName("test")
+        //                      .withCorrelationKey("1")
+        //                      .withTimeToLive(timeToLive)
+        //                      .publish();
+        //
+        //                  engine
+        //                      .getClock()
+        //                      .addTime(
+        //
+        // timeToLive.plus(MessageObserver.MESSAGE_TIME_TO_LIVE_CHECK_INTERVAL));
+        //
+        //                  return
+        // RecordingExporter.messageRecords(MessageIntent.EXPIRED).getFirst();
+        //                }),
+        testCase("gateway with expression incident")
             .withWorkflow(
                 Bpmn.createExecutableProcess(PROCESS_ID)
                     .startEvent()
-                    .serviceTask("task", t -> t.zeebeJobType("test"))
+                    .exclusiveGateway("fork")
+                    .defaultFlow()
+                    .endEvent()
+                    .moveToNode("fork")
+                    .sequenceFlowId("non_default")
+                    .conditionExpression("missing_var = \"not_missing\"")
+                    .endEvent()
                     .done())
             .withExecution(
                 engine -> {
                   engine.workflowInstance().ofBpmnProcessId(PROCESS_ID).create();
 
-                  RecordingExporter.workflowInstanceRecords(
-                          WorkflowInstanceIntent.ELEMENT_ACTIVATED)
-                      .withElementType(BpmnElementType.SERVICE_TASK)
+                  final var incident =
+                      RecordingExporter.incidentRecords(IncidentIntent.CREATED)
+                          .withElementId("fork")
+                          .findFirst()
+                          .get();
+
+                  engine
+                      .variables()
+                      .ofScope(incident.getValue().getWorkflowInstanceKey())
+                      .withDocument(MsgPackUtil.asMsgPack(Map.of("missing_var", "not_missing")))
+                      .withUpdateSemantic(VariableDocumentUpdateSemantic.LOCAL)
+                      .update();
+
+                  engine
+                      .incident()
+                      .ofInstance(incident.getValue().getWorkflowInstanceKey())
+                      .withKey(incident.getKey())
+                      .resolve();
+                  RecordingExporter.incidentRecords(IncidentIntent.RESOLVED)
+                      .withElementId("fork")
                       .await();
-
-                  return RecordingExporter.jobRecords(JobIntent.CREATED).getFirst();
-                }),
-        testCase("expired buffered message")
-            .withExecution(
-                engine -> {
-                  final var timeToLive = Duration.ofMinutes(1);
-
-                  engine
-                      .message()
-                      .withName("test")
-                      .withCorrelationKey("1")
-                      .withTimeToLive(timeToLive)
-                      .publish();
-
-                  engine
-                      .getClock()
-                      .addTime(
-                          timeToLive.plus(MessageObserver.MESSAGE_TIME_TO_LIVE_CHECK_INTERVAL));
-
-                  return RecordingExporter.messageRecords(MessageIntent.EXPIRED).getFirst();
+                  return RecordingExporter.workflowInstanceRecords(
+                          WorkflowInstanceIntent.ELEMENT_COMPLETED)
+                      .withBpmnProcessId(PROCESS_ID)
+                      .withElementType(BpmnElementType.PROCESS)
+                      .getFirst();
                 }));
   }
 

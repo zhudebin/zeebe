@@ -23,6 +23,7 @@ import io.zeebe.test.util.bpmn.random.TestDataGenerator;
 import io.zeebe.test.util.bpmn.random.TestDataGenerator.TestDataRecord;
 import io.zeebe.test.util.record.RecordingExporter;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.assertj.core.api.SoftAssertions;
 import org.awaitility.Awaitility;
@@ -167,10 +168,10 @@ public class ReplayStateRandomizedPropertyTest {
   @Parameters(name = "{0}")
   public static Collection<TestDataRecord> getTestRecords() {
     // use the following code to rerun a specific test case:
-    //    final var workflowSeed = 3499044774323385558L;
-    //    final var executionPathSeed = 3627169465144620203L;
-    //    return List.of(TestDataGenerator.regenerateTestRecord(workflowSeed, executionPathSeed));
-    return TestDataGenerator.generateTestRecords(WORKFLOW_COUNT, EXECUTION_PATH_COUNT);
+    final var workflowSeed = 6045439436674756849L;
+    final var executionPathSeed = 849091824638558756L;
+    return List.of(TestDataGenerator.regenerateTestRecord(workflowSeed, executionPathSeed));
+    //    return TestDataGenerator.generateTestRecords(WORKFLOW_COUNT, EXECUTION_PATH_COUNT);
   }
 
   private final class FailedTestDataPrinter extends TestWatcher {

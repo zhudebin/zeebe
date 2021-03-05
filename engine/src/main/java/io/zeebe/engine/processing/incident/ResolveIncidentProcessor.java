@@ -8,11 +8,13 @@
 package io.zeebe.engine.processing.incident;
 
 import io.zeebe.engine.processing.job.JobErrorThrownProcessor;
+import io.zeebe.engine.processing.streamprocessor.MigratedStreamProcessors;
 import io.zeebe.engine.processing.streamprocessor.TypedRecord;
 import io.zeebe.engine.processing.streamprocessor.TypedRecordProcessor;
 import io.zeebe.engine.processing.streamprocessor.sideeffect.SideEffectProducer;
 import io.zeebe.engine.processing.streamprocessor.sideeffect.SideEffectQueue;
 import io.zeebe.engine.processing.streamprocessor.writers.NoopResponseWriter;
+import io.zeebe.engine.processing.streamprocessor.writers.ReprocessingStreamWriter;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedResponseWriter;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedStreamWriter;
 import io.zeebe.engine.state.ZeebeState;
@@ -110,6 +112,11 @@ public final class ResolveIncidentProcessor implements TypedRecordProcessor<Inci
         zeebeState.getElementInstanceState().getFailedRecord(elementInstanceKey);
 
     if (failedRecord != null) {
+      if (MigratedStreamProcessors.isMigrated(failedRecord.getValue().getBpmnElementType())
+          && streamWriter instanceof ReprocessingStreamWriter) {
+        // on reprocessing don't process failed record with migrated processor
+        return;
+      }
 
       sideEffects.clear();
       sideEffects.add(responseWriter::flush);
