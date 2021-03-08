@@ -20,7 +20,7 @@ import io.zeebe.el.ExpressionLanguageFactory;
 import io.zeebe.engine.processing.WorkflowEventProcessors;
 import io.zeebe.engine.processing.common.CatchEventBehavior;
 import io.zeebe.engine.processing.common.ExpressionProcessor;
-import io.zeebe.engine.processing.job.JobEventProcessors;
+import io.zeebe.engine.processing.job.JobCommandProcessors;
 import io.zeebe.engine.processing.message.command.SubscriptionCommandSender;
 import io.zeebe.engine.processing.timer.DueDateTimerChecker;
 import io.zeebe.engine.state.ZeebeState;
@@ -96,7 +96,7 @@ public final class IncidentStreamProcessorRule extends ExternalResource {
                   mockTimerEventScheduler,
                   writers);
 
-          JobEventProcessors.addJobProcessors(
+          JobCommandProcessors.addJobProcessors(
               typedRecordProcessors, zeebeState, type -> {}, Integer.MAX_VALUE, writers);
 
           IncidentEventProcessors.addProcessors(typedRecordProcessors, zeebeState, stepProcessor);

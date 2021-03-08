@@ -65,15 +65,8 @@ public final class JobCompleteProcessor implements CommandProcessor<JobRecord> {
       if (scopeInstance != null && scopeInstance.isActive()) {
         final WorkflowInstanceRecord workflowInstanceRecord = serviceTask.getValue();
 
-        // TODO (#6172) send out COMPLETE_ELEMENT command when service task processor is registered
-        // for COMPLETE_ELEMENT commands; switch out for command writer
-        if (MigratedStreamProcessors.isMigrated(BpmnElementType.SERVICE_TASK)) {
-          stateWriter.appendFollowUpEvent(
-              serviceTaskKey, WorkflowInstanceIntent.ELEMENT_COMPLETING, workflowInstanceRecord);
-        } else {
-          eventWriter.appendFollowUpEvent(
-              serviceTaskKey, WorkflowInstanceIntent.ELEMENT_COMPLETING, workflowInstanceRecord);
-        }
+        commandWriter.appendFollowUpCommand(
+            serviceTaskKey, WorkflowInstanceIntent.COMPLETE_ELEMENT, workflowInstanceRecord);
       }
     }
   }

@@ -7,6 +7,7 @@
  */
 package io.zeebe.engine.processing;
 
+import static io.zeebe.engine.processing.job.JobCommandProcessors.addJobProcessors;
 import static io.zeebe.protocol.record.intent.DeploymentIntent.CREATE;
 
 import io.zeebe.el.ExpressionLanguageFactory;
@@ -19,7 +20,6 @@ import io.zeebe.engine.processing.deployment.distribute.DeploymentDistributeProc
 import io.zeebe.engine.processing.deployment.distribute.DeploymentDistributor;
 import io.zeebe.engine.processing.deployment.distribute.DeploymentRedistributor;
 import io.zeebe.engine.processing.incident.IncidentEventProcessors;
-import io.zeebe.engine.processing.job.JobEventProcessors;
 import io.zeebe.engine.processing.message.MessageEventProcessors;
 import io.zeebe.engine.processing.message.command.SubscriptionCommandSender;
 import io.zeebe.engine.processing.streamprocessor.ProcessingContext;
@@ -87,8 +87,7 @@ public final class EngineProcessors {
             catchEventBehavior,
             writers);
 
-    addJobProcessors(
-        zeebeState, typedRecordProcessors, onJobsAvailableCallback, maxFragmentSize, writers);
+    addJobProcessors(typedRecordProcessors, zeebeState, onJobsAvailableCallback, maxFragmentSize);
 
     addIncidentProcessors(zeebeState, bpmnStreamProcessor, typedRecordProcessors, writers);
 
@@ -168,16 +167,7 @@ public final class EngineProcessors {
     IncidentEventProcessors.addProcessors(typedRecordProcessors, zeebeState, bpmnStreamProcessor);
   }
 
-  private static void addJobProcessors(
-      final ZeebeState zeebeState,
-      final TypedRecordProcessors typedRecordProcessors,
-      final Consumer<String> onJobsAvailableCallback,
-      final int maxFragmentSize,
-      final Writers writers) {
-    JobEventProcessors.addJobProcessors(
         typedRecordProcessors, zeebeState, onJobsAvailableCallback, maxFragmentSize, writers);
-  }
-
   private static void addMessageProcessors(
       final SubscriptionCommandSender subscriptionCommandSender,
       final ZeebeState zeebeState,

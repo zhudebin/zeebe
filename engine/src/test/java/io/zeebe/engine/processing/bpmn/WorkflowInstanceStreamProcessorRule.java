@@ -20,7 +20,7 @@ import io.zeebe.el.ExpressionLanguageFactory;
 import io.zeebe.engine.processing.WorkflowEventProcessors;
 import io.zeebe.engine.processing.common.CatchEventBehavior;
 import io.zeebe.engine.processing.common.ExpressionProcessor;
-import io.zeebe.engine.processing.job.JobEventProcessors;
+import io.zeebe.engine.processing.job.JobCommandProcessors;
 import io.zeebe.engine.processing.message.command.SubscriptionCommandSender;
 import io.zeebe.engine.processing.streamprocessor.CopiedRecords;
 import io.zeebe.engine.processing.streamprocessor.StreamProcessorLifecycleAware;
@@ -122,7 +122,7 @@ public final class WorkflowInstanceStreamProcessorRule extends ExternalResource
               new DueDateTimerChecker(zeebeState.getTimerState()),
               writers);
 
-          JobEventProcessors.addJobProcessors(
+          JobCommandProcessors.addJobProcessors(
               typedRecordProcessors, zeebeState, type -> {}, Integer.MAX_VALUE, writers);
           typedRecordProcessors.withListener(this);
           return typedRecordProcessors;
