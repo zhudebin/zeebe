@@ -185,7 +185,7 @@ public final class WorkflowInstanceStreamProcessorRule extends ExternalResource
   }
 
   public void completeFirstJob() {
-    final Record<JobRecord> createCommand = awaitAndGetFirstRecordInState(JobIntent.CREATE);
+    final Record<JobRecord> createCommand = awaitAndGetFirstRecordInState(JobIntent.CREATED);
 
     final long jobKey = environmentRule.writeEvent(JobIntent.CREATED, createCommand.getValue());
     environmentRule.writeEvent(jobKey, JobIntent.COMPLETED, createCommand.getValue());

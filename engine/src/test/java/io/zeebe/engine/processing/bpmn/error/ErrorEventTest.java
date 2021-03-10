@@ -160,8 +160,7 @@ public class ErrorEventTest {
     assertThat(
             RecordingExporter.records().limitToWorkflowInstance(workflowInstanceKey).jobRecords())
         .extracting(Record::getIntent)
-        .containsExactly(
-            JobIntent.CREATE, JobIntent.CREATED, JobIntent.THROW_ERROR, JobIntent.ERROR_THROWN);
+        .containsExactly(JobIntent.CREATED, JobIntent.THROW_ERROR, JobIntent.ERROR_THROWN);
   }
 
   @Test

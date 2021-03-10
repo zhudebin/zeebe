@@ -61,7 +61,7 @@ public final class ServiceTaskTest {
 
     // then
     final Record<JobRecordValue> job =
-        RecordingExporter.jobRecords(JobIntent.CREATE)
+        RecordingExporter.jobRecords(JobIntent.CREATED)
             .withWorkflowInstanceKey(workflowInstanceKey)
             .getFirst();
 
@@ -81,7 +81,7 @@ public final class ServiceTaskTest {
 
     // then
     final Record<JobRecordValue> job =
-        RecordingExporter.jobRecords(JobIntent.CREATE)
+        RecordingExporter.jobRecords(JobIntent.CREATED)
             .withWorkflowInstanceKey(workflowInstanceKey)
             .getFirst();
 
@@ -101,15 +101,17 @@ public final class ServiceTaskTest {
             RecordingExporter.workflowInstanceRecords()
                 .withWorkflowInstanceKey(workflowInstanceKey)
                 .withElementType(BpmnElementType.SERVICE_TASK)
-                .limit(2))
+                .limit(3))
         .extracting(Record::getIntent)
         .containsSequence(
-            WorkflowInstanceIntent.ELEMENT_ACTIVATING, WorkflowInstanceIntent.ELEMENT_ACTIVATED);
+            WorkflowInstanceIntent.ACTIVATE_ELEMENT,
+            WorkflowInstanceIntent.ELEMENT_ACTIVATING,
+            WorkflowInstanceIntent.ELEMENT_ACTIVATED);
 
     final Record<WorkflowInstanceRecordValue> serviceTask =
         RecordingExporter.workflowInstanceRecords()
             .withWorkflowInstanceKey(workflowInstanceKey)
-            .withIntent(WorkflowInstanceIntent.ELEMENT_ACTIVATING)
+            .withIntent(WorkflowInstanceIntent.ACTIVATE_ELEMENT)
             .withElementType(BpmnElementType.SERVICE_TASK)
             .getFirst();
 
@@ -141,7 +143,7 @@ public final class ServiceTaskTest {
             .getFirst();
 
     final Record<JobRecordValue> job =
-        RecordingExporter.jobRecords(JobIntent.CREATE)
+        RecordingExporter.jobRecords(JobIntent.CREATED)
             .withWorkflowInstanceKey(workflowInstanceKey)
             .getFirst();
 
@@ -170,7 +172,7 @@ public final class ServiceTaskTest {
 
     // then
     final Record<JobRecordValue> job =
-        RecordingExporter.jobRecords(JobIntent.CREATE)
+        RecordingExporter.jobRecords(JobIntent.CREATED)
             .withWorkflowInstanceKey(workflowInstanceKey)
             .getFirst();
 

@@ -180,7 +180,6 @@ public final class WorkflowInstanceStateTransitionGuard {
     if (context.getBpmnElementType() == BpmnElementType.PROCESS) {
       // a process has no flow scope instance
       return Either.right(null);
-
     } else {
       return getFlowScopeInstance(context)
           .flatMap(

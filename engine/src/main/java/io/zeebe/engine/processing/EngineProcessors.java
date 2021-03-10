@@ -87,7 +87,8 @@ public final class EngineProcessors {
             catchEventBehavior,
             writers);
 
-    addJobProcessors(typedRecordProcessors, zeebeState, onJobsAvailableCallback, maxFragmentSize);
+    addJobProcessors(
+        typedRecordProcessors, zeebeState, onJobsAvailableCallback, maxFragmentSize, writers);
 
     addIncidentProcessors(zeebeState, bpmnStreamProcessor, typedRecordProcessors, writers);
 
@@ -167,7 +168,6 @@ public final class EngineProcessors {
     IncidentEventProcessors.addProcessors(typedRecordProcessors, zeebeState, bpmnStreamProcessor);
   }
 
-        typedRecordProcessors, zeebeState, onJobsAvailableCallback, maxFragmentSize, writers);
   private static void addMessageProcessors(
       final SubscriptionCommandSender subscriptionCommandSender,
       final ZeebeState zeebeState,

@@ -299,7 +299,6 @@ public final class JobFailIncidentTest {
     assertThat(jobEvents)
         .extracting(Record::getRecordType, Record::getValueType, Record::getIntent)
         .containsExactly(
-            tuple(RecordType.COMMAND, ValueType.JOB, JobIntent.CREATE),
             tuple(RecordType.EVENT, ValueType.JOB, JobIntent.CREATED),
             tuple(RecordType.COMMAND, ValueType.JOB, JobIntent.FAIL),
             tuple(RecordType.EVENT, ValueType.JOB, JobIntent.FAILED),
@@ -343,7 +342,7 @@ public final class JobFailIncidentTest {
 
     assertThat(resolvedIncidentEvent.getKey()).isEqualTo(incidentCreatedEvent.getKey());
     assertThat(resolvedIncidentEvent.getSourceRecordPosition())
-        .isEqualTo(terminatingTask.getPosition());
+        .isEqualTo(terminatingTask.getSourceRecordPosition());
     assertThat(jobCancelCommand.getSourceRecordPosition()).isEqualTo(terminatingTask.getPosition());
 
     assertThat(resolvedIncidentEvent.getValue())

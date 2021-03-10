@@ -99,7 +99,7 @@ public final class WorkflowInstanceStreamProcessorTest {
 
     final Record<WorkflowInstanceRecord> createdEvent =
         streamProcessorRule.createAndReceiveWorkflowInstance(r -> r.setBpmnProcessId(PROCESS_ID));
-    waitUntil(() -> envRule.events().onlyJobRecords().withIntent(JobIntent.CREATE).exists());
+    waitUntil(() -> envRule.events().onlyJobRecords().withIntent(JobIntent.CREATED).exists());
 
     // when
     envRule.writeCommand(
@@ -174,7 +174,7 @@ public final class WorkflowInstanceStreamProcessorTest {
     streamProcessorRule.deploy(SUB_PROCESS_WORKFLOW);
     final Record<WorkflowInstanceRecord> createdEvent =
         streamProcessorRule.createAndReceiveWorkflowInstance(r -> r.setBpmnProcessId(PROCESS_ID));
-    waitUntil(() -> envRule.events().onlyJobRecords().withIntent(JobIntent.CREATE).exists());
+    waitUntil(() -> envRule.events().onlyJobRecords().withIntent(JobIntent.CREATED).exists());
 
     // when
     envRule.writeCommand(
