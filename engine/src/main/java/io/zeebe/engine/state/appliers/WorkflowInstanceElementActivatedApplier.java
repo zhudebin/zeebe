@@ -7,6 +7,7 @@
  */
 package io.zeebe.engine.state.appliers;
 
+import io.zeebe.engine.processing.deployment.model.element.ExecutableCatchEventSupplier;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableFlowElementContainer;
 import io.zeebe.engine.state.TypedEventApplier;
 import io.zeebe.engine.state.immutable.WorkflowState;
@@ -46,6 +47,22 @@ final class WorkflowInstanceElementActivatedApplier
     // event applier.
     // todo: we need to remove it later
     elementInstanceState.removeStoredRecord(value.getFlowScopeKey(), key, Purpose.FAILED);
+
+    //    var flowElement = workflowState.getFlowElement(
+    //        value.getWorkflowKey(),
+    //        value.getElementIdBuffer(),
+    //        ExecutableFlowElement.class);
+
+    //    if (flowElement instanceof ExecutableCatchEventSupplier) {
+    //      final var executableCatchEventSupplier = (ExecutableCatchEventSupplier)flowElement;
+    //      final var events = executableCatchEventSupplier.getEvents();
+    //      if (!events.isEmpty()) {
+    //        eventScopeInstanceState.createIfNotExists(
+    //            key, executableCatchEventSupplier.getInterruptingElementIds());
+    //      }
+    //    }
+
+    // TODO simplify code (see e.g. example above)
     if (value.getBpmnElementType() == BpmnElementType.SUB_PROCESS) {
 
       final var executableFlowElementContainer =
@@ -58,6 +75,19 @@ final class WorkflowInstanceElementActivatedApplier
       if (!events.isEmpty()) {
         eventScopeInstanceState.createIfNotExists(
             key, executableFlowElementContainer.getInterruptingElementIds());
+      }
+    } else if (value.getBpmnElementType() == BpmnElementType.SERVICE_TASK) {
+
+      final var executableCatchEventSupplier =
+          workflowState.getFlowElement(
+              value.getWorkflowKey(),
+              value.getElementIdBuffer(),
+              ExecutableCatchEventSupplier.class);
+
+      final var events = executableCatchEventSupplier.getEvents();
+      if (!events.isEmpty()) {
+        eventScopeInstanceState.createIfNotExists(
+            key, executableCatchEventSupplier.getInterruptingElementIds());
       }
     }
   }
