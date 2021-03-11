@@ -19,6 +19,7 @@ import io.zeebe.logstreams.impl.backpressure.AppendLimiter;
 import io.zeebe.logstreams.impl.backpressure.AppenderGradient2Cfg;
 import io.zeebe.logstreams.impl.backpressure.AppenderVegasCfg;
 import io.zeebe.logstreams.impl.backpressure.BackpressureConstants;
+import io.zeebe.logstreams.impl.backpressure.IncreasingClock;
 import io.zeebe.logstreams.impl.backpressure.NoopAppendLimiter;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.util.Environment;
@@ -98,6 +99,7 @@ public class LogStorageAppender extends Actor implements HealthMonitorable {
     return AppendEntryLimiter.builder()
         .limit(windowedLimiter ? WindowedLimit.newBuilder().build(abstractLimit) : abstractLimit)
         .partitionId(partitionId)
+        .clock(new IncreasingClock())
         .build();
   }
 
