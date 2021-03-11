@@ -36,4 +36,6 @@ public interface BpmnBehaviors {
   BpmnWorkflowResultSenderBehavior workflowResultSenderBehavior();
 
   BpmnBufferedMessageStartEventBehavior bufferedMessageStartEventBehavior();
+
+  BpmnJobBehavior jobBehavior();
 }

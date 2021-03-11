@@ -65,7 +65,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             variableBehavior,
             this::getContainerProcessor,
             writers);
-    processors = new BpmnElementProcessors(bpmnBehaviors, writers, zeebeState);
+    processors = new BpmnElementProcessors(bpmnBehaviors, writers);
 
     stateTransitionGuard = bpmnBehaviors.stateTransitionGuard();
     stateTransitionBehavior = bpmnBehaviors.stateTransitionBehavior();
