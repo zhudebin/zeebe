@@ -114,7 +114,7 @@ public class Ipv6IntegrationTest {
             "ZEEBE_BROKER_CLUSTER_INITIALCONTACTPOINTS", String.join(",", initialContactPoints))
         .withEnv("ZEEBE_BROKER_NETWORK_ADVERTISEDHOST", hostNameWithoutBraces)
         .withEnv("ZEEBE_LOG_LEVEL", "DEBUG")
-        .withEnv("ZEEBE_BROKER_NETWORK_HOST", "::")
+        .withEnv("ZEEBE_BROKER_NETWORK_HOST", "[::]")
         .withEnv("ZEEBE_LOG_LEVEL", "DEBUG")
         .withEnv("ATOMIX_LOG_LEVEL", "INFO");
   }
@@ -131,7 +131,8 @@ public class Ipv6IntegrationTest {
                 .forReplicationFactor(REPLICATION_FACTOR))
         .withNetwork(network)
         .withNetworkAliases(NETWORK_ALIAS)
-        .withEnv("ZEEBE_GATEWAY_NETWORK_HOST", "::")
+        .withEnv("ZEEBE_GATEWAY_NETWORK_HOST", "[::]")
+        .withEnv("ZEEBE_GATEWAY_CLUSTER_HOST", address)
         .withCreateContainerCmdModifier(
             createContainerCmd ->
                 createContainerCmd.withIpv6Address(address).withHostName(address));
