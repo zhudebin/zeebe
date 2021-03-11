@@ -8,7 +8,6 @@
 package io.zeebe.test.util.bpmn.random.blocks;
 
 import io.zeebe.model.bpmn.builder.AbstractFlowNodeBuilder;
-import io.zeebe.model.bpmn.builder.ExclusiveGatewayBuilder;
 import io.zeebe.model.bpmn.builder.ServiceTaskBuilder;
 import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
 import io.zeebe.test.util.bpmn.random.BlockBuilder;
@@ -16,17 +15,20 @@ import io.zeebe.test.util.bpmn.random.BlockBuilderFactory;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
+import java.time.Duration;
 import java.util.Random;
 
 /** Generates a service task. The service task may have boundary events */
 public class ServiceTaskBlockBuilder implements BlockBuilder {
 
+  private static final Duration DEFAULT_TIMEOUT = Duration.ofHours(10);
   private final String serviceTaskId;
   private final String jobType;
   private final String errorCode;
 
   private final boolean hasBoundaryEvents;
   private final boolean hasBoundaryErrorEvent;
+  private final boolean hasBoundaryTimerEvent;
 
   public ServiceTaskBlockBuilder(final IDGenerator idGenerator, final Random random) {
     serviceTaskId = idGenerator.nextId();
@@ -34,8 +36,11 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     errorCode = "error_" + serviceTaskId;
 
     hasBoundaryErrorEvent = random.nextInt(100) < 10;
+    hasBoundaryTimerEvent = random.nextInt(100) < 10;
 
-    hasBoundaryEvents = hasBoundaryErrorEvent; // extend here for additional boundary events
+    hasBoundaryEvents =
+        hasBoundaryErrorEvent
+            || hasBoundaryErrorEvent; // extend here for additional boundary events
   }
 
   @Override
@@ -52,13 +57,21 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
 
     if (hasBoundaryEvents) {
       final String joinGatewayId = "join_" + serviceTaskId;
-      final ExclusiveGatewayBuilder exclusiveGatewayBuilder =
-          serviceTaskBuilder.exclusiveGateway(joinGatewayId);
+      result = serviceTaskBuilder.exclusiveGateway(joinGatewayId);
 
       if (hasBoundaryErrorEvent) {
         result =
-            ((ServiceTaskBuilder) exclusiveGatewayBuilder.moveToNode(serviceTaskId))
+            ((ServiceTaskBuilder) result.moveToNode(serviceTaskId))
                 .boundaryEvent("boundary_error_" + serviceTaskId, b -> b.error(errorCode))
+                .connectTo(joinGatewayId);
+      }
+
+      if (hasBoundaryTimerEvent) {
+        result =
+            ((ServiceTaskBuilder) result.moveToNode(serviceTaskId))
+                .boundaryEvent(
+                    "boundary_timer_" + serviceTaskId,
+                    b -> b.timerWithDuration(DEFAULT_TIMEOUT.toString()))
                 .connectTo(joinGatewayId);
       }
     }
@@ -107,6 +120,8 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
 
     if (hasBoundaryErrorEvent && random.nextBoolean()) {
       result = new StepActivateJobAndThrowError(jobType, errorCode);
+    } else if (hasBoundaryTimerEvent && random.nextBoolean()) {
+      result = new StepTimeoutServiceTask(jobType, DEFAULT_TIMEOUT);
     } else {
       result = new StepActivateAndCompleteJob(jobType);
     }
@@ -274,7 +289,56 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     @Override
     public int hashCode() {
       int result = jobType != null ? jobType.hashCode() : 0;
-      result = errorCode != null ? errorCode.hashCode() : 0;
+      result = 31 * result + (errorCode != null ? errorCode.hashCode() : 0);
+      result = 31 * result + variables.hashCode();
+      return result;
+    }
+  }
+
+  public static class StepTimeoutServiceTask extends AbstractExecutionStep {
+
+    private final String jobType;
+    private final Duration timeout;
+
+    public StepTimeoutServiceTask(final String jobType, final Duration timeout) {
+      super();
+
+      this.jobType = jobType;
+      this.timeout = timeout;
+    }
+
+    public String getJobType() {
+      return jobType;
+    }
+
+    public Duration getTimeout() {
+      return timeout;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final StepTimeoutServiceTask that = (StepTimeoutServiceTask) o;
+
+      if (jobType != null ? !jobType.equals(that.jobType) : that.jobType != null) {
+        return false;
+      }
+      if (timeout != null ? !timeout.equals(that.timeout) : that.timeout != null) {
+        return false;
+      }
+      return variables.equals(that.variables);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = jobType != null ? jobType.hashCode() : 0;
+      result = 31 * result + (timeout != null ? timeout.hashCode() : 0);
       result = 31 * result + variables.hashCode();
       return result;
     }

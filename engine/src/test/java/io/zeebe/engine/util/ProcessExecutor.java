@@ -22,6 +22,7 @@ import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivat
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateAndFailJob;
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateAndTimeoutJob;
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateJobAndThrowError;
+import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepTimeoutServiceTask;
 import io.zeebe.test.util.record.RecordingExporter;
 import java.time.Duration;
 
@@ -58,6 +59,9 @@ public class ProcessExecutor {
       final StepActivateJobAndThrowError activateJobAndThrowError =
           (StepActivateJobAndThrowError) step;
       activateJobAndThrowError(activateJobAndThrowError);
+    } else if (step instanceof StepTimeoutServiceTask) {
+      final StepTimeoutServiceTask timeoutServiceTask = (StepTimeoutServiceTask) step;
+      timeoutServiceTask(timeoutServiceTask);
     } else if ((step instanceof StepPickDefaultCase) || (step instanceof StepPickConditionCase)) {
       /*
        * Nothing to do here, as the choice is made by the engine. The default case is for debugging
@@ -131,11 +135,25 @@ public class ProcessExecutor {
 
     engineRule.jobs().withType(activateAndTimeoutJob.getJobType()).withTimeout(100).activate();
 
-    engineRule.getClock().addTime(Duration.ofSeconds(150));
+    engineRule
+        .getClock()
+        .addTime(
+            Duration.ofSeconds(
+                150)); // must be smaller than ServiceTaskBlockBuilder.DEFAULT_TIMEOUT
 
     RecordingExporter.jobRecords(JobIntent.TIME_OUT)
         .withType(activateAndTimeoutJob.getJobType())
         .await();
+  }
+
+  private void timeoutServiceTask(final StepTimeoutServiceTask timeoutServiceTask) {
+    waitForJobToBeCreated(timeoutServiceTask.getJobType());
+    // TODO find concept how to coordinate advances in time for parallel/nested execution cases
+    /*
+     * Changing the time here also changes the time for other steps. If these are time dependent,
+     * they might execute differently than anticipated, and vice versa.
+     */
+    engineRule.getClock().addTime(timeoutServiceTask.getTimeout().plus(Duration.ofSeconds(1)));
   }
 
   private void activateJobAndThrowError(
