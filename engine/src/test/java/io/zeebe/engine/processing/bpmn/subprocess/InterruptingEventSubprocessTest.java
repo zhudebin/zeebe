@@ -90,7 +90,30 @@ public class InterruptingEventSubprocessTest {
                   .withProcessInstanceKey(key)
                   .withMessageName(messageName)
                   .await();
-              ENGINE.message().withName(messageName).withCorrelationKey("123").publish();
+              RecordingExporter.messageSubscriptionRecords(MessageSubscriptionIntent.CREATED)
+                  .withProcessInstanceKey(key)
+                  .withMessageName("msg")
+                  .await();
+              ENGINE.message().withName("msg").withCorrelationKey("123").publish();
+
+              RecordingExporter.processInstanceRecords()
+                  .withElementType(BpmnElementType.INTERMEDIATE_CATCH_EVENT)
+                  .withIntent(ProcessInstanceIntent.ELEMENT_ACTIVATING)
+                  .await();
+              ENGINE
+                  .message()
+                  .withName(messageName)
+                  .withCorrelationKey("123")
+                  .withVariables(Map.of("key", "123"))
+                  .publish();
+
+              //
+              // RecordingExporter.messageSubscriptionRecords(MessageSubscriptionIntent.CORRELATE)
+              //                  .withProcessInstanceKey(key)
+              //                  .withMessageName("msg")
+              //                  .await();
+              //
+              // ENGINE.message().withName(messageName).withCorrelationKey("123").publish();
             })
       },
       {
@@ -126,6 +149,7 @@ public class InterruptingEventSubprocessTest {
     // then
     final Record<ProcessInstanceRecordValue> eventOccurred =
         RecordingExporter.processInstanceRecords(ProcessInstanceIntent.EVENT_OCCURRED)
+            .withElementType(BpmnElementType.START_EVENT)
             .withProcessInstanceKey(wfInstanceKey)
             .getFirst();
     Assertions.assertThat(eventOccurred.getValue())
@@ -137,6 +161,11 @@ public class InterruptingEventSubprocessTest {
         .hasFlowScopeKey(wfInstanceKey);
 
     assertEventSubprocessLifecycle(wfInstanceKey);
+
+    RecordingExporter.processInstanceRecords()
+        .withProcessInstanceKey(wfInstanceKey)
+        .limitToProcessInstanceCompleted()
+        .getFirst();
   }
 
   @Test
@@ -411,19 +440,16 @@ public class InterruptingEventSubprocessTest {
             .ofBpmnProcessId(PROCESS_ID)
             .withVariables(Map.of("key", 123))
             .create();
-    assertThat(
-            RecordingExporter.jobRecords(JobIntent.CREATED)
-                .withProcessInstanceKey(wfInstanceKey)
-                .exists())
-        .describedAs("Expected job to be created")
-        .isTrue();
+
     return wfInstanceKey;
   }
 
   private static BpmnModelInstance process(final ProcessBuilder processBuilder) {
     return processBuilder
         .startEvent("start_proc")
-        .serviceTask("task", t -> t.zeebeJobType(JOB_TYPE))
+        .intermediateCatchEvent("catch")
+        .message(m -> m.name("msg").zeebeCorrelationKeyExpression("key"))
+        .exclusiveGateway()
         .endEvent("end_proc")
         .done();
   }
