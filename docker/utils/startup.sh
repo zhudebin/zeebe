@@ -3,7 +3,7 @@
 defaultHostName=$(hostname -i | cut -d " " -f -1)
 export ZEEBE_BROKER_GATEWAY_CLUSTER_HOST=${ZEEBE_BROKER_GATEWAY_CLUSTER_HOST:-${defaultHostName}}
 
-ZEEBE_STANDALONE_GATEWAY=${$ZEEBE_STANDALONE_GATEWAY-:"false"}
+ZEEBE_STANDALONE_GATEWAY=${ZEEBE_STANDALONE_GATEWAY-:"false"}
 if [ "$ZEEBE_STANDALONE_GATEWAY" = "true" ]; then
     exec /usr/local/zeebe/bin/gateway
 else
