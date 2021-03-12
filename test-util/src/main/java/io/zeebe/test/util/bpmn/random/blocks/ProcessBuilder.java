@@ -42,10 +42,10 @@ public final class ProcessBuilder {
 
     final var idGenerator = context.getIdGenerator();
     processId = "process_" + idGenerator.nextId();
-    hasEventSubProcess = context.getRandom().nextBoolean();
+    hasEventSubProcess = true; // context.getRandom().nextBoolean();
     if (hasEventSubProcess) {
       eventSubProcessId = "eventSubProcess_" + idGenerator.nextId();
-      isEventSubProcessInterrupting = context.getRandom().nextBoolean();
+      isEventSubProcessInterrupting = true; // context.getRandom().nextBoolean();
       eventSubProcessMessageName = "message_" + eventSubProcessId;
     }
     final var random = context.getRandom();
@@ -89,7 +89,7 @@ public final class ProcessBuilder {
     final var followingPath = blockBuilder.findRandomExecutionPath(random);
 
     if (hasEventSubProcess) {
-      final var shouldTriggerEventSubProcess = random.nextBoolean();
+      final var shouldTriggerEventSubProcess = true; // random.nextBoolean();
       if (shouldTriggerEventSubProcess) {
 
         final var size = followingPath.getSteps().size();
