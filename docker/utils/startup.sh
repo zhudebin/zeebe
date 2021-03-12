@@ -1,6 +1,6 @@
 #!/bin/bash -xeu
 
-defaultHostName=$(hostname -i | cut -d " " -f -1)
+defaultHostName=$(hostname)
 export ZEEBE_BROKER_GATEWAY_CLUSTER_HOST=${ZEEBE_BROKER_GATEWAY_CLUSTER_HOST:-${defaultHostName}}
 
 ZEEBE_STANDALONE_GATEWAY=${ZEEBE_STANDALONE_GATEWAY-:"false"}
