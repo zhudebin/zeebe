@@ -9,6 +9,7 @@ package io.zeebe.engine.processing.streamprocessor;
 
 import io.zeebe.engine.util.EngineRule;
 import io.zeebe.engine.util.ProcessExecutor;
+import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
@@ -23,10 +24,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RunWith(Parameterized.class)
 public class ProcessExecutionRandomizedPropertyTest {
 
+  private static final Logger LOG =
+      LoggerFactory.getLogger(ProcessExecutionRandomizedPropertyTest.class);
   /*
    * Some notes on scaling of these tests:
    * With 10 processes and 100 paths there is a theoretical maximum of 1000 records.
@@ -57,6 +62,7 @@ public class ProcessExecutionRandomizedPropertyTest {
   @Test
   public void shouldExecuteProcessToEnd() {
     final BpmnModelInstance model = record.getBpmnModel();
+    LOG.error("Generated Model: {}", Bpmn.convertToString(model));
     engineRule.deployment().withXmlResource(model).deploy();
 
     final ExecutionPath path = record.getExecutionPath();
