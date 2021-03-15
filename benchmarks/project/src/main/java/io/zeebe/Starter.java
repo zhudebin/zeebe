@@ -24,6 +24,8 @@ import io.zeebe.client.impl.oauth.OAuthCredentialsProviderBuilder;
 import io.zeebe.config.AppCfg;
 import io.zeebe.config.StarterCfg;
 import io.zeebe.model.bpmn.Bpmn;
+import io.zeebe.model.bpmn.BpmnModelInstance;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -49,6 +51,22 @@ public class Starter extends App {
 
     printTopology(client);
 
+    client
+        .newWorker()
+        .jobType("build")
+        .handler(
+            (client1, job) -> {
+              Thread.sleep(15 * 1000);
+              client1.newCompleteCommand(job.getKey()).variables(Map.of("result", true)).send();
+            })
+        .open();
+
+    client
+        .newWorker()
+        .jobType("report")
+        .handler((client1, job) -> client1.newCompleteCommand(job.getKey()).send())
+        .open();
+
     final ScheduledExecutorService executorService =
         Executors.newScheduledThreadPool(starterCfg.getThreads());
 
@@ -61,18 +79,10 @@ public class Starter extends App {
         executorService.scheduleAtFixedRate(
             () -> {
               // continuous deployment yeah
-              LOG.info("Creating an deployment");
-              final var modelInstance =
-                  Bpmn.createExecutableProcess()
-                      .startEvent()
-                      .timerWithDateExpression("now() + duration(\"PT1S\")")
-                      .serviceTask("task", t -> t.zeebeJobType("task"))
-                      .boundaryEvent()
-                      .timerWithDuration("PT1M")
-                      .connectTo("task")
-                      .endEvent()
-                      .done();
+              final var modelInstance = createModel();
 
+              //              LOG.info("Creating an deployment {}",
+              // Bpmn.convertToString(modelInstance));
               while (true) {
                 try {
                   client.newDeployCommand().addWorkflowModel(modelInstance, "timer").send().join();
@@ -119,19 +129,48 @@ public class Starter extends App {
     executorService.shutdown();
   }
 
+  private BpmnModelInstance createModel() {
+    final var executableProcess = Bpmn.createExecutableProcess("buildProcess");
+
+    executableProcess
+        .eventSubProcess()
+        .startEvent()
+        .timerWithDuration("PT15S")
+        .interrupting(false)
+        .serviceTask("report", task -> task.zeebeJobType("report"))
+        .endEvent();
+
+    return executableProcess
+        .startEvent()
+        .timerWithDateExpression("now() + duration(\"PT1S\")")
+        .serviceTask("build", t -> t.zeebeJobType("build"))
+        .exclusiveGateway("xor")
+        .sequenceFlowId("successFlow")
+        .condition("=contains(result, \"success\") != null and contains(result, \"success\")")
+        .endEvent()
+        .moveToLastExclusiveGateway()
+        .sequenceFlowId("fail")
+        .defaultFlow()
+        .intermediateCatchEvent()
+        .timerWithDurationExpression("=today() + duration(\"PT15S\")")
+        .connectTo("build")
+        .done();
+  }
+
   private ZeebeClient createZeebeClient() {
+
     final ZeebeClientBuilder builder =
         ZeebeClient.newClientBuilder()
             .credentialsProvider(
                 new OAuthCredentialsProviderBuilder()
-                    .clientId("2wYwI6sHllQddtIPbe3aRHkmfh5vu9.B")
+                    .clientId("cRXZMMYP7yjf_08hmx3LQGuy-Zd3WDoC")
                     .clientSecret(
-                        "wZxle8Fs~97Q~5p3lrY3rzRUIvJzA2IPlVaceRJDkHebkQ.5nhLsuZph~BKW3BOm")
-                    .audience("391dbb09-d55f-44a5-b3a5-44c063762857.zeebe.ultrawombat.com")
+                        "VE3Gkl_kmRGgUICVuWtsobHvhMHLcIce-fKUAWsAH.kDC3QDezaCbB01WxfILO0E")
+                    .audience("5e7c668d-8d7f-4faf-886b-36e996ce1766.zeebe.ultrawombat.com")
                     .authorizationServerUrl("https://login.cloud.ultrawombat.com/oauth/token")
                     .build())
-            .gatewayAddress("391dbb09-d55f-44a5-b3a5-44c063762857.zeebe.ultrawombat.com:443")
-            .numJobWorkerExecutionThreads(0)
+            .gatewayAddress("5e7c668d-8d7f-4faf-886b-36e996ce1766.zeebe.ultrawombat.com:443")
+            //            .numJobWorkerExecutionThreads(0)
             .withProperties(System.getProperties());
     //            .withInterceptors(monitoringInterceptor);
 
