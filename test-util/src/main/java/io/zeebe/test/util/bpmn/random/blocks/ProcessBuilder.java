@@ -17,6 +17,7 @@ import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPath;
 import io.zeebe.test.util.bpmn.random.StartEventBlockBuilder;
 import io.zeebe.test.util.bpmn.random.blocks.IntermediateMessageCatchEventBlockBuilder.StepPublishMessage;
+import io.zeebe.test.util.bpmn.random.blocks.MessageStartEventBuilder.StepPublishStartMessage;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
@@ -88,28 +89,63 @@ public final class ProcessBuilder {
   public ExecutionPath findRandomExecutionPath(final Random random) {
     final var followingPath = blockBuilder.findRandomExecutionPath(random);
 
-    if (hasEventSubProcess) {
-      final var shouldTriggerEventSubProcess = true; // random.nextBoolean();
-      if (shouldTriggerEventSubProcess) {
-
-        final var size = followingPath.getSteps().size();
-        if (size > 0) {
-          final var index = random.nextInt(size);
-
-          if (isEventSubProcessInterrupting) {
-            // if it is interrupting we remove the other execution path
-            followingPath.replace(index, new StepPublishMessage(eventSubProcessMessageName));
-          } else {
-            followingPath.insert(index, new StepPublishMessage(eventSubProcessMessageName));
-          }
-        }
-      }
-    }
-
     final var startPath =
         startEventBuilder.findRandomExecutionPath(processId, followingPath.collectVariables());
     startPath.append(followingPath);
 
+    if (hasEventSubProcess) {
+      final var shouldTriggerEventSubProcess = true; // random.nextBoolean();
+      if (shouldTriggerEventSubProcess) {
+        executionPathForEventSubProcess(random, startPath);
+      }
+    }
+
     return new ExecutionPath(processId, startPath);
+  }
+
+  private void executionPathForEventSubProcess(
+      final Random random,
+      final io.zeebe.test.util.bpmn.random.ExecutionPathSegment followingPath) {
+    final var size = followingPath.getSteps().size();
+
+    if (size < 1) {
+      // empty path
+      return;
+    }
+
+    final var index = random.nextInt(size);
+    if (isEventSubProcessInterrupting) {
+
+      final var first =
+          followingPath.getSteps().stream()
+              .filter(
+                  s ->
+                      StepPublishMessage.class.isInstance(s)
+                          || StepPublishStartMessage.class.isInstance(s))
+              .findAny();
+
+      if (first.isPresent()) {
+        // publish for intermediate message catch event
+        // concurrent publish cause problems -
+        // https://github.com/camunda-cloud/zeebe/issues/6552
+        return;
+      }
+      //      if (index > 0) {
+      //        final var abstractExecutionStep = followingPath.getSteps().get(index - 1);
+      //
+      //        if (abstractExecutionStep instanceof StepPublishMessage) {
+      //          // publish for intermediate message catch event
+      //          // concurrent publish cause problems -
+      //          // https://github.com/camunda-cloud/zeebe/issues/6552
+      //          // we remove that as well
+      //          index = index - 1;
+      //        }
+      //      }
+
+      // if it is interrupting we remove the other execution path
+      followingPath.replace(index, new StepPublishMessage(eventSubProcessMessageName));
+    } else {
+      followingPath.insert(index, new StepPublishMessage(eventSubProcessMessageName));
+    }
   }
 }
