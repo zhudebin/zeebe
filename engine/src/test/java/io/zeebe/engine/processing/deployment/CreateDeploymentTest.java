@@ -11,6 +11,7 @@ import static io.zeebe.protocol.Protocol.DEPLOYMENT_PARTITION;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.zeebe.engine.Loggers;
 import io.zeebe.engine.util.EngineRule;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
@@ -58,8 +59,21 @@ public final class CreateDeploymentTest {
   @Test
   public void shouldCreateDeploymentWithBpmnXml() {
     // when
+    final var modelInstance =
+        Bpmn.createExecutableProcess()
+            .startEvent()
+            .timerWithDateExpression("now() + duration(\"PT1S\")")
+            .serviceTask("task", t -> t.zeebeJobType("task"))
+            .boundaryEvent()
+            .timerWithDuration("PT1M")
+            .connectTo("task")
+            .endEvent()
+            .done();
+
+    final var string = Bpmn.convertToString(modelInstance);
+    Loggers.STREAM_PROCESSING.warn(string);
     final Record<DeploymentRecordValue> deployment =
-        ENGINE.deployment().withXmlResource(WORKFLOW).deploy();
+        ENGINE.deployment().withXmlResource(modelInstance).deploy();
 
     // then
     assertThat(deployment.getKey()).isGreaterThanOrEqualTo(0L);
@@ -68,6 +82,12 @@ public final class CreateDeploymentTest {
         .hasPartitionId(DEPLOYMENT_PARTITION)
         .hasRecordType(RecordType.EVENT)
         .hasIntent(DeploymentIntent.DISTRIBUTED);
+
+    RecordingExporter.workflowInstanceRecords()
+        .limitToWorkflowInstanceCompleted()
+        .findFirst()
+        .orElseThrow();
+    Loggers.STREAM_PROCESSING.warn(RecordingExporter.getRecords().toString());
   }
 
   @Test

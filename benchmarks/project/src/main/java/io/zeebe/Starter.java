@@ -15,21 +15,20 @@
  */
 package io.zeebe;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigBeanFactory;
+import com.typesafe.config.ConfigFactory;
 import io.zeebe.client.ZeebeClient;
 import io.zeebe.client.ZeebeClientBuilder;
+import io.zeebe.client.impl.oauth.OAuthCredentialsProviderBuilder;
 import io.zeebe.config.AppCfg;
 import io.zeebe.config.StarterCfg;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import io.zeebe.model.bpmn.Bpmn;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,10 +45,6 @@ public class Starter extends App {
   @Override
   public void run() {
     final StarterCfg starterCfg = appCfg.getStarter();
-    final int rate = starterCfg.getRate();
-    final String processId = starterCfg.getProcessId();
-    final BlockingQueue<Future<?>> requestFutures = new ArrayBlockingQueue<>(5_000);
-
     final ZeebeClient client = createZeebeClient();
 
     printTopology(client);
@@ -57,34 +52,45 @@ public class Starter extends App {
     final ScheduledExecutorService executorService =
         Executors.newScheduledThreadPool(starterCfg.getThreads());
 
-    deployWorkflow(client, starterCfg.getBpmnXmlPath());
-
     // start instances
-    final int intervalMs = Math.floorDiv(1000, rate);
-    LOG.info("Creating an instance every {}ms", intervalMs);
-
-    final String variables = readVariables(starterCfg.getPayloadPath());
-    final BooleanSupplier shouldContinue = createContinuationCondition(starterCfg);
+    LOG.info("Creating an deployment every second");
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
 
     final ScheduledFuture scheduledTask =
         executorService.scheduleAtFixedRate(
-            () ->
-                runStarter(
-                    starterCfg,
-                    processId,
-                    requestFutures,
-                    client,
-                    variables,
-                    shouldContinue,
-                    countDownLatch),
-            0,
-            intervalMs,
-            TimeUnit.MILLISECONDS);
+            () -> {
+              // continuous deployment yeah
+              LOG.info("Creating an deployment");
+              final var modelInstance =
+                  Bpmn.createExecutableProcess()
+                      .startEvent()
+                      .timerWithDateExpression("now() + duration(\"PT1S\")")
+                      .serviceTask("task", t -> t.zeebeJobType("task"))
+                      .boundaryEvent()
+                      .timerWithDuration("PT1M")
+                      .connectTo("task")
+                      .endEvent()
+                      .done();
 
-    final ResponseChecker responseChecker = new ResponseChecker(requestFutures);
-    responseChecker.start();
+              while (true) {
+                try {
+                  client.newDeployCommand().addWorkflowModel(modelInstance, "timer").send().join();
+                  LOG.info("Deployed");
+                  break;
+                } catch (final Exception e) {
+                  LOG.warn("Failed to deploy workflow, retrying", e);
+                  try {
+                    Thread.sleep(200);
+                  } catch (final InterruptedException ex) {
+                    // ignore
+                  }
+                }
+              }
+            },
+            0,
+            1,
+            TimeUnit.SECONDS);
 
     Runtime.getRuntime()
         .addShutdownHook(
@@ -97,9 +103,6 @@ public class Starter extends App {
                     } catch (final InterruptedException e) {
                       LOG.error("Shutdown executor service was interrupted", e);
                     }
-                  }
-                  if (responseChecker.isAlive()) {
-                    responseChecker.close();
                   }
                 }));
 
@@ -114,92 +117,35 @@ public class Starter extends App {
 
     scheduledTask.cancel(true);
     executorService.shutdown();
-    responseChecker.close();
-  }
-
-  private void runStarter(
-      final StarterCfg starterCfg,
-      final String processId,
-      final BlockingQueue<Future<?>> requestFutures,
-      final ZeebeClient client,
-      final String variables,
-      final BooleanSupplier shouldContinue,
-      final CountDownLatch countDownLatch) {
-    if (shouldContinue.getAsBoolean()) {
-      try {
-        if (starterCfg.isWithResults()) {
-          requestFutures.put(
-              client
-                  .newCreateInstanceCommand()
-                  .bpmnProcessId(processId)
-                  .latestVersion()
-                  .variables(variables)
-                  .withResult()
-                  .requestTimeout(starterCfg.getWithResultsTimeout())
-                  .send());
-        } else {
-          requestFutures.put(
-              client
-                  .newCreateInstanceCommand()
-                  .bpmnProcessId(processId)
-                  .latestVersion()
-                  .variables(variables)
-                  .send());
-        }
-      } catch (final Exception e) {
-        LOG.error("Error on creating new workflow instance", e);
-      }
-    } else {
-      countDownLatch.countDown();
-    }
   }
 
   private ZeebeClient createZeebeClient() {
     final ZeebeClientBuilder builder =
         ZeebeClient.newClientBuilder()
-            .gatewayAddress(appCfg.getBrokerUrl())
+            .credentialsProvider(
+                new OAuthCredentialsProviderBuilder()
+                    .clientId("2wYwI6sHllQddtIPbe3aRHkmfh5vu9.B")
+                    .clientSecret(
+                        "wZxle8Fs~97Q~5p3lrY3rzRUIvJzA2IPlVaceRJDkHebkQ.5nhLsuZph~BKW3BOm")
+                    .audience("391dbb09-d55f-44a5-b3a5-44c063762857.zeebe.ultrawombat.com")
+                    .authorizationServerUrl("https://login.cloud.ultrawombat.com/oauth/token")
+                    .build())
+            .gatewayAddress("391dbb09-d55f-44a5-b3a5-44c063762857.zeebe.ultrawombat.com:443")
             .numJobWorkerExecutionThreads(0)
-            .withProperties(System.getProperties())
-            .withInterceptors(monitoringInterceptor);
+            .withProperties(System.getProperties());
+    //            .withInterceptors(monitoringInterceptor);
 
-    if (!appCfg.isTls()) {
-      builder.usePlaintext();
-    }
+    //    if (!appCfg.isTls()) {
+    //      builder.usePlaintext();
+    //    }
 
     return builder.build();
   }
 
-  private void deployWorkflow(final ZeebeClient client, final String bpmnXmlPath) {
-    while (true) {
-      try {
-        client.newDeployCommand().addResourceFromClasspath(bpmnXmlPath).send().join();
-        break;
-      } catch (final Exception e) {
-        LOG.warn("Failed to deploy workflow, retrying", e);
-        try {
-          Thread.sleep(200);
-        } catch (final InterruptedException ex) {
-          // ignore
-        }
-      }
-    }
-  }
-
-  private BooleanSupplier createContinuationCondition(final StarterCfg starterCfg) {
-    final int durationLimit = starterCfg.getDurationLimit();
-
-    if (durationLimit > 0) {
-      // if there is a duration limit
-      final LocalDateTime endTime = LocalDateTime.now().plus(durationLimit, ChronoUnit.SECONDS);
-      // continue until time is up
-      return () -> LocalDateTime.now().isBefore(endTime);
-    } else {
-      // otherwise continue forever
-      return () -> true;
-    }
-  }
-
   public static void main(final String[] args) {
-    createApp(Starter::new);
+    final Config config = ConfigFactory.load().getConfig("app");
+    LOG.info("Starting app with config: {}", config.root().render());
+    final AppCfg appCfg = ConfigBeanFactory.create(config, AppCfg.class);
+    new Starter(appCfg).run();
   }
 }
