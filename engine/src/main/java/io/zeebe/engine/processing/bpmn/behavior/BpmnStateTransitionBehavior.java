@@ -197,7 +197,7 @@ public final class BpmnStateTransitionBehavior {
     final var elementInstance = stateBehavior.getElementInstance(context);
     final var activeChildInstances = elementInstance.getNumberOfActiveElementInstances();
 
-    if (activeChildInstances > 0) {
+    if (activeChildInstances > 0 || elementInstance.getNumberOfActiveTokens() > 0) {
       // wait for child instances to be terminated
 
       // clean up the state because some events of child instances will not be processed (e.g.
