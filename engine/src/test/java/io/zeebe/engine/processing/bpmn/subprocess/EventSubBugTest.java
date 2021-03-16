@@ -1,3 +1,10 @@
+/*
+ * Copyright Camunda Services GmbH and/or licensed to Camunda Services GmbH under
+ * one or more contributor license agreements. See the NOTICE file distributed
+ * with this work for additional information regarding copyright ownership.
+ * Licensed under the Zeebe Community License 1.0. You may not use this file
+ * except in compliance with the Zeebe Community License 1.0.
+ */
 package io.zeebe.engine.processing.bpmn.subprocess;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -8,7 +15,7 @@ import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.model.bpmn.builder.ProcessBuilder;
 import io.zeebe.protocol.record.intent.MessageSubscriptionIntent;
-import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
+import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.test.util.record.RecordingExporter;
 import java.util.Map;
@@ -18,11 +25,10 @@ import org.slf4j.LoggerFactory;
 
 public class EventSubBugTest {
 
-  @Rule public final EngineRule engineRule = EngineRule.singlePartition();
   private static final String PROCESS_ID = "proc";
-  private static final String JOB_TYPE = "type";
+  private static final String MESSAGE_NAME = "messageName";
 
-  private static final String messageName = "messageName";
+  @Rule public final EngineRule engineRule = EngineRule.singlePartition();
 
   @Test
   public void shouldEndProcess() {
@@ -33,7 +39,7 @@ public class EventSubBugTest {
         .eventSubProcess("event_sub_proc")
         .startEvent("event_sub_start")
         .interrupting(true)
-        .message(b -> b.name(messageName).zeebeCorrelationKeyExpression("key"))
+        .message(b -> b.name(MESSAGE_NAME).zeebeCorrelationKeyExpression("key"))
         .endEvent("event_sub_end");
 
     final BpmnModelInstance model =
@@ -51,44 +57,43 @@ public class EventSubBugTest {
 
     final long wfInstanceKey =
         engineRule
-            .processInstance()
+            .workflowInstance()
             .ofBpmnProcessId(PROCESS_ID)
             .withVariables(Map.of("key", 123))
             .create();
 
     // when
-    RecordingExporter.messageSubscriptionRecords(MessageSubscriptionIntent.CREATED)
-        .withProcessInstanceKey(wfInstanceKey)
-        .withMessageName(messageName)
+    RecordingExporter.messageSubscriptionRecords(MessageSubscriptionIntent.OPENED)
+        .withWorkflowInstanceKey(wfInstanceKey)
+        .withMessageName(MESSAGE_NAME)
         .await();
-    RecordingExporter.messageSubscriptionRecords(MessageSubscriptionIntent.CREATED)
-        .withProcessInstanceKey(wfInstanceKey)
+    RecordingExporter.messageSubscriptionRecords(MessageSubscriptionIntent.OPENED)
+        .withWorkflowInstanceKey(wfInstanceKey)
         .withMessageName("msg")
         .await();
     engineRule.message().withName("msg").withCorrelationKey("123").publish();
 
-    RecordingExporter.processInstanceRecords()
+    RecordingExporter.workflowInstanceRecords()
         .withElementType(BpmnElementType.INTERMEDIATE_CATCH_EVENT)
-        .withIntent(ProcessInstanceIntent.ELEMENT_ACTIVATING)
+        .withIntent(WorkflowInstanceIntent.ELEMENT_ACTIVATING)
         .await();
     engineRule
         .message()
-        .withName(messageName)
+        .withName(MESSAGE_NAME)
         .withCorrelationKey("123")
         .withVariables(Map.of("key", "123"))
         .publish();
 
     // then
     assertThat(
-            RecordingExporter.processInstanceRecords()
-                .withProcessInstanceKey(wfInstanceKey)
-                .limitToProcessInstanceCompleted())
+            RecordingExporter.workflowInstanceRecords()
+                .withWorkflowInstanceKey(wfInstanceKey)
+                .limitToWorkflowInstanceCompleted())
         .extracting(r -> tuple(r.getValue().getBpmnElementType(), r.getIntent()))
         .containsSubsequence(
-            tuple(BpmnElementType.START_EVENT, ProcessInstanceIntent.EVENT_OCCURRED),
-            tuple(BpmnElementType.SERVICE_TASK, ProcessInstanceIntent.ELEMENT_TERMINATED),
-            tuple(BpmnElementType.SUB_PROCESS, ProcessInstanceIntent.ELEMENT_ACTIVATED),
-            tuple(BpmnElementType.SUB_PROCESS, ProcessInstanceIntent.ELEMENT_COMPLETED),
-            tuple(BpmnElementType.PROCESS, ProcessInstanceIntent.ELEMENT_COMPLETED));
+            tuple(BpmnElementType.START_EVENT, WorkflowInstanceIntent.EVENT_OCCURRED),
+            tuple(BpmnElementType.SUB_PROCESS, WorkflowInstanceIntent.ELEMENT_ACTIVATED),
+            tuple(BpmnElementType.SUB_PROCESS, WorkflowInstanceIntent.ELEMENT_COMPLETED),
+            tuple(BpmnElementType.PROCESS, WorkflowInstanceIntent.ELEMENT_COMPLETED));
   }
 }
