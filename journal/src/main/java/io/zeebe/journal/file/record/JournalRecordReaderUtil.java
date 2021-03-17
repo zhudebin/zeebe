@@ -67,9 +67,9 @@ public final class JournalRecordReaderUtil {
           checksumGenerator.compute(buffer, startPosition + metadataLength, recordLength);
 
       if (checksum != metadata.checksum()) {
-        // TODO: Throw an exception, when we introduce magic headers before each record
         buffer.reset();
-        return null;
+        throw new CorruptedRecordException(
+            "Record doesn't match checksum. Log must be deleted after shutdown");
       }
 
       // Read record

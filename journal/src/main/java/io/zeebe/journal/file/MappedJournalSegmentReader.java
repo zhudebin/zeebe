@@ -22,6 +22,7 @@ import io.zeebe.journal.file.record.SBESerializer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import org.agrona.IoUtil;
 
 /** Log segment reader. */
@@ -119,6 +120,12 @@ class MappedJournalSegmentReader {
 
   /** Reads the next entry in the segment. */
   private void readNext(final long expectedIndex) {
+    final Optional<Integer> version = FrameUtil.readVersion(buffer);
+    if (version.isEmpty()) {
+      nextEntry = null;
+      return;
+    }
+
     nextEntry = recordReader.read(buffer, expectedIndex);
   }
 
