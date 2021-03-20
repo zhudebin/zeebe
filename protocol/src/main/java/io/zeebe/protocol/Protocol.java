@@ -62,6 +62,9 @@ public final class Protocol {
    */
   public static final int KEY_BITS = 51;
 
+  public static final String USER_TASK_JOB_TYPE = "humanTask";
+  public static final String USER_TASK_FORM_KEY_HEADER_NAME = "io.camunda.zeebe:formKey";
+
   public static long encodePartitionId(final int partitionId, final long key) {
     return ((long) partitionId << KEY_BITS) + key;
   }
