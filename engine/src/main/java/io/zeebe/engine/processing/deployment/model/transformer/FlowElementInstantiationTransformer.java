@@ -22,6 +22,7 @@ import io.zeebe.engine.processing.deployment.model.element.ExecutableReceiveTask
 import io.zeebe.engine.processing.deployment.model.element.ExecutableSequenceFlow;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableServiceTask;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableStartEvent;
+import io.zeebe.engine.processing.deployment.model.element.ExecutableUserTask;
 import io.zeebe.engine.processing.deployment.model.transformation.ModelElementTransformer;
 import io.zeebe.engine.processing.deployment.model.transformation.TransformContext;
 import io.zeebe.model.bpmn.instance.Activity;
@@ -38,6 +39,7 @@ import io.zeebe.model.bpmn.instance.SequenceFlow;
 import io.zeebe.model.bpmn.instance.ServiceTask;
 import io.zeebe.model.bpmn.instance.StartEvent;
 import io.zeebe.model.bpmn.instance.SubProcess;
+import io.zeebe.model.bpmn.instance.UserTask;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import java.util.HashMap;
 import java.util.Map;
@@ -64,6 +66,7 @@ public final class FlowElementInstantiationTransformer
     ELEMENT_FACTORIES.put(ReceiveTask.class, ExecutableReceiveTask::new);
     ELEMENT_FACTORIES.put(StartEvent.class, ExecutableStartEvent::new);
     ELEMENT_FACTORIES.put(SubProcess.class, ExecutableFlowElementContainer::new);
+    ELEMENT_FACTORIES.put(UserTask.class, ExecutableUserTask::new);
   }
 
   @Override

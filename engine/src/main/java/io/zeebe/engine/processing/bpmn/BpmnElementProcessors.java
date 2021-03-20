@@ -22,6 +22,7 @@ import io.zeebe.engine.processing.bpmn.gateway.ParallelGatewayProcessor;
 import io.zeebe.engine.processing.bpmn.sequenceflow.SequenceFlowProcessor;
 import io.zeebe.engine.processing.bpmn.task.ReceiveTaskProcessor;
 import io.zeebe.engine.processing.bpmn.task.ServiceTaskProcessor;
+import io.zeebe.engine.processing.bpmn.task.UserTaskProcessor;
 import io.zeebe.engine.processing.deployment.model.element.ExecutableFlowElement;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import java.util.EnumMap;
@@ -36,6 +37,7 @@ public final class BpmnElementProcessors {
     // tasks
     processors.put(BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors));
     processors.put(BpmnElementType.RECEIVE_TASK, new ReceiveTaskProcessor(bpmnBehaviors));
+    processors.put(BpmnElementType.USER_TASK, new UserTaskProcessor(bpmnBehaviors));
 
     // gateways
     processors.put(BpmnElementType.EXCLUSIVE_GATEWAY, new ExclusiveGatewayProcessor(bpmnBehaviors));
