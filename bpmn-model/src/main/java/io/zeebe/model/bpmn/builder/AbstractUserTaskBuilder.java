@@ -18,6 +18,10 @@ package io.zeebe.model.bpmn.builder;
 
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.model.bpmn.instance.UserTask;
+import io.zeebe.model.bpmn.instance.zeebe.ZeebeFormDefinition;
+import io.zeebe.model.bpmn.instance.zeebe.ZeebeHeader;
+import io.zeebe.model.bpmn.instance.zeebe.ZeebeTaskHeaders;
+import io.zeebe.model.bpmn.instance.zeebe.ZeebeUserTaskForm;
 
 /** @author Sebastian Menski */
 public abstract class AbstractUserTaskBuilder<B extends AbstractUserTaskBuilder<B>>
@@ -40,4 +44,66 @@ public abstract class AbstractUserTaskBuilder<B extends AbstractUserTaskBuilder<
   }
 
   /** camunda extensions */
+
+  /**
+   * Sets the form key with the format 'format:location:id' of the build user task.
+   *
+   * @param format the format of the reference form
+   * @param location the location where the form is available
+   * @param id the id of the form
+   * @return the builder object
+   */
+  public B zeebeFormKey(final String format, final String location, final String id) {
+    return zeebeFormKey(String.format("%s:%s:%s", format, location, id));
+  }
+
+  /**
+   * Sets the form key of the build user task.
+   *
+   * @param formKey the form key to set
+   * @return the builder object
+   */
+  public B zeebeFormKey(final String formKey) {
+    final ZeebeFormDefinition formDefinition =
+        getCreateSingleExtensionElement(ZeebeFormDefinition.class);
+    formDefinition.setFormKey(formKey);
+    return myself;
+  }
+
+  /**
+   * Creates an new user task form with the given context, assuming it is of the format
+   * camunda-forms and embedded inside the diagram.
+   *
+   * @param userTaskForm the XML encoded user task form json in the camunda-forms format
+   * @return the builder object
+   */
+  public B zeebeUserTaskForm(final String userTaskForm) {
+    final ZeebeUserTaskForm zeebeUserTaskForm = createZeebeUserTaskForm();
+    zeebeUserTaskForm.setTextContent(userTaskForm);
+    return zeebeFormKey("camunda-forms", "bpmn", zeebeUserTaskForm.getId());
+  }
+
+  /**
+   * Creates an new user task form with the given context, assuming it is of the format
+   * camunda-forms and embedded inside the diagram.
+   *
+   * @param userTaskFormKey the key of the user task form element
+   * @param userTaskForm the XML encoded user task form json in the camunda-forms format
+   * @return the builder object
+   */
+  public B zeebeUserTaskForm(final String userTaskFormKey, final String userTaskForm) {
+    final ZeebeUserTaskForm zeebeUserTaskForm = createZeebeUserTaskForm();
+    zeebeUserTaskForm.setId(userTaskFormKey);
+    zeebeUserTaskForm.setTextContent(userTaskForm);
+    return zeebeFormKey("camunda-forms", "bpmn", userTaskFormKey);
+  }
+
+  public B zeebeTaskHeader(final String key, final String value) {
+    final ZeebeTaskHeaders taskHeaders = getCreateSingleExtensionElement(ZeebeTaskHeaders.class);
+    final ZeebeHeader header = createChild(taskHeaders, ZeebeHeader.class);
+    header.setKey(key);
+    header.setValue(value);
+
+    return myself;
+  }
 }
