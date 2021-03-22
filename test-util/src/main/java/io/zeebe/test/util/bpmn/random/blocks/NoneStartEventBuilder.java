@@ -12,6 +12,7 @@ import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.StartEventBlockBuilder;
+import java.time.Duration;
 import java.util.Map;
 
 public final class NoneStartEventBuilder implements StartEventBlockBuilder {
@@ -53,6 +54,11 @@ public final class NoneStartEventBuilder implements StartEventBlockBuilder {
     @Override
     public boolean isAutomatic() {
       return false;
+    }
+
+    @Override
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
     }
 
     @Override

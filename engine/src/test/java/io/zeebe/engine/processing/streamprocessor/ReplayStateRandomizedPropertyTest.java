@@ -16,8 +16,8 @@ import io.zeebe.engine.util.ProcessExecutor;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
-import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
 import io.zeebe.test.util.bpmn.random.ExecutionPath;
+import io.zeebe.test.util.bpmn.random.ScheduledExecutionStep;
 import io.zeebe.test.util.bpmn.random.TestDataGenerator;
 import io.zeebe.test.util.bpmn.random.TestDataGenerator.TestDataRecord;
 import io.zeebe.test.util.record.RecordingExporter;
@@ -83,9 +83,9 @@ public class ReplayStateRandomizedPropertyTest implements PropertyBasedTest {
 
     final ExecutionPath path = record.getExecutionPath();
 
-    for (final AbstractExecutionStep step : path.getSteps()) {
+    for (final ScheduledExecutionStep step : path.getSteps()) {
 
-      processExecutor.applyStep(step);
+      processExecutor.applyStep(step.getStep());
 
       stopAndRestartEngineAndCompareStates();
     }

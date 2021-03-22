@@ -16,6 +16,7 @@ import io.zeebe.test.util.bpmn.random.BlockBuilderFactory;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
+import java.time.Duration;
 import java.util.Random;
 
 /** Generates a service task. The service task may have boundary events */
@@ -130,6 +131,10 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       return false;
     }
 
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
+    }
+
     @Override
     public boolean equals(final Object o) {
       if (this == o) {
@@ -177,6 +182,10 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       return false;
     }
 
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
+    }
+
     @Override
     public boolean equals(final Object o) {
       if (this == o) {
@@ -220,6 +229,10 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     @Override
     public boolean isAutomatic() {
       return false;
+    }
+
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
     }
 
     @Override
@@ -269,6 +282,11 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
 
     public String getErrorCode() {
       return errorCode;
+    }
+
+    @Override
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
     }
 
     @Override

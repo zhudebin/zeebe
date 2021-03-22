@@ -15,19 +15,19 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 
 /** Execution path to execute a random process from start to finish. This class is immutable. */
 public final class ExecutionPath {
-  private final List<AbstractExecutionStep> steps = new ArrayList<>();
+  private final List<ScheduledExecutionStep> steps = new ArrayList<>();
   private final String processId;
 
   public ExecutionPath(final String processId, final ExecutionPathSegment pathSegment) {
     this.processId = processId;
-    steps.addAll(pathSegment.getSteps());
+    steps.addAll(pathSegment.getScheduledSteps());
   }
 
   public String getProcessId() {
     return processId;
   }
 
-  public List<AbstractExecutionStep> getSteps() {
+  public List<ScheduledExecutionStep> getSteps() {
     return Collections.unmodifiableList(steps);
   }
 

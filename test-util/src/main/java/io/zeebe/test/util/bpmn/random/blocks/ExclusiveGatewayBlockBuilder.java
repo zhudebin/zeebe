@@ -15,6 +15,7 @@ import io.zeebe.test.util.bpmn.random.BlockBuilderFactory;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -137,6 +138,11 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -194,6 +200,11 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
     @Override
     public boolean isAutomatic() {
       return false;
+    }
+
+    @Override
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
     }
 
     @Override
@@ -255,6 +266,11 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -292,6 +308,11 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
     @Override
     public boolean isAutomatic() {
       return true;
+    }
+
+    @Override
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
     }
 
     @Override

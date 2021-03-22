@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -23,18 +24,29 @@ import org.apache.commons.lang3.builder.ToStringStyle;
  */
 public final class ExecutionPathSegment {
 
-  private final List<AbstractExecutionStep> steps = new ArrayList<>();
+  private final List<ScheduledExecutionStep> steps = new ArrayList<>();
 
   public void append(final AbstractExecutionStep executionStep) {
-    steps.add(executionStep);
+    final ScheduledExecutionStep predecessor;
+    if (steps.isEmpty()) {
+      predecessor = null;
+    } else {
+      predecessor = steps.get(steps.size() - 1);
+    }
+
+    steps.add(new ScheduledExecutionStep(predecessor, predecessor, executionStep));
   }
 
   public void append(final ExecutionPathSegment pathToAdd) {
-    steps.addAll(pathToAdd.getSteps());
+    steps.addAll(pathToAdd.getScheduledSteps());
+  }
+
+  public List<ScheduledExecutionStep> getScheduledSteps() {
+    return Collections.unmodifiableList(steps);
   }
 
   public List<AbstractExecutionStep> getSteps() {
-    return Collections.unmodifiableList(steps);
+    return steps.stream().map(ScheduledExecutionStep::getStep).collect(Collectors.toList());
   }
 
   public Map<String, Object> collectVariables() {
