@@ -94,19 +94,16 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
 
     if (branch == 0) {
       result.append(new StepPickDefaultCase(forkGatewayId, gatewayConditionVariable));
-    } else {
+    } else if (random.nextBoolean()) {
       // take a non-default branch
-      final var pickConditionCase =
-          new StepPickConditionCase(forkGatewayId, gatewayConditionVariable, branchIds.get(branch));
-
-      if (random.nextBoolean()) {
-        // cause an incident by not removing the variable required to evaluate the branch expression
-        result.append(
-            new StepExpressionIncidentCase(
-                forkGatewayId, gatewayConditionVariable, branchIds.get(branch), pickConditionCase));
-      }
-
-      result.append(pickConditionCase);
+      result.append(
+          new StepPickConditionCase(
+              forkGatewayId, gatewayConditionVariable, branchIds.get(branch)));
+    } else {
+      // cause an incident then resolve it and set a variable
+      result.append(
+          new StepRaiseIncidentThenResolveAndPickConditionCase(
+              forkGatewayId, gatewayConditionVariable, branchIds.get(branch)));
     }
 
     final BlockBuilder blockBuilder = blockBuilders.get(branch);
@@ -171,30 +168,23 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
       result = 31 * result + variables.hashCode();
       return result;
     }
-
-    public void removeVariable(final String variable) {
-      variables.remove(variable);
-    }
   }
 
   // This class removes the variable set by the `StepPickConditionCase` to make sure an incident is
   // raised. This same variable can later be provided (through variable update) and the incident can
   // then be resolved
-  public static final class StepExpressionIncidentCase extends AbstractExecutionStep {
+  public static final class StepRaiseIncidentThenResolveAndPickConditionCase
+      extends AbstractExecutionStep {
 
     private final String forkingGatewayId;
     private final String edgeId;
     private final String gatewayConditionVariable;
 
-    public StepExpressionIncidentCase(
-        final String forkingGatewayId,
-        final String gatewayConditionVariable,
-        final String edgeId,
-        final StepPickConditionCase pickConditionCase) {
+    public StepRaiseIncidentThenResolveAndPickConditionCase(
+        final String forkingGatewayId, final String gatewayConditionVariable, final String edgeId) {
       this.forkingGatewayId = forkingGatewayId;
       this.edgeId = edgeId;
       this.gatewayConditionVariable = gatewayConditionVariable;
-      pickConditionCase.removeVariable(gatewayConditionVariable);
     }
 
     @Override
@@ -216,7 +206,8 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
         return false;
       }
 
-      final StepExpressionIncidentCase that = (StepExpressionIncidentCase) o;
+      final StepRaiseIncidentThenResolveAndPickConditionCase that =
+          (StepRaiseIncidentThenResolveAndPickConditionCase) o;
 
       if (forkingGatewayId != null
           ? !forkingGatewayId.equals(that.forkingGatewayId)

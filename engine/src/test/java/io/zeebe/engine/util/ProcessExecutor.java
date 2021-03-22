@@ -14,7 +14,7 @@ import io.zeebe.protocol.record.intent.MessageSubscriptionIntent;
 import io.zeebe.protocol.record.value.VariableDocumentUpdateSemantic;
 import io.zeebe.test.util.MsgPackUtil;
 import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
-import io.zeebe.test.util.bpmn.random.blocks.ExclusiveGatewayBlockBuilder.StepExpressionIncidentCase;
+import io.zeebe.test.util.bpmn.random.blocks.ExclusiveGatewayBlockBuilder.StepRaiseIncidentThenResolveAndPickConditionCase;
 import io.zeebe.test.util.bpmn.random.blocks.IntermediateMessageCatchEventBlockBuilder;
 import io.zeebe.test.util.bpmn.random.blocks.IntermediateMessageCatchEventBlockBuilder.StepPublishMessage;
 import io.zeebe.test.util.bpmn.random.blocks.MessageStartEventBuilder.StepPublishStartMessage;
@@ -60,8 +60,8 @@ public class ProcessExecutor {
       final StepActivateJobAndThrowError activateJobAndThrowError =
           (StepActivateJobAndThrowError) step;
       activateJobAndThrowError(activateJobAndThrowError);
-    } else if (step instanceof StepExpressionIncidentCase) {
-      final var expressionIncident = (StepExpressionIncidentCase) step;
+    } else if (step instanceof StepRaiseIncidentThenResolveAndPickConditionCase) {
+      final var expressionIncident = (StepRaiseIncidentThenResolveAndPickConditionCase) step;
       resolveExpressionIncident(expressionIncident);
     } else if (step.isAutomatic()) {
       // Nothing to do here, as the step execution is controlled by the engine
@@ -212,7 +212,8 @@ public class ProcessExecutor {
         .create();
   }
 
-  private void resolveExpressionIncident(final StepExpressionIncidentCase expressionIncident) {
+  private void resolveExpressionIncident(
+      final StepRaiseIncidentThenResolveAndPickConditionCase expressionIncident) {
     final var incident =
         RecordingExporter.incidentRecords(IncidentIntent.CREATED)
             .withElementId(expressionIncident.getGatewayElementId())
