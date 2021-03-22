@@ -75,6 +75,8 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
   public ExecutionPathSegment findRandomExecutionPath(final Random random) {
     final ExecutionPathSegment result = new ExecutionPathSegment();
 
+    result.append(new StepEnterParallelGateway(forkGatewayId));
+
     final List<List<AbstractExecutionStep>> stepsOfParallelPaths = new ArrayList<>();
 
     blockBuilders.forEach(
@@ -86,6 +88,8 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
         shuffleStepsFromDifferentLists(random, stepsOfParallelPaths);
 
     shuffledSteps.forEach(result::append);
+
+    result.append(new StepLeaveParallelGateway(joinGatewayId));
 
     return result;
   }
@@ -110,6 +114,86 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
 
   private void purgeEmptyLists(final List<List<AbstractExecutionStep>> sources) {
     sources.removeIf(List::isEmpty);
+  }
+
+  public static final class StepEnterParallelGateway extends AbstractExecutionStep {
+
+    private final String forkingGatewayId;
+
+    public StepEnterParallelGateway(final String forkingGatewayId) {
+      this.forkingGatewayId = forkingGatewayId;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return true;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final StepEnterParallelGateway that = (StepEnterParallelGateway) o;
+
+      if (forkingGatewayId != null
+          ? !forkingGatewayId.equals(that.forkingGatewayId)
+          : that.forkingGatewayId != null) {
+        return false;
+      }
+      return variables.equals(that.variables);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = forkingGatewayId != null ? forkingGatewayId.hashCode() : 0;
+      result = 31 * result + variables.hashCode();
+      return result;
+    }
+  }
+
+  public static final class StepLeaveParallelGateway extends AbstractExecutionStep {
+
+    private final String joiningGatewayId;
+
+    public StepLeaveParallelGateway(final String joiningGatewayId) {
+      this.joiningGatewayId = joiningGatewayId;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return true;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      final StepLeaveParallelGateway that = (StepLeaveParallelGateway) o;
+
+      if (joiningGatewayId != null
+          ? !joiningGatewayId.equals(that.joiningGatewayId)
+          : that.joiningGatewayId != null) {
+        return false;
+      }
+      return variables.equals(that.variables);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = joiningGatewayId != null ? joiningGatewayId.hashCode() : 0;
+      result = 31 * result + variables.hashCode();
+      return result;
+    }
   }
 
   public static class Factory implements BlockBuilderFactory {
