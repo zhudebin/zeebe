@@ -37,8 +37,29 @@ public final class ExecutionPathSegment {
     steps.add(new ScheduledExecutionStep(predecessor, predecessor, executionStep));
   }
 
+  public void append(
+      final AbstractExecutionStep executionStep,
+      final AbstractExecutionStep logicalPredecessorStep) {
+    final ScheduledExecutionStep executionPredecessor;
+    if (steps.isEmpty()) {
+      executionPredecessor = null;
+    } else {
+      executionPredecessor = steps.get(steps.size() - 1);
+    }
+
+    final var logicalPredecessor =
+        steps.stream()
+            .filter(scheduledStep -> scheduledStep.getStep() == logicalPredecessorStep)
+            .findFirst()
+            .orElseThrow();
+
+    steps.add(new ScheduledExecutionStep(logicalPredecessor, executionPredecessor, executionStep));
+  }
+
   public void append(final ExecutionPathSegment pathToAdd) {
-    steps.addAll(pathToAdd.getScheduledSteps());
+    pathToAdd
+        .getScheduledSteps()
+        .forEach(scheduledExecutionStep -> append(scheduledExecutionStep.getStep()));
   }
 
   public List<ScheduledExecutionStep> getScheduledSteps() {
