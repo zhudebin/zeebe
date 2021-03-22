@@ -24,7 +24,6 @@ import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivat
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateAndTimeoutJob;
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateJobAndThrowError;
 import io.zeebe.test.util.record.RecordingExporter;
-import java.time.Duration;
 import java.util.Map;
 
 /** This class executes individual {@link AbstractExecutionStep} for a given process */
@@ -130,7 +129,7 @@ public class ProcessExecutor {
 
     engineRule.jobs().withType(activateAndTimeoutJob.getJobType()).withTimeout(100).activate();
 
-    engineRule.getClock().addTime(Duration.ofSeconds(150));
+    engineRule.getClock().addTime(AbstractExecutionStep.DEFAULT_DELTA);
 
     RecordingExporter.jobRecords(JobIntent.TIME_OUT)
         .withType(activateAndTimeoutJob.getJobType())

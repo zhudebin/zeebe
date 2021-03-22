@@ -232,7 +232,7 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     }
 
     public Duration getDeltaTime() {
-      return VIRTUALLY_NO_TIME;
+      return DEFAULT_DELTA;
     }
 
     @Override
