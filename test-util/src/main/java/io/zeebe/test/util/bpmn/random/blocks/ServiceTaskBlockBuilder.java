@@ -126,6 +126,11 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public boolean isAutomatic() {
+      return false;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -165,6 +170,11 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
 
     public boolean isUpdateRetries() {
       return updateRetries;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return false;
     }
 
     @Override
@@ -208,6 +218,11 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public boolean isAutomatic() {
+      return false;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -241,6 +256,11 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       super();
       this.jobType = jobType;
       this.errorCode = errorCode;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return false;
     }
 
     public String getJobType() {

@@ -130,6 +130,11 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public boolean isAutomatic() {
+      return true;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -185,6 +190,11 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public boolean isAutomatic() {
+      return false;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -235,6 +245,11 @@ public class ExclusiveGatewayBlockBuilder implements BlockBuilder {
         final String forkingGatewayId, final String gatewayConditionVariable) {
       this.forkingGatewayId = forkingGatewayId;
       variables.put(gatewayConditionVariable, "default-case");
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return true;
     }
 
     @Override

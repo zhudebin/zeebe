@@ -37,6 +37,15 @@ public abstract class AbstractExecutionStep {
     return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
   }
 
+  /**
+   * Returns {@code true} if the execution step runs automatically. A step runs automatically if it
+   * is activated and completed without any client command. Such a step is controlled completely by
+   * the engine and we have no way to influence its execution otherwise
+   *
+   * @return {@code true} if the execution step runs automatically
+   */
+  public abstract boolean isAutomatic();
+
   @Override
   public abstract boolean equals(final Object o);
 

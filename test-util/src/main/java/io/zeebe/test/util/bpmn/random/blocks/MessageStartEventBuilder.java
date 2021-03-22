@@ -55,6 +55,11 @@ public final class MessageStartEventBuilder implements StartEventBlockBuilder {
     }
 
     @Override
+    public boolean isAutomatic() {
+      return false;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
