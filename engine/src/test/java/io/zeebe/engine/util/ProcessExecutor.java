@@ -11,9 +11,11 @@ import io.zeebe.protocol.record.intent.IncidentIntent;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.protocol.record.intent.MessageStartEventSubscriptionIntent;
 import io.zeebe.protocol.record.intent.MessageSubscriptionIntent;
+import io.zeebe.protocol.record.intent.TimerIntent;
 import io.zeebe.protocol.record.value.VariableDocumentUpdateSemantic;
 import io.zeebe.test.util.MsgPackUtil;
 import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
+import io.zeebe.test.util.bpmn.random.ScheduledExecutionStep;
 import io.zeebe.test.util.bpmn.random.blocks.ExclusiveGatewayBlockBuilder.StepRaiseIncidentThenResolveAndPickConditionCase;
 import io.zeebe.test.util.bpmn.random.blocks.IntermediateMessageCatchEventBlockBuilder;
 import io.zeebe.test.util.bpmn.random.blocks.IntermediateMessageCatchEventBlockBuilder.StepPublishMessage;
@@ -23,6 +25,7 @@ import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivat
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateAndFailJob;
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateAndTimeoutJob;
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateJobAndThrowError;
+import io.zeebe.test.util.bpmn.random.blocks.SubProcessBlockBuilder.StepTimeoutSubProcess;
 import io.zeebe.test.util.record.RecordingExporter;
 import java.util.Map;
 
@@ -35,7 +38,9 @@ public class ProcessExecutor {
     this.engineRule = engineRule;
   }
 
-  public void applyStep(final AbstractExecutionStep step) {
+  public void applyStep(final ScheduledExecutionStep scheduledStep) {
+
+    final var step = scheduledStep.getStep();
 
     if (step instanceof StepStartProcessInstance) {
       final StepStartProcessInstance startProcess = (StepStartProcessInstance) step;
@@ -62,11 +67,26 @@ public class ProcessExecutor {
     } else if (step instanceof StepRaiseIncidentThenResolveAndPickConditionCase) {
       final var expressionIncident = (StepRaiseIncidentThenResolveAndPickConditionCase) step;
       resolveExpressionIncident(expressionIncident);
+    } else if (step instanceof StepTimeoutSubProcess) {
+      final var timeoutSubProcess = (StepTimeoutSubProcess) step;
+      timeoutSubProcess(timeoutSubProcess);
     } else if (step.isAutomatic()) {
       // Nothing to do here, as the step execution is controlled by the engine
     } else {
       throw new IllegalStateException("Not yet implemented: " + step);
     }
+  }
+
+  private void timeoutSubProcess(final StepTimeoutSubProcess timeoutProcess) {
+    RecordingExporter.timerRecords(TimerIntent.CREATED)
+        .withHandlerNodeId(timeoutProcess.getSubProcessBoundaryTimerEventId())
+        .await();
+
+    engineRule.getClock().addTime(timeoutProcess.getDeltaTime());
+
+    RecordingExporter.timerRecords(TimerIntent.TRIGGERED)
+        .withHandlerNodeId(timeoutProcess.getSubProcessBoundaryTimerEventId())
+        .await();
   }
 
   private void activateAndCompleteJob(final StepActivateAndCompleteJob activateAndCompleteJob) {
@@ -171,7 +191,6 @@ public class ProcessExecutor {
         .message()
         .withName(publishMessage.getMessageName())
         .withCorrelationKey(IntermediateMessageCatchEventBlockBuilder.CORRELATION_KEY_VALUE)
-        .withVariables(publishMessage.getVariables())
         .publish();
 
     /*
@@ -194,7 +213,7 @@ public class ProcessExecutor {
         .message()
         .withName(publishMessage.getMessageName())
         .withCorrelationKey("")
-        .withVariables(publishMessage.getVariables())
+        .withVariables(publishMessage.getProcessVariables())
         .publish();
 
     RecordingExporter.messageStartEventSubscriptionRecords(
@@ -207,7 +226,7 @@ public class ProcessExecutor {
     engineRule
         .processInstance()
         .ofBpmnProcessId(startProcess.getProcessId())
-        .withVariables(startProcess.getVariables())
+        .withVariables(startProcess.getProcessVariables())
         .create();
   }
 

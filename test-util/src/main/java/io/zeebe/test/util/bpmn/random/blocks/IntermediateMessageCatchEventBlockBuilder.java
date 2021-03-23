@@ -16,6 +16,7 @@ import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -80,6 +81,12 @@ public class IntermediateMessageCatchEventBlockBuilder implements BlockBuilder {
     @Override
     public Duration getDeltaTime() {
       return VIRTUALLY_NO_TIME;
+    }
+
+    @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
     }
 
     @Override

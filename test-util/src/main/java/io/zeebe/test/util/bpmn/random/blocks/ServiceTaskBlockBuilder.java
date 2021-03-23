@@ -18,6 +18,7 @@ import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
 import io.zeebe.test.util.bpmn.random.RandomProcessGenerator;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Random;
 
 /** Generates a service task. The service task may have boundary events */
@@ -138,6 +139,12 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -189,6 +196,12 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -235,6 +248,12 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
 
     public Duration getDeltaTime() {
       return DEFAULT_DELTA;
+    }
+
+    @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
     }
 
     @Override
@@ -289,6 +308,12 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     @Override
     public Duration getDeltaTime() {
       return VIRTUALLY_NO_TIME;
+    }
+
+    @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
     }
 
     @Override

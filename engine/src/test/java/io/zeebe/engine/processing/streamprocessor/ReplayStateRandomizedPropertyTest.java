@@ -85,7 +85,7 @@ public class ReplayStateRandomizedPropertyTest implements PropertyBasedTest {
 
     for (final ScheduledExecutionStep step : path.getSteps()) {
 
-      processExecutor.applyStep(step.getStep());
+      processExecutor.applyStep(step);
 
       stopAndRestartEngineAndCompareStates();
     }

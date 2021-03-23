@@ -18,6 +18,7 @@ import io.zeebe.test.util.bpmn.random.IDGenerator;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -164,6 +165,12 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
     }
 
     @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
+    }
+
+    @Override
     public boolean equals(final Object o) {
       if (this == o) {
         return true;
@@ -206,6 +213,12 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
     @Override
     public Duration getDeltaTime() {
       return VIRTUALLY_NO_TIME;
+    }
+
+    @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
     }
 
     @Override

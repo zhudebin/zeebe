@@ -13,6 +13,7 @@ import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.StartEventBlockBuilder;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 
 public final class NoneStartEventBuilder implements StartEventBlockBuilder {
@@ -47,6 +48,10 @@ public final class NoneStartEventBuilder implements StartEventBlockBuilder {
       this.variables.putAll(variables);
     }
 
+    public Map<String, Object> getProcessVariables() {
+      return Collections.unmodifiableMap(variables);
+    }
+
     public String getProcessId() {
       return processId;
     }
@@ -59,6 +64,12 @@ public final class NoneStartEventBuilder implements StartEventBlockBuilder {
     @Override
     public Duration getDeltaTime() {
       return VIRTUALLY_NO_TIME;
+    }
+
+    @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
     }
 
     @Override

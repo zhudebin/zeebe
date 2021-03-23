@@ -12,9 +12,9 @@ import java.util.Map;
 
 public class ScheduledExecutionStep {
 
+  private final AbstractExecutionStep step;
   private final ScheduledExecutionStep logicalPredecessor;
   private final ScheduledExecutionStep executionPredecessor;
-  private final AbstractExecutionStep step;
 
   protected ScheduledExecutionStep(
       final ScheduledExecutionStep logicalPredecessor,
@@ -36,6 +36,10 @@ public class ScheduledExecutionStep {
   @Override
   public String toString() {
     return step.toString();
+  }
+
+  public ScheduledExecutionStep getLogicalPredecessor() {
+    return logicalPredecessor;
   }
 
   /*
@@ -119,17 +123,17 @@ public class ScheduledExecutionStep {
 
     final ScheduledExecutionStep that = (ScheduledExecutionStep) o;
 
+    if (!step.equals(that.step)) {
+      return false;
+    }
     if (logicalPredecessor != null
         ? !logicalPredecessor.equals(that.logicalPredecessor)
         : that.logicalPredecessor != null) {
       return false;
     }
-    if (executionPredecessor != null
-        ? !executionPredecessor.equals(that.executionPredecessor)
-        : that.executionPredecessor != null) {
-      return false;
-    }
-    return step.equals(that.step);
+    return executionPredecessor != null
+        ? executionPredecessor.equals(that.executionPredecessor)
+        : that.executionPredecessor == null;
   }
 
   @Override

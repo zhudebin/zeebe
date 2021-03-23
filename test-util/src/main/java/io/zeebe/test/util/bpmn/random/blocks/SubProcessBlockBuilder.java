@@ -17,6 +17,9 @@ import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
 import io.zeebe.test.util.bpmn.random.RandomProcessGenerator;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -29,6 +32,7 @@ public class SubProcessBlockBuilder implements BlockBuilder {
   private final String subProcessId;
   private final String subProcessStartEventId;
   private final String subProcessEndEventId;
+  private final String subProcessBoundaryTimerEventId;
 
   private final boolean hasBoundaryEvents;
   private final boolean hasBoundaryTimerEvent;
@@ -44,6 +48,8 @@ public class SubProcessBlockBuilder implements BlockBuilder {
     subProcessId = idGenerator.nextId();
     subProcessStartEventId = idGenerator.nextId();
     subProcessEndEventId = idGenerator.nextId();
+
+    subProcessBoundaryTimerEventId = "boundary_timer_" + subProcessId;
 
     final boolean goDeeper = random.nextInt(maxDepth) > currentDepth;
 
@@ -82,11 +88,12 @@ public class SubProcessBlockBuilder implements BlockBuilder {
           subProcessBuilderDone.exclusiveGateway(joinGatewayId);
 
       if (hasBoundaryTimerEvent) {
+
         result =
             ((SubProcessBuilder) exclusiveGatewayBuilder.moveToNode(subProcessId))
                 .boundaryEvent(
-                    "boundary_timer_" + subProcessId,
-                    b -> b.timerWithDuration(AbstractExecutionStep.DEFAULT_DELTA.toString()))
+                    subProcessBoundaryTimerEventId,
+                    b -> b.timerWithDurationExpression(subProcessBoundaryTimerEventId))
                 .connectTo(joinGatewayId);
       }
     }
@@ -98,11 +105,151 @@ public class SubProcessBlockBuilder implements BlockBuilder {
   public ExecutionPathSegment findRandomExecutionPath(final Random random) {
     final ExecutionPathSegment result = new ExecutionPathSegment();
 
-    if (embeddedSubProcessBuilder != null) {
-      result.append(embeddedSubProcessBuilder.findRandomExecutionPath(random));
+    final var enterSubProcessStep =
+        new StepEnterSubProcess(subProcessId, subProcessBoundaryTimerEventId);
+    result.append(enterSubProcessStep);
+
+    if (embeddedSubProcessBuilder == null) {
+      return result;
+    }
+
+    final var internalExecutionPath = embeddedSubProcessBuilder.findRandomExecutionPath(random);
+
+    if (internalExecutionPath.getScheduledSteps().isEmpty()) {
+      return result;
+    }
+
+    if (!hasBoundaryEvents || random.nextBoolean()) {
+      result.append(internalExecutionPath);
+    } else {
+      final int cutOffPoint =
+          Math.min(1, random.nextInt(internalExecutionPath.getScheduledSteps().size()));
+
+      for (int i = 0; i < cutOffPoint; i++) {
+        result.append(internalExecutionPath.getSteps().get(i));
+      }
+
+      if (hasBoundaryTimerEvent) {
+        result.append(
+            new StepTimeoutSubProcess(subProcessId, subProcessBoundaryTimerEventId),
+            enterSubProcessStep);
+      } // extend here for other boundary events
     }
 
     return result;
+  }
+
+  public static final class StepEnterSubProcess extends AbstractExecutionStep {
+
+    private final String subProcessId;
+
+    public StepEnterSubProcess(
+        final String subProcessId, final String subProcessBoundaryTimerEventId) {
+      this.subProcessId = subProcessId;
+      /* temporary value to have a timer that will not fire in normal execution; if the execution
+       * path includes a StepTimeoutSubProcess, then the value will be overwritten with the correct
+       * time for that execution path
+       */
+      variables.put(subProcessBoundaryTimerEventId, VIRTUALLY_INFINITE.toString());
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return true;
+    }
+
+    @Override
+    public Duration getDeltaTime() {
+      return VIRTUALLY_NO_TIME;
+    }
+
+    @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      return variables;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      if (!super.equals(o)) {
+        return false;
+      }
+
+      final StepEnterSubProcess that = (StepEnterSubProcess) o;
+
+      return subProcessId.equals(that.subProcessId);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + subProcessId.hashCode();
+      return result;
+    }
+  }
+
+  public static final class StepTimeoutSubProcess extends AbstractExecutionStep {
+
+    private final String subProcessId;
+    private final String subProcessBoundaryTimerEventId;
+
+    public StepTimeoutSubProcess(
+        final String subProcessId, final String subProcessBoundaryTimerEventId) {
+      this.subProcessId = subProcessId;
+      this.subProcessBoundaryTimerEventId = subProcessBoundaryTimerEventId;
+    }
+
+    public String getSubProcessBoundaryTimerEventId() {
+      return subProcessBoundaryTimerEventId;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return false;
+    }
+
+    @Override
+    public Duration getDeltaTime() {
+      return DEFAULT_DELTA;
+    }
+
+    @Override
+    public Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      final var result = new HashMap<>(variables);
+      result.put(subProcessBoundaryTimerEventId, activationDuration.toString());
+      return result;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      if (!super.equals(o)) {
+        return false;
+      }
+
+      final StepTimeoutSubProcess that = (StepTimeoutSubProcess) o;
+
+      return subProcessId.equals(that.subProcessId);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + subProcessId.hashCode();
+      return result;
+    }
   }
 
   public static class Factory implements BlockBuilderFactory {

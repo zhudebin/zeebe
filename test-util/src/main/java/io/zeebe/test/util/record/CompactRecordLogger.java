@@ -100,7 +100,7 @@ public class CompactRecordLogger {
                 .distinct()
                 .count()
             < 2;
-    final var highestPosition = this.records.get(records.size() - 1).getPosition();
+    final var highestPosition = this.records.get(this.records.size() - 1).getPosition();
 
     int digits = 0;
     long num = highestPosition;
