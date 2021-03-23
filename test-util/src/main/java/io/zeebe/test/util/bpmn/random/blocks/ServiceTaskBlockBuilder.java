@@ -16,6 +16,7 @@ import io.zeebe.test.util.bpmn.random.BlockBuilderFactory;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
+import io.zeebe.test.util.bpmn.random.RandomProcessGenerator;
 import java.time.Duration;
 import java.util.Random;
 
@@ -34,7 +35,8 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     jobType = "job_" + serviceTaskId;
     errorCode = "error_" + serviceTaskId;
 
-    hasBoundaryErrorEvent = random.nextInt(100) < 10;
+    hasBoundaryErrorEvent =
+        random.nextDouble() < RandomProcessGenerator.PROBABILITY_BOUNDARY_ERROR_EVENT;
 
     hasBoundaryEvents = hasBoundaryErrorEvent; // extend here for additional boundary events
   }
