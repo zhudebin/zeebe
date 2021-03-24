@@ -9,6 +9,7 @@ package io.zeebe.engine.state.appliers;
 
 import io.zeebe.engine.state.TypedEventApplier;
 import io.zeebe.engine.state.instance.TimerInstance;
+import io.zeebe.engine.state.mutable.MutableElementInstanceState;
 import io.zeebe.engine.state.mutable.MutableEventScopeInstanceState;
 import io.zeebe.engine.state.mutable.MutableTimerInstanceState;
 import io.zeebe.protocol.impl.record.value.timer.TimerRecord;
@@ -21,12 +22,15 @@ final class TimerTriggeredApplier implements TypedEventApplier<TimerIntent, Time
   private static final UnsafeBuffer NO_VARIABLES = new UnsafeBuffer();
   private final MutableEventScopeInstanceState eventScopeInstanceState;
   private final MutableTimerInstanceState timerInstanceState;
+  private final MutableElementInstanceState elementInstanceState;
 
   public TimerTriggeredApplier(
       final MutableEventScopeInstanceState eventScopeInstanceState,
-      final MutableTimerInstanceState timerInstanceState) {
+      final MutableTimerInstanceState timerInstanceState,
+      final MutableElementInstanceState elementInstanceState) {
     this.eventScopeInstanceState = eventScopeInstanceState;
     this.timerInstanceState = timerInstanceState;
+    this.elementInstanceState = elementInstanceState;
   }
 
   @Override
@@ -40,6 +44,12 @@ final class TimerTriggeredApplier implements TypedEventApplier<TimerIntent, Time
 
     timerInstanceState.remove(timerInstance);
     eventScopeInstanceState.triggerEvent(eventScopeKey, key, targetElementId, NO_VARIABLES);
+
+    final var instance = elementInstanceState.getInstance(elementInstanceKey);
+    //    final var flowScopeInstance = elementInstanceState.getInstance(instance.getParentKey());
+
+    instance.setInterruptingEventId(targetElementId);
+    elementInstanceState.updateInstance(instance);
   }
 
   private boolean isStartEvent(final long elementInstanceKey) {

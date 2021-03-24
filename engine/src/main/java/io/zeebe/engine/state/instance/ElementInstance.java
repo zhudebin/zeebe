@@ -13,8 +13,10 @@ import io.zeebe.msgpack.UnpackedObject;
 import io.zeebe.msgpack.property.IntegerProperty;
 import io.zeebe.msgpack.property.LongProperty;
 import io.zeebe.msgpack.property.ObjectProperty;
+import io.zeebe.msgpack.property.StringProperty;
 import io.zeebe.protocol.impl.record.value.processinstance.ProcessInstanceRecord;
 import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
+import org.agrona.DirectBuffer;
 
 public final class ElementInstance extends UnpackedObject implements DbValue {
 
@@ -23,8 +25,13 @@ public final class ElementInstance extends UnpackedObject implements DbValue {
   private final LongProperty jobKeyProp = new LongProperty("jobKey", 0L);
   private final IntegerProperty multiInstanceLoopCounterProp =
       new IntegerProperty("multiInstanceLoopCounter", 0);
+  /** the old property, which is replaced by {@see interruptingEventIdProp } */
+  @Deprecated
   private final LongProperty interruptingEventKeyProp =
       new LongProperty("interruptingEventKey", -1L);
+
+  private final StringProperty interruptingEventIdProp =
+      new StringProperty("interruptingEventId", "");
   private final LongProperty calledChildInstanceKeyProp =
       new LongProperty("calledChildInstanceKey", -1L);
   private final ObjectProperty<IndexedRecord> recordProp =
@@ -38,6 +45,7 @@ public final class ElementInstance extends UnpackedObject implements DbValue {
         .declareProperty(jobKeyProp)
         .declareProperty(multiInstanceLoopCounterProp)
         .declareProperty(interruptingEventKeyProp)
+        .declareProperty(interruptingEventIdProp)
         .declareProperty(calledChildInstanceKeyProp)
         .declareProperty(recordProp)
         .declareProperty(activeSequenceFlowsProp);
@@ -149,8 +157,16 @@ public final class ElementInstance extends UnpackedObject implements DbValue {
     interruptingEventKeyProp.setValue(key);
   }
 
+  public DirectBuffer getInterruptingEventId() {
+    return interruptingEventIdProp.getValue();
+  }
+
+  public void setInterruptingEventId(final DirectBuffer elementId) {
+    interruptingEventIdProp.setValue(elementId);
+  }
+
   public boolean isInterrupted() {
-    return getInterruptingEventKey() > 0;
+    return getInterruptingEventKey() > 0 || getInterruptingEventId().capacity() > 0;
   }
 
   public long getParentKey() {

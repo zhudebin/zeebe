@@ -75,7 +75,10 @@ public final class EventAppliers implements EventApplier {
     register(TimerIntent.CANCELED, new TimerCancelledApplier(state.getTimerState()));
     register(
         TimerIntent.TRIGGERED,
-        new TimerTriggeredApplier(state.getEventScopeInstanceState(), state.getTimerState()));
+        new TimerTriggeredApplier(
+            state.getEventScopeInstanceState(),
+            state.getTimerState(),
+            state.getElementInstanceState()));
   }
 
   private void registerDeploymentAppliers(final MutableZeebeState state) {
@@ -199,7 +202,8 @@ public final class EventAppliers implements EventApplier {
         new ProcessMessageSubscriptionCorrelatedApplier(
             state.getProcessMessageSubscriptionState(),
             state.getEventScopeInstanceState(),
-            state.getVariableState()));
+            state.getVariableState(),
+            state.getElementInstanceState()));
     register(
         ProcessMessageSubscriptionIntent.DELETED,
         new ProcessMessageSubscriptionDeletedApplier(state.getProcessMessageSubscriptionState()));

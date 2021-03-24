@@ -24,6 +24,7 @@ import io.zeebe.engine.processing.deployment.model.element.ExecutableSequenceFlo
 import io.zeebe.engine.processing.deployment.model.element.ExecutableStartEvent;
 import io.zeebe.engine.processing.message.MessageCorrelationKeyException;
 import io.zeebe.engine.processing.message.MessageNameException;
+import io.zeebe.engine.processing.streamprocessor.MigratedStreamProcessors;
 import io.zeebe.engine.processing.streamprocessor.sideeffect.SideEffects;
 import io.zeebe.engine.processing.streamprocessor.writers.StateWriter;
 import io.zeebe.engine.processing.streamprocessor.writers.TypedCommandWriter;
@@ -135,16 +136,6 @@ public final class BpmnEventSubscriptionBehavior {
         });
   }
 
-  public void triggerIntermediateEvent(final BpmnElementContext context) {
-
-    triggerEvent(
-        context,
-        eventTrigger -> {
-          stateTransitionBehavior.transitionToCompleting(context);
-          return context.getElementInstanceKey();
-        });
-  }
-
   public void triggerBoundaryEvent(
       final ExecutableActivity element, final BpmnElementContext context) {
 
@@ -164,7 +155,7 @@ public final class BpmnEventSubscriptionBehavior {
     final long boundaryElementInstanceKey = keyGenerator.nextKey();
     if (boundaryEvent.interrupting()) {
 
-      deferActivatingEvent(context, boundaryElementInstanceKey, record);
+      //      deferActivatingEvent(context, boundaryElementInstanceKey, record);
 
       stateTransitionBehavior.transitionToTerminating(context);
 
@@ -221,20 +212,50 @@ public final class BpmnEventSubscriptionBehavior {
 
   private void publishTriggeredEvent(
       final BpmnElementContext context, final BpmnElementType elementType) {
-    elementInstanceState.getDeferredRecords(context.getElementInstanceKey()).stream()
-        .filter(record -> record.getValue().getBpmnElementType() == elementType)
-        .filter(record -> record.getState() == ProcessInstanceIntent.ELEMENT_ACTIVATING)
-        .findFirst()
-        .ifPresent(
-            deferredRecord ->
-                publishActivatingEvent(deferredRecord.getKey(), deferredRecord.getValue()));
+
+    final var instance = elementInstanceState.getInstance(context.getElementInstanceKey());
+    final var interruptingEventId = instance.getInterruptingEventId();
+    if (interruptingEventId.capacity() > 0) {
+      final var record =
+          instance.getValue().setElementId(interruptingEventId).setBpmnElementType(elementType);
+
+      if (MigratedStreamProcessors.isMigrated(elementType)) {
+        commandWriter.appendNewCommand(ProcessInstanceIntent.ACTIVATE_ELEMENT, record);
+      } else {
+        final var boundaryKey = keyGenerator.nextKey();
+        stateWriter.appendFollowUpEvent(
+            boundaryKey, ProcessInstanceIntent.ELEMENT_ACTIVATING, record);
+      }
+    }
+
+    // todo get executable from interrupting key
+    // process state
+    //    commandWriter.appendNewCommand(
+    //        ProcessInstanceIntent.ACTIVATE_ELEMENT,
+    //        new ProcessInstanceRecord().setElementId(interruptedOne));
+
+    // creates element instance
+    //    stateWriter.appendFollowUpEvent(
+    //        elementInstanceKey, ProcessInstanceIntent.ELEMENT_ACTIVATING, eventRecord);
+
+    //    elementInstanceState.getDeferredRecords(context.getElementInstanceKey()).stream()
+    //        .filter(record -> record.getValue().getBpmnElementType() == elementType)
+    //        .filter(record -> record.getState() == ProcessInstanceIntent.ELEMENT_ACTIVATING)
+    //        .findFirst()
+    //        .ifPresent(
+    //            deferredRecord ->
+    //                publishActivatingEvent(deferredRecord.getKey(), deferredRecord.getValue()));
   }
 
   private void publishActivatingEvent(
       final long elementInstanceKey, final ProcessInstanceRecord eventRecord) {
 
-    stateWriter.appendFollowUpEvent(
-        elementInstanceKey, ProcessInstanceIntent.ELEMENT_ACTIVATING, eventRecord);
+    if (MigratedStreamProcessors.isMigrated(eventRecord.getBpmnElementType())) {
+      commandWriter.appendNewCommand(ProcessInstanceIntent.ACTIVATE_ELEMENT, eventRecord);
+    } else {
+      stateWriter.appendFollowUpEvent(
+          elementInstanceKey, ProcessInstanceIntent.ELEMENT_ACTIVATING, eventRecord);
+    }
   }
 
   public void triggerEventBasedGateway(

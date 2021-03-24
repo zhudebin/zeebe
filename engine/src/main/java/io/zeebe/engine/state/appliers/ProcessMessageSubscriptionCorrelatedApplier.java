@@ -8,6 +8,7 @@
 package io.zeebe.engine.state.appliers;
 
 import io.zeebe.engine.state.TypedEventApplier;
+import io.zeebe.engine.state.mutable.MutableElementInstanceState;
 import io.zeebe.engine.state.mutable.MutableEventScopeInstanceState;
 import io.zeebe.engine.state.mutable.MutableProcessMessageSubscriptionState;
 import io.zeebe.engine.state.mutable.MutableVariableState;
@@ -21,14 +22,17 @@ public final class ProcessMessageSubscriptionCorrelatedApplier
   private final MutableProcessMessageSubscriptionState subscriptionState;
   private final MutableEventScopeInstanceState eventScopeInstanceState;
   private final MutableVariableState variableState;
+  private final MutableElementInstanceState elementInstanceState;
 
   public ProcessMessageSubscriptionCorrelatedApplier(
       final MutableProcessMessageSubscriptionState subscriptionState,
       final MutableEventScopeInstanceState eventScopeInstanceState,
-      final MutableVariableState variableState) {
+      final MutableVariableState variableState,
+      final MutableElementInstanceState elementInstanceState) {
     this.subscriptionState = subscriptionState;
     this.eventScopeInstanceState = eventScopeInstanceState;
     this.variableState = variableState;
+    this.elementInstanceState = elementInstanceState;
   }
 
   @Override
@@ -47,5 +51,11 @@ public final class ProcessMessageSubscriptionCorrelatedApplier
     if (value.getVariablesBuffer().capacity() > 0) {
       variableState.setTemporaryVariables(eventScopeKey, value.getVariablesBuffer());
     }
+
+    // set the interrupting event id to trigger the element later
+    final var instance = elementInstanceState.getInstance(eventKey);
+    //    final var flowScopeInstance = elementInstanceState.getInstance(instance.getParentKey());
+    instance.setInterruptingEventId(value.getElementIdBuffer());
+    elementInstanceState.updateInstance(instance);
   }
 }

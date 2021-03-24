@@ -61,6 +61,10 @@ final class ProcessInstanceElementActivatingApplier
 
     decrementActiveSequenceFlow(value, flowScopeInstance, flowScopeElementType, currentElementType);
 
+    if (currentElementType == BpmnElementType.BOUNDARY_EVENT) {
+      copyTemporaryVariables(flowScopeInstance.getKey(), elementInstanceKey);
+    }
+
     if (isStartEventInSubProcess(flowScopeElementType, currentElementType)) {
 
       final var executableStartEvent =
@@ -85,6 +89,23 @@ final class ProcessInstanceElementActivatingApplier
         }
       }
     }
+  }
+
+  private void copyTemporaryVariables(
+      final long flowScopeInstanceKey, final long elementInstanceKey) {
+    final var eventTrigger = eventScopeInstanceState.peekEventTrigger(flowScopeInstanceKey);
+
+    if (eventTrigger == null) {
+      // the activity (i.e. its event scope) is left - discard the event
+      return;
+    }
+
+    final var eventVariables = eventTrigger.getVariables();
+    if (eventVariables != null && eventVariables.capacity() > 0) {
+      variableState.setTemporaryVariables(elementInstanceKey, eventVariables);
+    }
+
+    eventScopeInstanceState.deleteTrigger(elementInstanceKey, eventTrigger.getEventKey());
   }
 
   private void decrementActiveSequenceFlow(
