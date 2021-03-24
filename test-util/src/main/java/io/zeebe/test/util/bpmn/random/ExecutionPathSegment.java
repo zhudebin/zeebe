@@ -25,6 +25,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 public final class ExecutionPathSegment {
 
   private final List<ScheduledExecutionStep> steps = new ArrayList<>();
+  private final Map<String, Object> variables = new HashMap<>();
 
   public void append(final AbstractExecutionStep executionStep) {
     final ScheduledExecutionStep predecessor;
@@ -57,6 +58,8 @@ public final class ExecutionPathSegment {
   }
 
   public void append(final ExecutionPathSegment pathToAdd) {
+    variables.putAll(pathToAdd.variables);
+
     pathToAdd
         .getScheduledSteps()
         .forEach(
@@ -80,9 +83,21 @@ public final class ExecutionPathSegment {
     return steps.stream().map(ScheduledExecutionStep::getStep).collect(Collectors.toList());
   }
 
+  /**
+   * Sets a default value for a variable. The default value must be independent of the execution
+   * path taken. The default value can be overwritten by any step
+   */
+  public void setVariableDefault(final String key, final Object value) {
+    variables.put(key, value);
+  }
+
+  public void mergeVariableDefaults(final ExecutionPathSegment other) {
+    variables.putAll(other.variables);
+  }
+
   public Map<String, Object> collectVariables() {
     final Map<String, Object> result = new HashMap<>();
-
+    result.putAll(variables);
     steps.forEach(step -> result.putAll(step.getVariables()));
 
     return result;

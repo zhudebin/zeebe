@@ -84,9 +84,11 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
     final var branchPointers =
         blockBuilders.stream()
             .map(
-                blockBuilder ->
-                    new BranchPointer(
-                        forkingGateway, blockBuilder.findRandomExecutionPath(random).getSteps()))
+                blockBuilder -> {
+                  final var branchExecutionPath = blockBuilder.findRandomExecutionPath(random);
+                  result.mergeVariableDefaults(branchExecutionPath);
+                  return new BranchPointer(forkingGateway, branchExecutionPath.getSteps());
+                })
             .collect(Collectors.toList());
 
     shuffleStepsFromDifferentLists(random, result, branchPointers);

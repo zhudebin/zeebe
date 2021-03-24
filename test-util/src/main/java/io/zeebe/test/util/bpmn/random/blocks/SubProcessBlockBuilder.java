@@ -32,7 +32,7 @@ public class SubProcessBlockBuilder implements BlockBuilder {
   private final String subProcessId;
   private final String subProcessStartEventId;
   private final String subProcessEndEventId;
-  private final String subProcessBoundaryTimerEventId;
+  private final String boundaryTimerEventId;
 
   private final boolean hasBoundaryEvents;
   private final boolean hasBoundaryTimerEvent;
@@ -49,7 +49,7 @@ public class SubProcessBlockBuilder implements BlockBuilder {
     subProcessStartEventId = idGenerator.nextId();
     subProcessEndEventId = idGenerator.nextId();
 
-    subProcessBoundaryTimerEventId = "boundary_timer_" + subProcessId;
+    boundaryTimerEventId = "boundary_timer_" + subProcessId;
 
     final boolean goDeeper = random.nextInt(maxDepth) > currentDepth;
 
@@ -92,8 +92,7 @@ public class SubProcessBlockBuilder implements BlockBuilder {
         result =
             ((SubProcessBuilder) exclusiveGatewayBuilder.moveToNode(subProcessId))
                 .boundaryEvent(
-                    subProcessBoundaryTimerEventId,
-                    b -> b.timerWithDurationExpression(subProcessBoundaryTimerEventId))
+                    boundaryTimerEventId, b -> b.timerWithDurationExpression(boundaryTimerEventId))
                 .connectTo(joinGatewayId);
       }
     }
@@ -105,8 +104,12 @@ public class SubProcessBlockBuilder implements BlockBuilder {
   public ExecutionPathSegment findRandomExecutionPath(final Random random) {
     final ExecutionPathSegment result = new ExecutionPathSegment();
 
-    final var enterSubProcessStep =
-        new StepEnterSubProcess(subProcessId, subProcessBoundaryTimerEventId);
+    if (hasBoundaryTimerEvent) {
+      // set an infinite timer as default; this can be overwritten by the execution path chosen
+      result.setVariableDefault(boundaryTimerEventId, AbstractExecutionStep.VIRTUALLY_INFINITE);
+    }
+    final var enterSubProcessStep = new StepEnterSubProcess(subProcessId);
+
     result.append(enterSubProcessStep);
 
     if (embeddedSubProcessBuilder == null) {
@@ -125,14 +128,15 @@ public class SubProcessBlockBuilder implements BlockBuilder {
       final int cutOffPoint =
           Math.min(1, random.nextInt(internalExecutionPath.getScheduledSteps().size()));
 
+      result.mergeVariableDefaults(internalExecutionPath);
+
       for (int i = 0; i < cutOffPoint; i++) {
         result.append(internalExecutionPath.getSteps().get(i));
       }
 
       if (hasBoundaryTimerEvent) {
         result.append(
-            new StepTimeoutSubProcess(subProcessId, subProcessBoundaryTimerEventId),
-            enterSubProcessStep);
+            new StepTimeoutSubProcess(subProcessId, boundaryTimerEventId), enterSubProcessStep);
       } // extend here for other boundary events
     }
 
@@ -143,14 +147,8 @@ public class SubProcessBlockBuilder implements BlockBuilder {
 
     private final String subProcessId;
 
-    public StepEnterSubProcess(
-        final String subProcessId, final String subProcessBoundaryTimerEventId) {
+    public StepEnterSubProcess(final String subProcessId) {
       this.subProcessId = subProcessId;
-      /* temporary value to have a timer that will not fire in normal execution; if the execution
-       * path includes a StepTimeoutSubProcess, then the value will be overwritten with the correct
-       * time for that execution path
-       */
-      variables.put(subProcessBoundaryTimerEventId, VIRTUALLY_INFINITE.toString());
     }
 
     @Override

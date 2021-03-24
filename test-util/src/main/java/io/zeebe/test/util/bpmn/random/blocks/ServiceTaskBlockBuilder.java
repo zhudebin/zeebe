@@ -17,8 +17,11 @@ import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
 import io.zeebe.test.util.bpmn.random.RandomProcessGenerator;
+import io.zeebe.test.util.bpmn.random.steps.StepActivateBPMNElement;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 
 /** Generates a service task. The service task may have boundary events */
@@ -27,19 +30,29 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
   private final String serviceTaskId;
   private final String jobType;
   private final String errorCode;
+  private final String boundaryErrorEventId;
+  private final String boundaryTimerEventId;
 
   private final boolean hasBoundaryEvents;
   private final boolean hasBoundaryErrorEvent;
+  private final boolean hasBoundaryTimerEvent;
 
   public ServiceTaskBlockBuilder(final IDGenerator idGenerator, final Random random) {
     serviceTaskId = idGenerator.nextId();
     jobType = "job_" + serviceTaskId;
     errorCode = "error_" + serviceTaskId;
 
+    boundaryErrorEventId = "boundary_error_" + serviceTaskId;
+    boundaryTimerEventId = "boundary_timer_" + serviceTaskId;
+
     hasBoundaryErrorEvent =
         random.nextDouble() < RandomProcessGenerator.PROBABILITY_BOUNDARY_ERROR_EVENT;
+    hasBoundaryTimerEvent =
+        random.nextDouble() < RandomProcessGenerator.PROBABILITY_BOUNDARY_TIMER_EVENT;
 
-    hasBoundaryEvents = hasBoundaryErrorEvent; // extend here for additional boundary events
+    hasBoundaryEvents =
+        hasBoundaryErrorEvent
+            || hasBoundaryTimerEvent; // extend here for additional boundary events
   }
 
   @Override
@@ -62,7 +75,15 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       if (hasBoundaryErrorEvent) {
         result =
             ((ServiceTaskBuilder) exclusiveGatewayBuilder.moveToNode(serviceTaskId))
-                .boundaryEvent("boundary_error_" + serviceTaskId, b -> b.error(errorCode))
+                .boundaryEvent(boundaryErrorEventId, b -> b.error(errorCode))
+                .connectTo(joinGatewayId);
+      }
+
+      if (hasBoundaryTimerEvent) {
+        result =
+            ((ServiceTaskBuilder) exclusiveGatewayBuilder.moveToNode(serviceTaskId))
+                .boundaryEvent(
+                    boundaryTimerEventId, b -> b.timerWithDurationExpression(boundaryTimerEventId))
                 .connectTo(joinGatewayId);
       }
     }
@@ -78,9 +99,18 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
   public ExecutionPathSegment findRandomExecutionPath(final Random random) {
     final ExecutionPathSegment result = new ExecutionPathSegment();
 
+    final var activateStep = new StepActivateBPMNElement(serviceTaskId);
+    result.append(activateStep);
+
+    if (hasBoundaryTimerEvent) {
+      // set an infinite timer as default; this can be overwritten by the execution path chosen
+      result.setVariableDefault(
+          boundaryTimerEventId, AbstractExecutionStep.VIRTUALLY_INFINITE.toString());
+    }
+
     result.append(buildStepsForFailedExecutions(random));
 
-    result.append(buildStepForSuccessfulExecution(random));
+    result.append(buildStepForSuccessfulExecution(random), activateStep);
 
     return result;
   }
@@ -111,6 +141,8 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
 
     if (hasBoundaryErrorEvent && random.nextBoolean()) {
       result = new StepActivateJobAndThrowError(jobType, errorCode);
+    } else if (hasBoundaryTimerEvent && random.nextBoolean()) {
+      result = new StepTimeoutServiceTask(jobType, boundaryTimerEventId);
     } else {
       result = new StepActivateAndCompleteJob(jobType);
     }
@@ -134,6 +166,7 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       return false;
     }
 
+    @Override
     public Duration getDeltaTime() {
       return VIRTUALLY_NO_TIME;
     }
@@ -191,6 +224,7 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       return false;
     }
 
+    @Override
     public Duration getDeltaTime() {
       return VIRTUALLY_NO_TIME;
     }
@@ -246,6 +280,7 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       return false;
     }
 
+    @Override
     public Duration getDeltaTime() {
       return DEFAULT_DELTA;
     }
@@ -342,6 +377,59 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       result = errorCode != null ? errorCode.hashCode() : 0;
       result = 31 * result + variables.hashCode();
       return result;
+    }
+  }
+
+  public static final class StepTimeoutServiceTask extends AbstractExecutionStep {
+
+    private final String jobType;
+    private final String boundaryTimerEventId;
+
+    public StepTimeoutServiceTask(final String jobType, final String boundaryTimerEventId) {
+      this.jobType = jobType;
+      this.boundaryTimerEventId = boundaryTimerEventId;
+    }
+
+    @Override
+    protected Map<String, Object> updateVariables(
+        final Map<String, Object> variables, final Duration activationDuration) {
+      final var result = new HashMap<>(variables);
+      result.put(boundaryTimerEventId, activationDuration.toString());
+      return result;
+    }
+
+    public String getBoundaryTimerEventId() {
+      return boundaryTimerEventId;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+      return false;
+    }
+
+    @Override
+    public Duration getDeltaTime() {
+      return DEFAULT_DELTA;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      if (!super.equals(o)) {
+        return false;
+      }
+      final StepTimeoutServiceTask that = (StepTimeoutServiceTask) o;
+      return jobType.equals(that.jobType) && boundaryTimerEventId.equals(that.boundaryTimerEventId);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(super.hashCode(), jobType, boundaryTimerEventId);
     }
   }
 
