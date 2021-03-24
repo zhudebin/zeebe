@@ -16,10 +16,9 @@ import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
 import io.zeebe.test.util.bpmn.random.steps.StepActivateBPMNElement;
-import java.time.Duration;
+import io.zeebe.test.util.bpmn.random.steps.StepCompleteBPMNElement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -94,7 +93,7 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
 
     shuffleStepsFromDifferentLists(random, result, branchPointers);
 
-    result.append(new StepLeaveParallelGateway(joinGatewayId));
+    result.append(new StepCompleteBPMNElement(joinGatewayId));
 
     return result;
   }
@@ -147,57 +146,6 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
 
   private void purgeEmptyBranches(final List<BranchPointer> branchPointers) {
     branchPointers.removeIf(BranchPointer::isEmpty);
-  }
-
-  public static final class StepLeaveParallelGateway extends AbstractExecutionStep {
-
-    private final String joiningGatewayId;
-
-    public StepLeaveParallelGateway(final String joiningGatewayId) {
-      this.joiningGatewayId = joiningGatewayId;
-    }
-
-    @Override
-    public boolean isAutomatic() {
-      return true;
-    }
-
-    @Override
-    public Duration getDeltaTime() {
-      return VIRTUALLY_NO_TIME;
-    }
-
-    @Override
-    public Map<String, Object> updateVariables(
-        final Map<String, Object> variables, final Duration activationDuration) {
-      return variables;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-
-      final StepLeaveParallelGateway that = (StepLeaveParallelGateway) o;
-
-      if (joiningGatewayId != null
-          ? !joiningGatewayId.equals(that.joiningGatewayId)
-          : that.joiningGatewayId != null) {
-        return false;
-      }
-      return variables.equals(that.variables);
-    }
-
-    @Override
-    public int hashCode() {
-      int result = joiningGatewayId != null ? joiningGatewayId.hashCode() : 0;
-      result = 31 * result + variables.hashCode();
-      return result;
-    }
   }
 
   public static class Factory implements BlockBuilderFactory {

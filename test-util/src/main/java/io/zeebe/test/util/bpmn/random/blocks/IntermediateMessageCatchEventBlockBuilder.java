@@ -9,14 +9,12 @@ package io.zeebe.test.util.bpmn.random.blocks;
 
 import io.zeebe.model.bpmn.builder.AbstractFlowNodeBuilder;
 import io.zeebe.model.bpmn.builder.IntermediateCatchEventBuilder;
-import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
 import io.zeebe.test.util.bpmn.random.BlockBuilder;
 import io.zeebe.test.util.bpmn.random.BlockBuilderFactory;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
-import java.time.Duration;
-import java.util.Map;
+import io.zeebe.test.util.bpmn.random.steps.StepPublishMessage;
 import java.util.Random;
 
 /**
@@ -58,60 +56,6 @@ public class IntermediateMessageCatchEventBlockBuilder implements BlockBuilder {
     result.append(new StepPublishMessage(messageName));
 
     return result;
-  }
-
-  public static final class StepPublishMessage extends AbstractExecutionStep {
-
-    private final String messageName;
-
-    public StepPublishMessage(final String messageName) {
-      this.messageName = messageName;
-      variables.put(CORRELATION_KEY_FIELD, CORRELATION_KEY_VALUE);
-    }
-
-    public String getMessageName() {
-      return messageName;
-    }
-
-    @Override
-    public boolean isAutomatic() {
-      return false;
-    }
-
-    @Override
-    public Duration getDeltaTime() {
-      return VIRTUALLY_NO_TIME;
-    }
-
-    @Override
-    public Map<String, Object> updateVariables(
-        final Map<String, Object> variables, final Duration activationDuration) {
-      return variables;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-
-      final StepPublishMessage that = (StepPublishMessage) o;
-
-      if (messageName != null ? !messageName.equals(that.messageName) : that.messageName != null) {
-        return false;
-      }
-      return variables.equals(that.variables);
-    }
-
-    @Override
-    public int hashCode() {
-      int result = messageName != null ? messageName.hashCode() : 0;
-      result = 31 * result + variables.hashCode();
-      return result;
-    }
   }
 
   public static class Factory implements BlockBuilderFactory {

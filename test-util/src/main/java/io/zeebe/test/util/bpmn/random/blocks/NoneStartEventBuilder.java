@@ -8,12 +8,10 @@
 package io.zeebe.test.util.bpmn.random.blocks;
 
 import io.zeebe.model.bpmn.builder.ProcessBuilder;
-import io.zeebe.test.util.bpmn.random.AbstractExecutionStep;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.StartEventBlockBuilder;
-import java.time.Duration;
-import java.util.Collections;
+import io.zeebe.test.util.bpmn.random.steps.StepStartProcessInstance;
 import java.util.Map;
 
 public final class NoneStartEventBuilder implements StartEventBlockBuilder {
@@ -37,63 +35,5 @@ public final class NoneStartEventBuilder implements StartEventBlockBuilder {
     final var pathSegment = new ExecutionPathSegment();
     pathSegment.append(new StepStartProcessInstance(processId, variables));
     return pathSegment;
-  }
-
-  public static final class StepStartProcessInstance extends AbstractExecutionStep {
-
-    private final String processId;
-
-    public StepStartProcessInstance(final String processId, final Map<String, Object> variables) {
-      this.processId = processId;
-      this.variables.putAll(variables);
-    }
-
-    public Map<String, Object> getProcessVariables() {
-      return Collections.unmodifiableMap(variables);
-    }
-
-    public String getProcessId() {
-      return processId;
-    }
-
-    @Override
-    public boolean isAutomatic() {
-      return false;
-    }
-
-    @Override
-    public Duration getDeltaTime() {
-      return VIRTUALLY_NO_TIME;
-    }
-
-    @Override
-    public Map<String, Object> updateVariables(
-        final Map<String, Object> variables, final Duration activationDuration) {
-      return variables;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-
-      final StepStartProcessInstance that = (StepStartProcessInstance) o;
-
-      if (processId != null ? !processId.equals(that.processId) : that.processId != null) {
-        return false;
-      }
-      return variables.equals(that.variables);
-    }
-
-    @Override
-    public int hashCode() {
-      int result = processId != null ? processId.hashCode() : 0;
-      result = 31 * result + variables.hashCode();
-      return result;
-    }
   }
 }
