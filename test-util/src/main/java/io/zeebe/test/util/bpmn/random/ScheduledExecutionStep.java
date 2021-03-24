@@ -10,11 +10,40 @@ package io.zeebe.test.util.bpmn.random;
 import java.time.Duration;
 import java.util.Map;
 
+/**
+ * Class that schedules an execution step to run at a certain time.
+ *
+ * <p>"Time" here means a scheduled execution time.
+ *
+ * <p>To summarize, we distinguish the following points in time: _scheduledActivationTime_ this is
+ * the time when a BPMN element is activated.
+ *
+ * <p>An element might be activated, but its execution step(s) might be scheduled later. E.g. a
+ * parallel gateway will activate 2 or more elements, but only once of them will be executed next.
+ * The others are executed later. This is captured in
+ *
+ * <p>_scheduledExecutionStartTime_ this is the time when an execution step will be executed.
+ *
+ * <p>_deltaTime_ the time the execution step will take
+ *
+ * <p>_scheduledExecutionEndTime_ this is the time when the execution of a step is finished.
+ *
+ * <p>Distinguishing the activation vs. the execution time is important for calculating correct
+ * values for timeouts.
+ *
+ * <p>For a broader discussion, please consult https://github.com/camunda-cloud/zeebe/issues/6568
+ * which discusses the problem and the concept.
+ */
 public class ScheduledExecutionStep {
 
   private final AbstractExecutionStep step;
   private final ScheduledExecutionStep logicalPredecessor;
   private final ScheduledExecutionStep executionPredecessor;
+
+  private final Duration activationTime;
+  private final Duration startTime;
+  private final Duration endTime;
+  private final Duration activationDuration;
 
   protected ScheduledExecutionStep(
       final ScheduledExecutionStep logicalPredecessor,
@@ -23,6 +52,21 @@ public class ScheduledExecutionStep {
     this.logicalPredecessor = logicalPredecessor;
     this.executionPredecessor = executionPredecessor;
     this.step = step;
+
+    if (executionPredecessor != null) {
+      startTime = executionPredecessor.getEndTime();
+    } else {
+      startTime = Duration.ofMillis(0);
+    }
+
+    if (logicalPredecessor != null) {
+      activationTime = logicalPredecessor.getEndTime();
+    } else {
+      activationTime = startTime;
+    }
+
+    endTime = startTime.plus(step.getDeltaTime());
+    activationDuration = endTime.minus(activationTime);
   }
 
   public Map<String, Object> getVariables() {
@@ -33,52 +77,19 @@ public class ScheduledExecutionStep {
     return step;
   }
 
-  @Override
-  public String toString() {
-    return step.toString();
-  }
-
   public ScheduledExecutionStep getLogicalPredecessor() {
     return logicalPredecessor;
   }
-
-  /*
-   * The following methods deal with time. "Time" here means a logical scheduled execution time.
-   * (The actual execution time may differ from the scheduled times.)
-   *
-   * To summarize, we distinguish the following points in time:
-   * _scheduledActivationTime_ this is the time when a BPMN element is activated.
-   *
-   * An element might be activated, but its execution step(s) might be scheduled later.
-   * E.g. a parallel gateway will activate 2 or more elements, but only once of them will be executed
-   * next. The others are executed later. This is captured in
-   *
-   * _scheduledExecutionStartTime_ this is the time when an execution step will be executed.
-   *
-   * _deltaTime_ the time the execution step will take
-   *
-   * _scheduledExecutionEndTime_ this is the time when the execution of a step is finished.
-   *
-   * Distinguishing the activation vs. the execution time is important for calculating correct
-   * values for timeouts.
-   *
-   * For a broader discussion, please consult https://github.com/camunda-cloud/zeebe/issues/6568
-   * which discusses the problem and the concept.
-   */
 
   /**
    * Returns the point in time during the execution at which the underlying BPMN element will be
    * activated.
    *
-   * @return point in time during the execution at which the underlying BPMN element will be *
+   * @return point in time during the execution at which the underlying BPMN element will be
    *     activated
    */
-  public final Duration getScheduledActivationTime() {
-    if (logicalPredecessor != null) {
-      return logicalPredecessor.getScheduledExecutionEndTime();
-    } else {
-      return getScheduledExecutionStartTime();
-    }
+  public final Duration getActivationTime() {
+    return activationTime;
   }
 
   /**
@@ -86,12 +97,8 @@ public class ScheduledExecutionStep {
    *
    * @return point in time during the execution at which this step will be executed
    */
-  public final Duration getScheduledExecutionStartTime() {
-    if (executionPredecessor != null) {
-      return executionPredecessor.getScheduledExecutionEndTime();
-    } else {
-      return Duration.ofMillis(0);
-    }
+  public final Duration getStartTime() {
+    return startTime;
   }
 
   /**
@@ -99,8 +106,8 @@ public class ScheduledExecutionStep {
    *
    * @return point in time during the execution at which the execution of this step is complete
    */
-  public final Duration getScheduledExecutionEndTime() {
-    return getScheduledExecutionStartTime().plus(step.getDeltaTime());
+  public final Duration getEndTime() {
+    return endTime;
   }
 
   /**
@@ -109,7 +116,23 @@ public class ScheduledExecutionStep {
    * @return total duration that the underlying BPMN element is activated
    */
   public final Duration getActivationDuration() {
-    return getScheduledExecutionEndTime().minus(getScheduledActivationTime());
+    return activationDuration;
+  }
+
+  @Override
+  public String toString() {
+    return "ScheduledExecutionStep{"
+        + "step="
+        + step
+        + ", activationTime="
+        + activationTime
+        + ", startTime="
+        + startTime
+        + ", endTime="
+        + endTime
+        + ", activationDuration="
+        + activationDuration
+        + '}';
   }
 
   @Override
@@ -126,14 +149,16 @@ public class ScheduledExecutionStep {
     if (!step.equals(that.step)) {
       return false;
     }
-    if (logicalPredecessor != null
-        ? !logicalPredecessor.equals(that.logicalPredecessor)
-        : that.logicalPredecessor != null) {
+    if (!activationTime.equals(that.activationTime)) {
       return false;
     }
-    return executionPredecessor != null
-        ? executionPredecessor.equals(that.executionPredecessor)
-        : that.executionPredecessor == null;
+    if (!startTime.equals(that.startTime)) {
+      return false;
+    }
+    if (!endTime.equals(that.endTime)) {
+      return false;
+    }
+    return activationDuration.equals(that.activationDuration);
   }
 
   @Override
