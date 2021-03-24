@@ -8,7 +8,6 @@
 package io.zeebe.engine.processing.streamprocessor;
 
 import io.zeebe.model.bpmn.Bpmn;
-import io.zeebe.test.util.bpmn.random.ScheduledExecutionStep;
 import java.util.stream.Collectors;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
@@ -29,6 +28,7 @@ final class FailedPropertyBasedTestDataPrinter extends TestWatcher {
   @Override
   protected void failed(final Throwable e, final Description description) {
     LOGGER.info("Data of failed test case: {}", propertyBasedTest.getDataRecord());
+    LOGGER.info("Test case failed at: {}", propertyBasedTest.getCurrentStep());
     LOGGER.info(
         "Process of failed test case:{}{}",
         System.lineSeparator(),
@@ -37,7 +37,10 @@ final class FailedPropertyBasedTestDataPrinter extends TestWatcher {
         "Execution path of failed test case:{}{}",
         System.lineSeparator(),
         propertyBasedTest.getDataRecord().getExecutionPath().getSteps().stream()
-            .map(ScheduledExecutionStep::toString)
+            .map(
+                step ->
+                    (step == propertyBasedTest.getCurrentStep() ? "--failed here--> " : "")
+                        + step.toString())
             .collect(Collectors.joining(System.lineSeparator())));
   }
 }

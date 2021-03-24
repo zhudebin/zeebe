@@ -13,6 +13,7 @@ import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.protocol.record.intent.ProcessInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import io.zeebe.test.util.bpmn.random.ExecutionPath;
+import io.zeebe.test.util.bpmn.random.ScheduledExecutionStep;
 import io.zeebe.test.util.bpmn.random.TestDataGenerator;
 import io.zeebe.test.util.bpmn.random.TestDataGenerator.TestDataRecord;
 import io.zeebe.test.util.record.RecordingExporter;
@@ -49,11 +50,18 @@ public class ProcessExecutionRandomizedPropertyTest implements PropertyBasedTest
 
   @Parameter public TestDataRecord record;
 
+  private ScheduledExecutionStep currentStep;
+
   private final ProcessExecutor processExecutor = new ProcessExecutor(engineRule);
 
   @Override
   public TestDataRecord getDataRecord() {
     return record;
+  }
+
+  @Override
+  public ScheduledExecutionStep getCurrentStep() {
+    return currentStep;
   }
 
   /**
@@ -68,7 +76,12 @@ public class ProcessExecutionRandomizedPropertyTest implements PropertyBasedTest
 
     final ExecutionPath path = record.getExecutionPath();
 
-    path.getSteps().stream().forEach(processExecutor::applyStep);
+    path.getSteps()
+        .forEach(
+            step -> {
+              currentStep = step;
+              processExecutor.applyStep(step);
+            });
 
     // wait for the completion of the process
     RecordingExporter.processInstanceRecords(ProcessInstanceIntent.ELEMENT_COMPLETED)
@@ -80,5 +93,8 @@ public class ProcessExecutionRandomizedPropertyTest implements PropertyBasedTest
   @Parameters(name = "{0}")
   public static Collection<TestDataGenerator.TestDataRecord> getTestRecords() {
     return TestDataGenerator.generateTestRecords(PROCESS_COUNT, EXECUTION_PATH_COUNT);
+
+    // return Collections.singleton(TestDataGenerator.regenerateTestRecord(processSeed,
+    // executionPathSeed));
   }
 }

@@ -46,6 +46,9 @@ public class ReplayStateRandomizedPropertyTest implements PropertyBasedTest {
 
   @Rule public TestWatcher failedTestDataPrinter = new FailedPropertyBasedTestDataPrinter(this);
   @Parameter public TestDataRecord record;
+
+  private ScheduledExecutionStep currentStep;
+
   private long lastProcessedPosition = -1L;
 
   @Rule
@@ -66,6 +69,11 @@ public class ReplayStateRandomizedPropertyTest implements PropertyBasedTest {
     return record;
   }
 
+  @Override
+  public ScheduledExecutionStep getCurrentStep() {
+    return currentStep;
+  }
+
   /**
    * This test takes a random process and execution path in that process. A process instance is
    * started and the process is executed step by step according to the random execution path. After
@@ -84,7 +92,7 @@ public class ReplayStateRandomizedPropertyTest implements PropertyBasedTest {
     final ExecutionPath path = record.getExecutionPath();
 
     for (final ScheduledExecutionStep step : path.getSteps()) {
-
+      currentStep = step;
       processExecutor.applyStep(step);
 
       stopAndRestartEngineAndCompareStates();
