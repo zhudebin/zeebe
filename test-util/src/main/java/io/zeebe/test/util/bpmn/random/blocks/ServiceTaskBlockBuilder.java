@@ -18,10 +18,9 @@ import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
 import io.zeebe.test.util.bpmn.random.RandomProcessGenerator;
 import io.zeebe.test.util.bpmn.random.steps.StepActivateBPMNElement;
+import io.zeebe.test.util.bpmn.random.steps.StepTimeoutBPMNElement;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Random;
 
 /** Generates a service task. The service task may have boundary events */
@@ -142,7 +141,7 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
     if (hasBoundaryErrorEvent && random.nextBoolean()) {
       result = new StepActivateJobAndThrowError(jobType, errorCode);
     } else if (hasBoundaryTimerEvent && random.nextBoolean()) {
-      result = new StepTimeoutServiceTask(jobType, boundaryTimerEventId);
+      result = new StepTimeoutBPMNElement(boundaryTimerEventId);
     } else {
       result = new StepActivateAndCompleteJob(jobType);
     }
@@ -377,59 +376,6 @@ public class ServiceTaskBlockBuilder implements BlockBuilder {
       result = errorCode != null ? errorCode.hashCode() : 0;
       result = 31 * result + variables.hashCode();
       return result;
-    }
-  }
-
-  public static final class StepTimeoutServiceTask extends AbstractExecutionStep {
-
-    private final String jobType;
-    private final String boundaryTimerEventId;
-
-    public StepTimeoutServiceTask(final String jobType, final String boundaryTimerEventId) {
-      this.jobType = jobType;
-      this.boundaryTimerEventId = boundaryTimerEventId;
-    }
-
-    @Override
-    protected Map<String, Object> updateVariables(
-        final Map<String, Object> variables, final Duration activationDuration) {
-      final var result = new HashMap<>(variables);
-      result.put(boundaryTimerEventId, activationDuration.toString());
-      return result;
-    }
-
-    public String getBoundaryTimerEventId() {
-      return boundaryTimerEventId;
-    }
-
-    @Override
-    public boolean isAutomatic() {
-      return false;
-    }
-
-    @Override
-    public Duration getDeltaTime() {
-      return DEFAULT_DELTA;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      if (!super.equals(o)) {
-        return false;
-      }
-      final StepTimeoutServiceTask that = (StepTimeoutServiceTask) o;
-      return jobType.equals(that.jobType) && boundaryTimerEventId.equals(that.boundaryTimerEventId);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(super.hashCode(), jobType, boundaryTimerEventId);
     }
   }
 

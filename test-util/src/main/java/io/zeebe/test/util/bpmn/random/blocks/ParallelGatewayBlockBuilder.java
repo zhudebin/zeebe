@@ -15,6 +15,7 @@ import io.zeebe.test.util.bpmn.random.BlockBuilderFactory;
 import io.zeebe.test.util.bpmn.random.ConstructionContext;
 import io.zeebe.test.util.bpmn.random.ExecutionPathSegment;
 import io.zeebe.test.util.bpmn.random.IDGenerator;
+import io.zeebe.test.util.bpmn.random.steps.StepActivateBPMNElement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,7 +79,7 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
   public ExecutionPathSegment findRandomExecutionPath(final Random random) {
     final ExecutionPathSegment result = new ExecutionPathSegment();
 
-    final var forkingGateway = new StepEnterParallelGateway(forkGatewayId);
+    final var forkingGateway = new StepActivateBPMNElement(forkGatewayId);
     result.append(forkingGateway);
 
     final var branchPointers =
@@ -146,57 +147,6 @@ public class ParallelGatewayBlockBuilder implements BlockBuilder {
 
   private void purgeEmptyBranches(final List<BranchPointer> branchPointers) {
     branchPointers.removeIf(BranchPointer::isEmpty);
-  }
-
-  public static final class StepEnterParallelGateway extends AbstractExecutionStep {
-
-    private final String forkingGatewayId;
-
-    public StepEnterParallelGateway(final String forkingGatewayId) {
-      this.forkingGatewayId = forkingGatewayId;
-    }
-
-    @Override
-    public boolean isAutomatic() {
-      return true;
-    }
-
-    @Override
-    public Duration getDeltaTime() {
-      return VIRTUALLY_NO_TIME;
-    }
-
-    @Override
-    public Map<String, Object> updateVariables(
-        final Map<String, Object> variables, final Duration activationDuration) {
-      return variables;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-
-      final StepEnterParallelGateway that = (StepEnterParallelGateway) o;
-
-      if (forkingGatewayId != null
-          ? !forkingGatewayId.equals(that.forkingGatewayId)
-          : that.forkingGatewayId != null) {
-        return false;
-      }
-      return variables.equals(that.variables);
-    }
-
-    @Override
-    public int hashCode() {
-      int result = forkingGatewayId != null ? forkingGatewayId.hashCode() : 0;
-      result = 31 * result + variables.hashCode();
-      return result;
-    }
   }
 
   public static final class StepLeaveParallelGateway extends AbstractExecutionStep {

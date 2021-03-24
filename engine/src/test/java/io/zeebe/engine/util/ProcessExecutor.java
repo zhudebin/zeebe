@@ -25,8 +25,7 @@ import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivat
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateAndFailJob;
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateAndTimeoutJob;
 import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepActivateJobAndThrowError;
-import io.zeebe.test.util.bpmn.random.blocks.ServiceTaskBlockBuilder.StepTimeoutServiceTask;
-import io.zeebe.test.util.bpmn.random.blocks.SubProcessBlockBuilder.StepTimeoutSubProcess;
+import io.zeebe.test.util.bpmn.random.steps.StepTimeoutBPMNElement;
 import io.zeebe.test.util.record.RecordingExporter;
 import java.util.Map;
 
@@ -61,9 +60,6 @@ public class ProcessExecutor {
     } else if (step instanceof StepActivateAndTimeoutJob) {
       final StepActivateAndTimeoutJob activateAndTimeoutJob = (StepActivateAndTimeoutJob) step;
       activateAndTimeoutJob(activateAndTimeoutJob);
-    } else if (step instanceof StepTimeoutServiceTask) {
-      final StepTimeoutServiceTask timeoutServiceTask = (StepTimeoutServiceTask) step;
-      timeoutServiceTask(timeoutServiceTask);
     } else if (step instanceof StepActivateJobAndThrowError) {
       final StepActivateJobAndThrowError activateJobAndThrowError =
           (StepActivateJobAndThrowError) step;
@@ -71,9 +67,9 @@ public class ProcessExecutor {
     } else if (step instanceof StepRaiseIncidentThenResolveAndPickConditionCase) {
       final var expressionIncident = (StepRaiseIncidentThenResolveAndPickConditionCase) step;
       resolveExpressionIncident(expressionIncident);
-    } else if (step instanceof StepTimeoutSubProcess) {
-      final var timeoutSubProcess = (StepTimeoutSubProcess) step;
-      timeoutSubProcess(timeoutSubProcess);
+    } else if (step instanceof StepTimeoutBPMNElement) {
+      final var timeoutSubProcess = (StepTimeoutBPMNElement) step;
+      timeoutBPMNElement(timeoutSubProcess);
     } else if (step.isAutomatic()) {
       // Nothing to do here, as the step execution is controlled by the engine
     } else {
@@ -81,27 +77,15 @@ public class ProcessExecutor {
     }
   }
 
-  private void timeoutSubProcess(final StepTimeoutSubProcess timeoutProcess) {
+  private void timeoutBPMNElement(final StepTimeoutBPMNElement step) {
     RecordingExporter.timerRecords(TimerIntent.CREATED)
-        .withHandlerNodeId(timeoutProcess.getSubProcessBoundaryTimerEventId())
+        .withHandlerNodeId(step.getTimerEventId())
         .await();
 
-    engineRule.getClock().addTime(timeoutProcess.getDeltaTime());
+    engineRule.getClock().addTime(step.getDeltaTime());
 
     RecordingExporter.timerRecords(TimerIntent.TRIGGERED)
-        .withHandlerNodeId(timeoutProcess.getSubProcessBoundaryTimerEventId())
-        .await();
-  }
-
-  private void timeoutServiceTask(final StepTimeoutServiceTask timeoutServiceTask) {
-    RecordingExporter.timerRecords(TimerIntent.CREATED)
-        .withHandlerNodeId(timeoutServiceTask.getBoundaryTimerEventId())
-        .await();
-
-    engineRule.getClock().addTime(timeoutServiceTask.getDeltaTime());
-
-    RecordingExporter.timerRecords(TimerIntent.TRIGGERED)
-        .withHandlerNodeId(timeoutServiceTask.getBoundaryTimerEventId())
+        .withHandlerNodeId(step.getTimerEventId())
         .await();
   }
 
