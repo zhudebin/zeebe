@@ -105,7 +105,8 @@ public class SubProcessBlockBuilder implements BlockBuilder {
 
     if (hasBoundaryTimerEvent) {
       // set an infinite timer as default; this can be overwritten by the execution path chosen
-      result.setVariableDefault(boundaryTimerEventId, AbstractExecutionStep.VIRTUALLY_INFINITE);
+      result.setVariableDefault(
+          boundaryTimerEventId, AbstractExecutionStep.VIRTUALLY_INFINITE.toString());
     }
     final var activateSubProcess = new StepActivateBPMNElement(subProcessId);
 
