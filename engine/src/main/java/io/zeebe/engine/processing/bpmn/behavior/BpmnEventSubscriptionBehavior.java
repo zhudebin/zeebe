@@ -118,52 +118,38 @@ public final class BpmnEventSubscriptionBehavior {
   public void triggerBoundaryOrIntermediateEvent(
       final ExecutableReceiveTask element, final BpmnElementContext context) {
 
-    triggerEvent(
-        context,
-        eventTrigger -> {
-          final boolean hasEventTriggeredForBoundaryEvent =
-              element.getBoundaryEvents().stream()
-                  .anyMatch(
-                      boundaryEvent -> boundaryEvent.getId().equals(eventTrigger.getElementId()));
+    final var eventTrigger =
+        eventScopeInstanceState.peekEventTrigger(context.getElementInstanceKey());
+    final boolean hasEventTriggeredForBoundaryEvent =
+        element.getBoundaryEvents().stream()
+            .anyMatch(boundaryEvent -> boundaryEvent.getId().equals(eventTrigger.getElementId()));
 
-          if (hasEventTriggeredForBoundaryEvent) {
-            return triggerBoundaryEvent(element, context, eventTrigger);
-
-          } else {
+    if (hasEventTriggeredForBoundaryEvent) {
+      triggerBoundaryEvent(element, context);
+    } else {
+      triggerEvent(
+          context,
+          trigger -> {
             stateTransitionBehavior.transitionToCompleting(context);
             return context.getElementInstanceKey();
-          }
-        });
+          });
+    }
   }
 
   public void triggerBoundaryEvent(
       final ExecutableActivity element, final BpmnElementContext context) {
-
-    triggerEvent(context, eventTrigger -> triggerBoundaryEvent(element, context, eventTrigger));
-  }
-
-  private long triggerBoundaryEvent(
-      final ExecutableActivity element,
-      final BpmnElementContext context,
-      final EventTrigger eventTrigger) {
-
+    final var eventTrigger =
+        eventScopeInstanceState.peekEventTrigger(context.getElementInstanceKey());
     final var record =
         getEventRecord(context.getRecordValue(), eventTrigger, BpmnElementType.BOUNDARY_EVENT);
 
     final var boundaryEvent = getBoundaryEvent(element, context, eventTrigger);
-
-    final long boundaryElementInstanceKey = keyGenerator.nextKey();
     if (boundaryEvent.interrupting()) {
-
-      //      deferActivatingEvent(context, boundaryElementInstanceKey, record);
-
       stateTransitionBehavior.transitionToTerminating(context);
-
     } else {
+      final long boundaryElementInstanceKey = keyGenerator.nextKey();
       publishActivatingEvent(boundaryElementInstanceKey, record);
     }
-
-    return boundaryElementInstanceKey;
   }
 
   private ProcessInstanceRecord getEventRecord(
