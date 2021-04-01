@@ -127,6 +127,7 @@ final class BrokerRequestManager extends Actor {
       return;
     }
 
+    // 发送消息到broker
     final ActorFuture<DirectBuffer> responseFuture =
         sender.send(clientTransport, nodeIdProvider, request, requestTimeout);
     final long startTime = System.currentTimeMillis();

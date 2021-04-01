@@ -37,6 +37,9 @@ import io.zeebe.gateway.protocol.GatewayOuterClass.TopologyResponse;
 import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateJobRetriesRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateJobRetriesResponse;
 
+/**
+ * Gateway 响应的入口
+ */
 public class GatewayGrpcService extends GatewayImplBase {
   private final EndpointManager endpointManager;
 

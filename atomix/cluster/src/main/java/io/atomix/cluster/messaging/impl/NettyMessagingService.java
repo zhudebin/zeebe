@@ -334,20 +334,20 @@ public class NettyMessagingService implements ManagedMessagingService {
 
   private void initEventLoopGroup() {
     // try Epoll first and if that does work, use nio.
-    try {
-      clientGroup =
-          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-client-%d", log));
-      serverGroup =
-          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-server-%d", log));
-      serverChannelClass = EpollServerSocketChannel.class;
-      clientChannelClass = EpollSocketChannel.class;
-      return;
-    } catch (final Exception e) {
-      log.debug(
-          "Failed to initialize native (epoll) transport. " + "Reason: {}. Proceeding with nio.",
-          e.getMessage(),
-          e);
-    }
+//    try {
+//      clientGroup =
+//          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-client-%d", log));
+//      serverGroup =
+//          new EpollEventLoopGroup(0, namedThreads("netty-messaging-event-epoll-server-%d", log));
+//      serverChannelClass = EpollServerSocketChannel.class;
+//      clientChannelClass = EpollSocketChannel.class;
+//      return;
+//    } catch (final Exception e) {
+//      log.debug(
+//          "Failed to initialize native (epoll) transport. " + "Reason: {}. Proceeding with nio.",
+//          e.getMessage(),
+//          e);
+//    }
     clientGroup =
         new NioEventLoopGroup(0, namedThreads("netty-messaging-event-nio-client-%d", log));
     serverGroup =

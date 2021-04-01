@@ -95,7 +95,7 @@ public final class Gateway {
       LOG.info("Version: {}", VersionUtil.getVersion());
       LOG.info("Starting gateway with configuration {}", gatewayCfg.toJson());
     }
-
+    // 操作broker的客户端
     brokerClient = buildBrokerClient();
 
     final ActivateJobsHandler activateJobsHandler;
@@ -109,6 +109,7 @@ public final class Gateway {
     }
 
     final EndpointManager endpointManager = new EndpointManager(brokerClient, activateJobsHandler);
+    // 请求响应真正的入口
     final GatewayGrpcService gatewayGrpcService = new GatewayGrpcService(endpointManager);
     final ServerBuilder<?> serverBuilder = serverBuilderFactory.apply(gatewayCfg);
 
