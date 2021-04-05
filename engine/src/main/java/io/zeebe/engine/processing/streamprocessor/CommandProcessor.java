@@ -29,6 +29,11 @@ public interface CommandProcessor<T extends UnifiedRecordValue> {
     return onCommand(command, commandControl);
   }
 
+    /**
+     * TODO 实际进行运行命令处理的地方， 比如运行实例
+     *
+     * @param <T>
+     */
   interface CommandControl<T> {
     /** @return the key of the entity */
     long accept(Intent newState, T updatedValue);

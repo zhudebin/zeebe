@@ -38,7 +38,7 @@ import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateJobRetriesRequest;
 import io.zeebe.gateway.protocol.GatewayOuterClass.UpdateJobRetriesResponse;
 
 /**
- * Gateway 响应的入口
+ * TODO Gateway 响应的入口
  */
 public class GatewayGrpcService extends GatewayImplBase {
   private final EndpointManager endpointManager;
@@ -47,6 +47,11 @@ public class GatewayGrpcService extends GatewayImplBase {
     this.endpointManager = endpointManager;
   }
 
+    /**
+     * worker 定时拉取可以运行的作业
+     * @param request
+     * @param responseObserver
+     */
   @Override
   public void activateJobs(
       final ActivateJobsRequest request,
